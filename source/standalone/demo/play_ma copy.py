@@ -50,7 +50,7 @@ from omni.isaac.orbit.utils.assets import ISAAC_NUCLEUS_DIR
 import omni.isaac.orbit.utils.kit as kit_utils
 from omni.isaac.orbit.robots.config.franka import FRANKA_PANDA_ARM_WITH_PANDA_HAND_CFG
 from omni.isaac.orbit.robots.single_arm import SingleArmManipulator
-# from omni.isaac.orbit.sensors.camera import Camera, PinholeCameraCfg
+from omni.isaac.orbit.sensors.camera import Camera, PinholeCameraCfg
 from omni.isaac.orbit.sensors.camera.utils import create_pointcloud_from_rgbd
 import omni.replicator.core as rep
 from omni.isaac.core.utils import prims
@@ -112,8 +112,8 @@ def main():
     )
     #################### create table 
     table_path = f"{ISAAC_NUCLEUS_DIR}/Props/Shapes/cube.usd"
-    prim_utils.create_prim("/World/env/env_0/Table", usd_path=table_path,position=(0,0,-0.25),scale=(1,0.6,0.5))
-    prim_utils.create_prim("/World/env/env_0/Robotbase", usd_path=table_path,position=(0,-0.45,-0.2),scale=(0.3,0.26,0.4))
+    prim_utils.create_prim("/World/Table", usd_path=table_path,position=(0,0,-0.25),scale=(1,0.6,0.5))
+    prim_utils.create_prim("/World/Robotbase", usd_path=table_path,position=(0,-0.45,-0.2),scale=(0.3,0.26,0.4))
     # rigid_obj = RigidPrim(f"/World/Table", mass=5.0)
     # # cast to geom prim
     # geom_prim = getattr(UsdGeom, "Cube")(rigid_obj.prim)
@@ -134,7 +134,7 @@ def main():
     robot_cfg.data_info.enable_jacobian = True
     robot_cfg.rigid_props.disable_gravity = True
     robot = SingleArmManipulator(cfg=robot_cfg)
-    robot.spawn("/World/env/env_0/Robot", translation=(0.0, -.45, 0))
+    robot.spawn("/World/Robot", translation=(0.0, -.45, 0))
     ###################################### controller
     ik_control_cfg = DifferentialInverseKinematicsCfg(
         command_type="pose_abs",
@@ -165,38 +165,8 @@ def main():
     ###################################### rep camera
     
     image_pixel = [512,256]
-    # camera_cfg = PinholeCameraCfg(
-    #     sensor_tick=0,
-    #     height=image_pixel[1],
-    #     width=image_pixel[0],
-    #     data_types=["rgb", "distance_to_image_plane", "normals", "motion_vectors"],
-    #     usd_params=PinholeCameraCfg.UsdCameraCfg(
-    #         focal_length=24.0, focus_distance=400.0, horizontal_aperture=20.955, clipping_range=(0.1, 1.0e5)
-    #     ),
-    # )
-    # camera = Camera(cfg=camera_cfg, device=sim.device,lo)
-    
-    # camera.spawn("/World/env/env_0")
-    
-    # cam = rep.create.camera(camera)
-    camera = prims.create_prim(
-        prim_path="/World/env/env_0/Camera",
-        prim_type="Camera",
-        translation = (0,0,5),
-        orientation = (0,0,1,0),
-        attributes={
-            "focusDistance": 1,
-            "focalLength": 24,
-            "horizontalAperture": 20.955,
-            "verticalAperture": 15.2908,
-            "clippingRange": (0.01, 1000000),
-            "clippingPlanes": np.array([1.0, 0.0, 1.0, 1.0]),
-            },
-        )
-    # cam = rep.create.camera(camera)
-    # cam = rep.create.camera(position=(0,0,5), look_at="/World/env/env_0/Table")
-    # print(cam.prim_path)
-    rp = rep.create.render_product(camera, image_pixel)
+    cam = rep.create.camera(position=(0,0,5), look_at=(0,0,0))
+    rp = rep.create.render_product(cam, image_pixel)
     sim.reset()
     # for _ in range(14):
     #     sim.render()
@@ -206,7 +176,7 @@ def main():
     # Reset states
     robot.reset_buffers()
     ik_controller.reset_idx()
-    # rp = rep.create.render_product(camera, image_pixel)
+
     rgb_image = rep.AnnotatorRegistry.get_annotator("rgb")
     depth_image = rep.AnnotatorRegistry.get_annotator("distance_to_camera")
     camera_params = rep.AnnotatorRegistry.get_annotator("CameraParams")

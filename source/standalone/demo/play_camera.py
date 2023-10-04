@@ -20,7 +20,7 @@ from omni.isaac.kit import SimulationApp
 parser = argparse.ArgumentParser("Welcome to Orbit: Omniverse Robotics Environments!")
 parser.add_argument("--headless", action="store_true", default=False, help="Force display off at all times.")
 parser.add_argument("--gpu", action="store_true", default=False, help="Use GPU device for camera rendering output.")
-parser.add_argument("--draw", action="store_true", default=False, help="Draw the obtained pointcloud on viewport.")
+parser.add_argument("--draw", action="store_true", default=True, help="Draw the obtained pointcloud on viewport.")
 args_cli = parser.parse_args()
 
 # launch omniverse app
