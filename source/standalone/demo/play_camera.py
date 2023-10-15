@@ -106,7 +106,7 @@ def main():
     """Runs a camera sensor from orbit."""
 
     # Load kit helper
-    sim = SimulationContext(physics_dt=0.005, rendering_dt=0.005, backend="torch")
+    sim = SimulationContext(physics_dt=0.005, rendering_dt=0.005, backend="torch",device='cuda:0')
     # Set main camera
     set_camera_view([2.5, 2.5, 2.5], [0.0, 0.0, 0.0])
     # Acquire draw interface
@@ -186,7 +186,8 @@ def main():
             normalize_rgb=True,
             num_channels=4,
         )
-
+        # print('rgb')
+        # print(camera.data.output["rgb"])
         # Draw pointcloud
         if not args_cli.headless and args_cli.draw:
             # Convert to numpy for visualization
