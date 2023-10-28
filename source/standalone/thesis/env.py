@@ -43,6 +43,7 @@ from omni.isaac.orbit.sensors.camera import Camera, PinholeCameraCfg
 from omni.isaac.orbit.sensors.camera.utils import create_pointcloud_from_rgbd
 from omni.isaac.orbit.utils.math import convert_quat, quat_mul, random_yaw_orientation, sample_cylinder
 import scipy.spatial.transform as tf
+from omni.isaac.franka import Franka, KinematicsSolver
 """
 Main
 """
@@ -52,7 +53,7 @@ def main():
     """Spawns lights in the stage and sets the camera view."""
 
     # Load kit helper
-    sim = SimulationContext(physics_dt=0.01, rendering_dt=0.01, backend="torch")
+    sim = SimulationContext(physics_dt=0.01, rendering_dt=0.01, backend="torch",device='cuda:0')
     # Set main camera
     set_camera_view([0, 2.5, 3.5], [0.0, 0.0, 0.0])
     ###########################################
@@ -80,8 +81,12 @@ def main():
     # table_path = f"{ISAAC_NUCLEUS_DIR}/Props/Shapes/cube.usd"
     # prim_utils.create_prim("/World/Table", usd_path=table_path,position=(0,0,-0.25),scale=(1,0.6,0.5))
     Table = DynamicCuboid(prim_path="/World/Table",position=(0,0,0.20),scale=(1,0.6,0.15))
-    Table.set_mass(1000)
+    Table.set_mass(1000000000)
+    sideTable = DynamicCuboid(prim_path="/World/sideTable",position=(0,-0.8,0.20),scale=(0.4,0.4,0.15))
+    sideTable.set_mass(100000000)
     ################################ robot setting
+    # robot = Franka(prim_path="/World/Robot",position=[0.0, -.45, 0])
+    # robot_controller = KinematicsSolver(robot_articulation=robot)
     robot_cfg = FRANKA_PANDA_ARM_WITH_PANDA_HAND_CFG
     robot_cfg.data_info.enable_jacobian = True
     robot_cfg.rigid_props.disable_gravity = True
@@ -108,9 +113,10 @@ def main():
         "pitcherBase":f"{ISAAC_NUCLEUS_DIR}/Props/YCB/Axis_Aligned/019_pitcher_base.usd",
         "bowl":f"{ISAAC_NUCLEUS_DIR}/Props/YCB/Axis_Aligned/024_bowl.usd",
         "largeClamp":f"{ISAAC_NUCLEUS_DIR}/Props/YCB/Axis_Aligned/051_large_clamp.usd",
+        "scissors":f"{ISAAC_NUCLEUS_DIR}/Props/YCB/Axis_Aligned/037_scissors.usd",
     }
     ycb_name = ['crackerBox','sugarBox','tomatoSoupCan','mustardBottle','mug','largeMarker','tunaFishCan',
-                'banana','pitcherBase','bowl','largeClamp']
+                'banana','pitcherBase','bowl','largeClamp','scissors']
     ############################# camera
     camera_cfg = PinholeCameraCfg(
         sensor_tick=0,
@@ -123,7 +129,8 @@ def main():
     )
     camera = Camera(cfg=camera_cfg, device="cuda")
     hand_camera = Camera(cfg=camera_cfg,device='cuda')
-    hand_camera.spawn("/World/Robot/panda_hand/hand_camera", translation=(0.1, 0.0, 0.0),orientation=(0,0,1,0))
+    # hand_camera.spawn("/World/Robot/panda_hand/hand_camera", translation=(0.1, 0.0, 0.0),orientation=(0,0,1,0))
+    hand_camera.spawn("/World/hand_camera")
     # Spawn camera
     camera.spawn("/World/CameraSensor")
     #############################
@@ -137,23 +144,37 @@ def main():
     hand_camera.initialize()
     camera.initialize()
     robot.initialize()
-    ik_controller.initialize()
-    # Reset states
-    robot.reset_buffers()
-    ik_controller.reset_idx()
+    # ik_controller.initialize()
+    # # Reset states
+    # robot.reset_buffers()
+    # ik_controller.reset_idx()
+    ###########################
     position = [0, 0, 2.]
     orientation = [0, 0, -1, 0]
     camera.set_world_pose_ros(position, orientation)
+    hand_camera.set_world_pose_ros([0,-0.8,2], orientation)
     ###################### fix table position and orientation
-    Table.disable_rigid_body_physics()
+    # Table.disable_rigid_body_physics()
+    # sideTable.disable_rigid_body_physics()
     ###################### load ycb
-    for key, usd_path in ycb_usd_paths.items():
+    obj_dict = dict()
+    for _ in range(6):
+        randi = np.random.randint(0,len(ycb_name))
+        angle = np.random.randint(0,180)
+        key_ori = ycb_name[randi]
+        usd_path = ycb_usd_paths[key_ori]
+        if key_ori not in obj_dict:
+            obj_dict[key_ori] = 1
+        else:
+            obj_dict[key_ori] +=1
+        key = key_ori+str(obj_dict[key_ori])
+    # for key, usd_path in ycb_usd_paths.items():
         translation = torch.rand(3).tolist()
-        translation = [translation[0]*0.8-0.4,0.45*translation[1]-0.225,0.15]
+        translation = [translation[0]*0.8-0.4,0.45*translation[1]-0.225,0.3]
         # translation = [translation[0]*0.8-0.4,0.8*translation[1]+0.5,0.1]
-        rot = convert_quat(tf.Rotation.from_euler("XYZ", (0,0,translation[0]*90), degrees=True).as_quat(), to="wxyz")
-        if key in ["mug","tomatoSoupCan"]:
-           rot = convert_quat(tf.Rotation.from_euler("XYZ", (-90,0,translation[0]*90), degrees=True).as_quat(), to="wxyz")
+        rot = convert_quat(tf.Rotation.from_euler("XYZ", (0,0,angle), degrees=True).as_quat(), to="wxyz")
+        if key_ori in ["mug","tomatoSoupCan","pitcherBase","tunaFishCan","bowl"]:
+           rot = convert_quat(tf.Rotation.from_euler("XYZ", (-90,angle,0), degrees=True).as_quat(), to="wxyz")
         prim_utils.create_prim(f"/World/Objects/{key}", usd_path=usd_path, translation=translation,orientation=rot)
         GeometryPrim(f"/World/Objects/{key}",collision=True)
         RigidPrim(f"/World/Objects/{key}",mass=0.5)
@@ -161,6 +182,11 @@ def main():
         sim.step()
     # Simulate physics
     get_pcd(camera)
+    ik_commands = torch.zeros(robot.count, ik_controller.num_actions, device=robot.device)
+    robot_actions = torch.ones(robot.count, robot.num_actions, device=robot.device)
+    ee_goals = [0.0, 0.5, 0.5, 0.0, 0, 0.0,0]
+    ee_goals = torch.tensor(ee_goals, device=sim.device)
+    ik_commands[:] = ee_goals
     while simulation_app.is_running():
         # If simulation is stopped, then exit.
         if sim.is_stopped():
@@ -168,8 +194,32 @@ def main():
         # If simulation is paused, then skip.
         if not sim.is_playing():
             sim.step(render=not args_cli.headless)
+            print("pause")
             continue
+        ########################################## ik control
         # perform step
+        # set the controller commands
+        ik_controller.set_command(ik_commands)
+        # compute the joint commands
+        robot_actions[:, : robot.arm_num_dof] = ik_controller.compute(
+            robot.data.ee_state_w[:, 0:3],
+            robot.data.ee_state_w[:, 3:7],
+            robot.data.ee_jacobian,
+            robot.data.arm_dof_pos,
+        )
+        # in some cases the zero action correspond to offset in actuators
+        # so we need to subtract these over here so that they can be added later on
+        arm_command_offset = robot.data.actuator_pos_offset[:, : robot.arm_num_dof]
+        # offset actuator command with position offsets
+        # note: valid only when doing position control of the robot
+        robot_actions[:, : robot.arm_num_dof] -= arm_command_offset
+        # apply actions
+        print('robot action')
+        print(robot_actions)
+        robot.apply_action(robot_actions)
+        # perform step
+        # perform step
+        print(sim.device)
         sim.step()
 def get_pcd(camera):
     camera.update(dt=0.0)
@@ -187,7 +237,28 @@ def get_pcd(camera):
     pcd = o3d.geometry.PointCloud()
     pcd.points = o3d.utility.Vector3dVector(pointcloud_w)
     o3d.visualization.draw_geometries([pcd])
-
+def random_new_object(ycb_usd_paths,ycb_name,obj_dict):
+    randi = np.random.randint(0,len(ycb_name))
+    key_ori = ycb_name[randi]
+    usd_path = ycb_usd_paths[key_ori]
+    if key_ori not in obj_dict:
+        obj_dict[key_ori] = 1
+    else:
+        obj_dict[key_ori] +=1
+    key = key_ori+str(obj_dict[key_ori])
+# for key, usd_path in ycb_usd_paths.items():
+    translation = torch.rand(3).tolist()
+    translation = [0,-0.8,0.15]
+    # translation = [translation[0]*0.8-0.4,0.8*translation[1]+0.5,0.1]
+    rot = convert_quat(tf.Rotation.from_euler("XYZ", (0,0,translation[0]*90), degrees=True).as_quat(), to="wxyz")
+    if key_ori in ["mug","tomatoSoupCan","pitcherBase"]:
+        rot = convert_quat(tf.Rotation.from_euler("XYZ", (-90,0,translation[0]*90), degrees=True).as_quat(), to="wxyz")
+    elif key_ori in ["bowl"]:
+        rot = convert_quat(tf.Rotation.from_euler("XYZ", (-180,0,translation[0]*90), degrees=True).as_quat(), to="wxyz")
+    prim_utils.create_prim(f"/World/Objects/{key}", usd_path=usd_path, translation=translation,orientation=rot)
+    GeometryPrim(f"/World/Objects/{key}",collision=True)
+    RigidPrim(f"/World/Objects/{key}",mass=0.5)
+    
 if __name__ == "__main__":
     # Run empty stage
     main()
