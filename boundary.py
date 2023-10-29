@@ -99,7 +99,7 @@ from shapely import Polygon, STRtree, area, contains, buffer, Point
 # plt.figure()
 # plt.imshow(occu_dy+occu_dx)
 # plt.show()
-bbox = [0.1,0.3]
+bbox = [0.22,0.23]
 length = np.max(np.array(bbox))
 width = np.min(np.array(bbox))
 num_grid_l = int(np.ceil(np.max(np.array(bbox))/0.01))
@@ -351,74 +351,99 @@ for i in shape_dict:
 plt.imshow(occu_tmp)
 plt.show()
 flag_found = False
-length_arr = abs(np.array(length_list)-num_grid_l)
+# length_arr = abs(np.array(length_list)-num_grid_l)
 flag = False
 print(length_dict)
-tree = STRtree(polygons)
-for i in range(len(length_list)):
-    print(i)
-    if flag_found:
-        break
-    ind_tmp = np.argmin(length_arr)
-    p_s = length_dict[length_list[ind_tmp]][0]
-    p_e = length_dict[length_list[ind_tmp]][1]
-    p_s = [p_s[1],p_s[0]]
-    p_e = [p_e[1],p_e[0]]
-    # print("points")
-    # print(p_s,p_e)
-    line = np.array(p_e) - np.array(p_s)
-    length = np.linalg.norm(line)
+dila_polygons = []
+for i in polygons:
+    dila_polygons.append(i.buffer(1))
+tree = STRtree(dila_polygons)
+for length_ori in [num_grid_l,num_grid_s]:
+    if length_ori == num_grid_l:
+        length_other = num_grid_s
+    else:
+        length_other = num_grid_l
 
-    # print(line,length)
-    # angle = (np.arccos(line[1]/length))/np.pi*180
-    for n in range(2):
-        sign = (-1)**n
-        tmp_delta = np.round(2*line/length)
-        tmp_delta = np.array([int(tmp_delta[1]*sign),int(tmp_delta[0]*sign*(-1))])
-        p_s_new = np.array(p_s,dtype = int) + tmp_delta
-        p_e_new = np.array(p_e,dtype = int) + tmp_delta
-        p_s_next = tmp_delta*num_grid_s/2 + p_s_new
-        p_s_next = np.array(p_s_next,dtype=int)
-        p_e_next = tmp_delta*num_grid_s/2 + p_e_new
-        p_e_next = np.array(p_e_next,dtype=int)
-        bound_box = Polygon([[0,0],[0,61],[101,0],[101,61]])
-        print(bound_box)
-        new_poly_vetices = [p_s_new,p_e_new,p_e_next,p_s_next]
-        new_poly_vetices = np.array(new_poly_vetices).reshape((-1,2))
-        print(max)
-        if (np.max(new_poly_vetices[:,0])< 101 and np.max(new_poly_vetices[:,1])< 61 
-            and np.min(new_poly_vetices[:,0])>=0 and np.min(new_poly_vetices[:,1])>=0):
-            new_poly_vetices = [p_s_new,p_e_new,p_e_next,p_s_next]
-            new_poly_vetices = np.array(new_poly_vetices).reshape((-1,2))
-            points_tmp = new_poly_vetices.copy()
-            points_tmp[:,1] = points_tmp[:,0].copy()
-            points_tmp[:,0] = new_poly_vetices[:,1].copy()
-            poly = Polygon([p_s_new,p_e_new,p_e_next,p_s_next])
-            indices = tree.nearest(poly)
-            nearest_poly = tree.geometries.take(indices)
-            print(poly,nearest_poly)
-            if poly.disjoint(nearest_poly):
-                print("find the position")
-                print(poly)
-                for j in range(len(points_tmp)):
-                    p_s_1 = points_tmp[j]
-                    if j < len(points_tmp)-1:
-                        p_e_1 = points_tmp[j+1]
-                    else:
-                        p_e_1 = points_tmp[0]
-                    line_1 = p_e_1 - p_s_1
-                    length_1 = np.linalg.norm(line_1)
-                    for k in range(int(np.ceil(length_1))):
-                        tmp_delta_1 = [k*line_1[0]/length_1,k*line_1[1]/length_1]
-                        for _,l in enumerate(tmp_delta_1):
-                            if l >=0:
-                                tmp_delta_1[_] = np.ceil(l)
-                            else:
-                                tmp_delta_1[_] = np.floor(l)
-                        occu_tmp[int(np.round(p_s_1[0]+tmp_delta_1[0])),int(np.round(p_s_1[1]+tmp_delta_1[1]))] = 3
-                flag_found = True
-                break
-        print(p_s_new,p_e_new,p_s_next,p_e_next)
+    length_arr = abs(np.array(length_list)-length_ori)
+    for i in range(len(length_list)):
+        print(i)
+        # if flag_found:
+        #     break
+        ind_tmp = np.argmin(length_arr)
+        p_s = length_dict[length_list[ind_tmp]][0]
+        p_e = length_dict[length_list[ind_tmp]][1]
+        p_s = [p_s[1],p_s[0]]
+        p_e = [p_e[1],p_e[0]]
+        # print("points")
+        # print(p_s,p_e)
+        line = np.array(p_e) - np.array(p_s)
+        length = np.linalg.norm(line)
+        if length!=length_ori:
+            delta_l = length_ori-length
+            p_s_ori = np.array(p_s).copy() + delta_l*line/length
+            p_e_ori = (np.array(p_e) + 2*delta_l*line/length).copy()
+            for o in range(int(np.ceil(abs(delta_l*2)))):
+                p_s = p_s_ori - np.sign(delta_l)*o*line/length
+                p_e = p_e_ori - np.sign(delta_l)*o*line/length
+                print("check original points")
+                print(p_s,p_e)
+                for gap in range(2,5):
+                    for n in range(2):
+                        sign = (-1)**n
+                        tmp_delta = np.round(gap*line/length)
+                        tmp_delta = np.array([int(tmp_delta[1]*sign),int(tmp_delta[0]*sign*(-1))])
+                        p_s_new = np.array(p_s,dtype = int) + tmp_delta
+                        p_e_new = np.array(p_e,dtype = int) + tmp_delta
+                        p_s_next = tmp_delta*length_other/gap + p_s_new
+                        p_s_next = np.array(p_s_next,dtype=int)
+                        p_e_next = tmp_delta*length_other/gap + p_e_new
+                        p_e_next = np.array(p_e_next,dtype=int)
+                        bound_box = Polygon([[0,0],[0,60],[100,0],[100,60]])
+                        print(bound_box)
+                        new_poly_vetices = [p_s_new,p_e_new,p_e_next,p_s_next]
+                        new_poly_vetices = np.array(new_poly_vetices).reshape((-1,2))
+                        print(max)
+                        if (np.max(new_poly_vetices[:,0])< 100 and np.max(new_poly_vetices[:,1])< 60 
+                            and np.min(new_poly_vetices[:,0])>=0 and np.min(new_poly_vetices[:,1])>=0):
+                            new_poly_vetices = [p_s_new,p_e_new,p_e_next,p_s_next]
+                            new_poly_vetices = np.array(new_poly_vetices).reshape((-1,2))
+                            points_tmp = new_poly_vetices.copy()
+                            points_tmp[:,1] = points_tmp[:,0].copy()
+                            points_tmp[:,0] = new_poly_vetices[:,1].copy()
+                            poly = Polygon([p_s_new,p_e_new,p_e_next,p_s_next])
+                            indices = tree.nearest(poly)
+                            nearest_poly = tree.geometries.take(indices)
+                            print(poly,nearest_poly)
+                            if poly.disjoint(nearest_poly):
+                                print("find the position")
+                                print(poly)
+                                for j in range(len(points_tmp)):
+                                    p_s_1 = points_tmp[j]
+                                    if j < len(points_tmp)-1:
+                                        p_e_1 = points_tmp[j+1]
+                                    else:
+                                        p_e_1 = points_tmp[0]
+                                    line_1 = p_e_1 - p_s_1
+                                    length_1 = np.linalg.norm(line_1)
+                                    for k in range(int(np.ceil(length_1))):
+                                        tmp_delta_1 = [k*line_1[0]/length_1,k*line_1[1]/length_1]
+                                        for _,l in enumerate(tmp_delta_1):
+                                            if l >=0:
+                                                tmp_delta_1[_] = np.ceil(l)
+                                            else:
+                                                tmp_delta_1[_] = np.floor(l)
+                                        occu_tmp[int(np.round(p_s_1[0]+tmp_delta_1[0])),int(np.round(p_s_1[1]+tmp_delta_1[1]))] = 3
+                                flag_found = True
+                                break
+                    if flag_found:
+                        break
+                if flag_found:
+                    break
+        if flag_found:
+            break
+        else:
+            length_arr[ind_tmp] = 1000
+
         # occu_tmp[int(np.round(p_s_new[1])),int(np.round(p_s_new[0]))] = 3
         # occu_tmp[int(np.round(p_e_new[1])),int(np.round(p_e_new[0]))] = 3
         # occu_tmp[int(np.round(p_s_next[1])),int(np.round(p_s_next[0]))] = 3
