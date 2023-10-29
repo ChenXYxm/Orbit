@@ -55,6 +55,7 @@ import asyncio
 from omni.isaac.orbit.objects.rigid import RigidObject, RigidObjectCfg
 from omni.isaac.orbit.utils.math import convert_quat
 import scipy.spatial.transform as tf
+from shapely import Polygon, STRtree, area, contains
 """
 Main
 """
@@ -261,27 +262,27 @@ def main():
             sim.play()
             continue
         ########################################## ik control
-        # perform step
-        # set the controller commands
-        ik_controller.set_command(ik_commands)
-        # compute the joint commands
-        robot_actions[:, : robot.arm_num_dof] = ik_controller.compute(
-            robot.data.ee_state_w[:, 0:3],
-            robot.data.ee_state_w[:, 3:7],
-            robot.data.ee_jacobian,
-            robot.data.arm_dof_pos,
-        )
-        # in some cases the zero action correspond to offset in actuators
-        # so we need to subtract these over here so that they can be added later on
-        arm_command_offset = robot.data.actuator_pos_offset[:, : robot.arm_num_dof]
-        # offset actuator command with position offsets
-        # note: valid only when doing position control of the robot
-        robot_actions[:, : robot.arm_num_dof] -= arm_command_offset
-        # apply actions
-        # print('robot action')
-        # print(robot_actions)
-        robot.apply_action(robot_actions)
-        # perform step
+        # # perform step
+        # # set the controller commands
+        # ik_controller.set_command(ik_commands)
+        # # compute the joint commands
+        # robot_actions[:, : robot.arm_num_dof] = ik_controller.compute(
+        #     robot.data.ee_state_w[:, 0:3],
+        #     robot.data.ee_state_w[:, 3:7],
+        #     robot.data.ee_jacobian,
+        #     robot.data.arm_dof_pos,
+        # )
+        # # in some cases the zero action correspond to offset in actuators
+        # # so we need to subtract these over here so that they can be added later on
+        # arm_command_offset = robot.data.actuator_pos_offset[:, : robot.arm_num_dof]
+        # # offset actuator command with position offsets
+        # # note: valid only when doing position control of the robot
+        # robot_actions[:, : robot.arm_num_dof] -= arm_command_offset
+        # # apply actions
+        # # print('robot action')
+        # # print(robot_actions)
+        # robot.apply_action(robot_actions)
+        # # perform step
         
         ##################################################################### 
         print("[INFO]: Setup complete...")
@@ -345,8 +346,8 @@ def main():
             v = v[v_ind]
             occupancy[v,u] = 1
             occupancy = np.fliplr(occupancy)
-            plt.imshow(occupancy)
-            plt.show()
+            # plt.imshow(occupancy)
+            # plt.show()
             #
             bound_detect(occupancy)
             rgb=camera.data.output["rgb"]
@@ -363,8 +364,8 @@ def main():
             for _ in range(25):
                 sim.step()
             hand_img = Image.fromarray((hand_rgb).astype(np.uint8))   
-            plt.imshow(img)
-            plt.show()
+            # plt.imshow(img)
+            # plt.show()
             # plt.imshow(hand_img)
             # plt.show()
             if num_new>=1:
@@ -449,15 +450,16 @@ def place_new_object(occu,ycb_list,ycb_path,num_new,obj_dict):
 def bound_detect(occu):
     occu_p = occu.copy()/np.max(occu)
     occu_p = np.array(occu*255,dtype=np.uint8)
-    data = im.fromarray(occu_p) 
-    data.save('pic/occu.png') 
-    img = cv2.imread('pic/occu.png')
-    gray = cv2.cvtColor(img,cv2.COLOR_BGR2GRAY)
-    ret,thresh = cv2.threshold(gray,50,255,0)
+    # data = im.fromarray(occu_p) 
+    # data.save('pic/occu.png') 
+    # img = cv2.imread('pic/occu.png')
+    # gray = cv2.cvtColor(img,cv2.COLOR_BGR2GRAY)
+    ret,thresh = cv2.threshold(occu_p,50,255,0)
     contours,hierarchy = cv2.findContours(thresh,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
     print("Number of contours detected:",len(contours))
     shape_dict = dict()
     i = 0
+    polygons = []
     for cnt in contours:
         i += 1
         # approx = cv2.approxPolyDP(cnt,0.1*cv2.arcLength(cnt,True),True)
@@ -472,8 +474,24 @@ def bound_detect(occu):
             # img = cv2.drawContours(img,[approx],-1,(0,255,255),3)
             # print(approx)
             approx = np.array(approx).reshape((-1,2))
-            
             shape_dict[i] = approx
+            polygons.append(Polygon(approx))
+    print(polygons)
+    tree = STRtree(polygons)
+    print("remove containing boxes")
+    del_ind = []
+    for i,poly in enumerate(polygons):
+        indice = tree.query(poly, predicate="contains").tolist()
+        print(i)
+        print(tree.geometries.take(indice))
+        print(tree.geometries.take(i))
+        if len(indice) >0:
+            for j in indice:
+                if contains(poly,tree.geometries.take(j)) and area(poly)>area(tree.geometries.take(j)):
+                    if shape_dict[j+1] is not None:
+                        del(shape_dict[j+1])
+                        del_ind.append(int(j))
+    print(del_ind)
     for i in shape_dict:
         points_tmp = shape_dict[i].copy()
         points_tmp[:,0] = points_tmp[:,1]
@@ -490,8 +508,14 @@ def bound_detect(occu):
             for k in range(int(np.ceil(length))):
                 if np.ceil(p_s[0]+k*line[0]/length) < occu.shape[0] and np.ceil(p_s[1]+k*line[1]/length)<occu.shape[1] and np.ceil(p_s[1]+k*line[1]/length)>=0 and np.ceil(p_s[0]+k*line[0]/length)>=0:
                     occu[int(np.ceil(p_s[0]+k*line[0]/length)),int(np.ceil(p_s[1]+k*line[1]/length))] = 2
+    polygons = []
+    for i in shape_dict:
+        polygons.append(shape_dict[i])
+    print(polygons)
     plt.imshow(occu)
     plt.show()
+    return shape_dict
+
 
 
 if __name__ == "__main__":

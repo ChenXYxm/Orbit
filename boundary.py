@@ -3,50 +3,51 @@ import matplotlib.pyplot as plt
 from PIL import Image as im 
 import cv2
 from scipy import ndimage
-def slice_occu(occu=np.array,tol=1):
+from shapely import Polygon
+# def slice_occu(occu=np.array,tol=1):
     
-    occu_tmp = occu.copy()
-    occu_ori = occu.copy()
-    (lx,ly) = occu.shape
-    index_tmp_e = dict()
-    index_tmp_s = dict()
-    shape_dict = dict()
-    shape_num = 0
-    for i in range(lx):
-        while len(np.where(occu_tmp[i]==1)[0]) >0:
-            flag = True
-            temp_s = np.where(occu_tmp[i]==1)[0][0]
-            temp_e = np.where(occu_tmp[i]==-1)[0][0]
-            shape_num +=1
-            shape_dict[shape_num] = [[i,temp_s]]
-            shape_dict[shape_num].append([i,temp_e])
-            occu_tmp[i,temp_s] = 0
-            occu_tmp[i,temp_e] = 0
-            i_d = i
-            while flag:
-                i_d +=1
-                if len(np.where(occu_tmp[i_d]==1)[0]) >0:
-                    # find closest continuous point
-                    diff_tmp = np.abs(np.where(occu_tmp[i_d]==1)[0] - temp_s)
-                    if len(np.where(diff_tmp<=tol)[0]) == 0:
-                        flag = False
-                    else:
-                        temp_s = np.where(occu_tmp[i_d]==1)[0][np.where(diff_tmp<=tol)[0][0]]
-                        temp_e = np.where(occu_tmp[i_d]==-1)[0][np.where(diff_tmp<=tol)[0][0]]
-                        shape_dict[shape_num].append([i_d,temp_s])
-                        shape_dict[shape_num].append([i_d,temp_e])
-                        occu_tmp[i_d,temp_s] = 0
-                        occu_tmp[i_d,temp_e] = 0
-                else:
-                    flag = False
-    print(shape_dict)
-    for i in shape_dict:
-        points_tmp = np.array(shape_dict[i],dtype=int)
-        bbox_min = np.min(points_tmp,axis=0)
-        bbox_max = np.max(points_tmp,axis=0)
-        occu_tmp[bbox_min[0]:bbox_max[0]+1,bbox_min[1]:bbox_max[1]+1] = -1
-    plt.imshow(occu_tmp)
-    plt.show()
+#     occu_tmp = occu.copy()
+#     occu_ori = occu.copy()
+#     (lx,ly) = occu.shape
+#     index_tmp_e = dict()
+#     index_tmp_s = dict()
+#     shape_dict = dict()
+#     shape_num = 0
+#     for i in range(lx):
+#         while len(np.where(occu_tmp[i]==1)[0]) >0:
+#             flag = True
+#             temp_s = np.where(occu_tmp[i]==1)[0][0]
+#             temp_e = np.where(occu_tmp[i]==-1)[0][0]
+#             shape_num +=1
+#             shape_dict[shape_num] = [[i,temp_s]]
+#             shape_dict[shape_num].append([i,temp_e])
+#             occu_tmp[i,temp_s] = 0
+#             occu_tmp[i,temp_e] = 0
+#             i_d = i
+#             while flag:
+#                 i_d +=1
+#                 if len(np.where(occu_tmp[i_d]==1)[0]) >0:
+#                     # find closest continuous point
+#                     diff_tmp = np.abs(np.where(occu_tmp[i_d]==1)[0] - temp_s)
+#                     if len(np.where(diff_tmp<=tol)[0]) == 0:
+#                         flag = False
+#                     else:
+#                         temp_s = np.where(occu_tmp[i_d]==1)[0][np.where(diff_tmp<=tol)[0][0]]
+#                         temp_e = np.where(occu_tmp[i_d]==-1)[0][np.where(diff_tmp<=tol)[0][0]]
+#                         shape_dict[shape_num].append([i_d,temp_s])
+#                         shape_dict[shape_num].append([i_d,temp_e])
+#                         occu_tmp[i_d,temp_s] = 0
+#                         occu_tmp[i_d,temp_e] = 0
+#                 else:
+#                     flag = False
+#     print(shape_dict)
+#     for i in shape_dict:
+#         points_tmp = np.array(shape_dict[i],dtype=int)
+#         bbox_min = np.min(points_tmp,axis=0)
+#         bbox_max = np.max(points_tmp,axis=0)
+#         occu_tmp[bbox_min[0]:bbox_max[0]+1,bbox_min[1]:bbox_max[1]+1] = -1
+#     plt.imshow(occu_tmp)
+#     plt.show()
     
         # print(points_tmp.shape)
         # print(points_tmp)
@@ -104,28 +105,76 @@ vertices = [[int(num_grid_l-np.ceil(num_grid_s/2)),int(num_grid_l-np.ceil(num_gr
             [int(num_grid_l-np.ceil(num_grid_s/2)),int(num_grid_l+np.ceil(num_grid_l/2))-1],
             [int(num_grid_l+np.ceil(num_grid_s/2))-1,int(num_grid_l+np.ceil(num_grid_l/2))-1],
             [int(num_grid_l+np.ceil(num_grid_s/2))-1,int(num_grid_l-np.ceil(num_grid_l/2))]]
-# for i in vertices:
-#     mask[i[0],i[1]] = 2
+for i in vertices:
+    mask[i[0],i[1]] = 2
 plt.imshow(mask)
 plt.show()
-# mask_45 = np.array(ndimage.rotate(mask,45,reshape=False))
+mask_45 = np.array(ndimage.rotate(mask,45,reshape=False))
+mask_45[np.where(mask_45>=0.4)] = 1
+mask_45[np.where(mask_45<1)] = 0
+print(np.max(mask_45),np.min(mask_45),mask_45.shape)
+mask_45 = np.array((mask_45-np.min(mask_45))*255/(np.max(mask_45)-np.min(mask_45)),dtype=np.uint8)
+print(np.max(mask_45),np.min(mask_45),mask_45.shape)
+# mask_45 = im.fromarray(mask_45)
+# gray = cv2.cvtColor(mask_45,cv2.COLOR_BGR2GRAY)
+ret,mask_45 = cv2.threshold(mask_45,50,255,0)
+contours,hierarchy = cv2.findContours(mask_45,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
+print("Number of contours detected:",len(contours))
+max_area = 0
+cnt = []
+for i in contours:
+    area_tmp = cv2.contourArea(i)
+    if area_tmp>max_area:
+        max_area = area_tmp
+        cnt = i
+cnt = contours[0]
+# for cnt in contours:
+approx = cv2.minAreaRect(cnt)
+(x,y) = cnt[0,0]
+# print(approx)
+box = cv2.boxPoints(approx)
+approx = np.int0(box)
+vertices_new_obj = []
+if len(approx) >=2:
+    approx = approx.reshape((-1,2))
+    for i in range(len(approx)):
+        mask_45[approx[i][0],approx[i][1]] = 50
+    vertices_new_obj = approx
+plt.imshow(mask_45)
+plt.show()
+l1 = [vertices_new_obj[0],vertices_new_obj[1]]
+length_l1 = np.linalg.norm(l1[1]-l1[0])
+if length_l1 == 7:
+    length_l2 = 20+1
+else:
+    length_l2 = 7+1
+l2 = [vertices_new_obj[1],0]
+edge_1 = (l1[1]-l1[0])/length_l1
+edge_2_tmp = np.array([-edge_1[1],edge_1[0]])
+l2[1] = l2[0] + length_l2*edge_2_tmp
+l2[1] = np.round(l2[1])
+l3 = [l2[1],np.round(l2[1]- edge_1*length_l1)] 
+mask_45[int(l2[1][0]),int(l2[1][1])] = 50
+mask_45[int(l3[1][0]),int(l3[1][1])] = 50
 # print(np.max(mask_45))
 # print(mask_45.shape)
 # print(np.where(mask_45>1))
-# mask_45[np.where(mask_45>=0.4)] = 1
-# mask_45[np.where(mask_45<1)] = 0
+
 # print(len(np.where(mask>=1)[0]))
 # print(len(np.where(mask_45>=1)[0]))
-# plt.imshow(mask_45)
-# plt.show()
+
+
+plt.imshow(mask_45)
+plt.show()
 
 img = cv2.imread('occu.png')
 gray = cv2.cvtColor(img,cv2.COLOR_BGR2GRAY)
 ret,thresh = cv2.threshold(gray,50,255,0)
+
 occu = np.array(thresh)/np.max(np.array(thresh))
 plt.imshow(occu)
 plt.show()
-print(thresh)
+print(thresh.shape)
 contours,hierarchy = cv2.findContours(thresh,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
 print("Number of contours detected:",len(contours))
 shape_dict = dict()
