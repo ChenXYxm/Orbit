@@ -8,6 +8,9 @@ def place_new_obj_fun(occu_ori,new_obj):
     # occu_ori: numpy 2d array: binary 0,1
     # new_obj: numpy 2d array: vertices of bbox in relative to the center point
     ########################
+    shape_occu = occu_ori.shape
+    Nx = shape_occu[1]
+    Ny = shape_occu[0]
     num_check_edge = 0
     occu = occu_ori.copy()
     bbox = []
@@ -29,6 +32,7 @@ def place_new_obj_fun(occu_ori,new_obj):
         approx = np.int0(box)
         if len(approx) >=2:
             # img = cv2.drawContours(img,[approx],-1,(0,255,255),3)
+
             # print(approx)
             approx = approx.reshape((-1,2))
             # print(approx)
@@ -69,6 +73,10 @@ def place_new_obj_fun(occu_ori,new_obj):
                     shape_dict[i][j][1] = occu_tmp.shape[0]-1
                 if shape_dict[i][j][0] >= occu_tmp.shape[1]:
                     shape_dict[i][j][0] = occu_tmp.shape[1]-1
+                if shape_dict[i][j][1] < 0:
+                    shape_dict[i][j][1] = 0
+                if shape_dict[i][j][0] < 0:
+                    shape_dict[i][j][0] = 0    
                 occu_tmp[shape_dict[i][j][1],shape_dict[i][j][0]] = 3
         # plt.imshow(occu_tmp)
         # plt.show()
@@ -108,7 +116,7 @@ def place_new_obj_fun(occu_ori,new_obj):
         flag_found = False
         dila_polygons = []
         for i in polygons:
-            dila_polygons.append(i.buffer(1.5))
+            dila_polygons.append(i.buffer(3))
         tree = STRtree(dila_polygons)
         for length_ori in [num_grid_l,num_grid_s]:
             if length_ori == num_grid_l:
@@ -136,31 +144,31 @@ def place_new_obj_fun(occu_ori,new_obj):
                     length = np.linalg.norm(line)
                     if length!=length_ori:
                         delta_l = length_ori-length
-                        p_s_ori = np.array(p_s).copy() + delta_l*line/length
-                        p_e_ori = (np.array(p_e) + 2*delta_l*line/length).copy()
-                        for o in range(int(np.ceil(abs(delta_l*2)))):
+                        p_s_ori = np.array(p_s).copy() 
+                        p_e_ori = (np.array(p_e) + delta_l*line/length).copy()
+                        for o in range(int(np.ceil(abs(delta_l)))):
                             p_s = p_s_ori - np.sign(delta_l)*o*line/length
                             p_e = p_e_ori - np.sign(delta_l)*o*line/length
                             # print("check original points")
                             # print(p_s,p_e)
-                            for gap in range(2,5):
+                            for gap in range(2,6):
                                 for n in range(2):
                                     sign = (-1)**n
                                     tmp_delta = np.round(gap*line/length)
                                     tmp_delta = np.array([(tmp_delta[1]*sign),(tmp_delta[0]*sign*(-1))])
-                                    p_s_new = np.array(p_s,dtype = int) + tmp_delta
-                                    p_e_new = np.array(p_e,dtype = int) + tmp_delta
+                                    p_s_new = p_s + tmp_delta
+                                    p_e_new = p_e + tmp_delta
                                     p_s_next = tmp_delta*length_other/gap + p_s_new
                                     # p_s_next = np.array(p_s_next,dtype=int)
                                     p_e_next = tmp_delta*length_other/gap + p_e_new
                                     # p_e_next = np.array(p_e_next,dtype=int)
-                                    bound_box = Polygon([[0,0],[0,60],[100,0],[100,60]])
+                                    # bound_box = Polygon([[0,0],[0,60],[100,0],[100,60]])
                                     # print(bound_box)
                                     new_poly_vetices = [p_s_new,p_e_new,p_e_next,p_s_next]
                                     new_poly_vetices = np.array(new_poly_vetices,dtype=np.uint8).reshape((-1,2))
                                     # print(max)
-                                    if (np.max(new_poly_vetices[:,0])< 98 and np.max(new_poly_vetices[:,1])< 58
-                                        and np.min(new_poly_vetices[:,0])>=2 and np.min(new_poly_vetices[:,1])>=2):
+                                    if (np.max(new_poly_vetices[:,0])< Nx-1 and np.max(new_poly_vetices[:,1])< Ny-1
+                                        and np.min(new_poly_vetices[:,0])>=1 and np.min(new_poly_vetices[:,1])>=1):
                                         new_poly_vetices = [p_s_new,p_e_new,p_e_next,p_s_next]
                                         new_poly_vetices = np.array(new_poly_vetices).reshape((-1,2))
                                         points_tmp = new_poly_vetices.copy()
@@ -171,28 +179,30 @@ def place_new_obj_fun(occu_ori,new_obj):
                                         nearest_poly = tree.geometries.take(indices)
                                         # print(poly,nearest_poly)
                                         if poly.disjoint(nearest_poly):
-                                            # print("find the position")
-                                            # print(poly)
-                                            for j in range(len(points_tmp)):
-                                                p_s_1 = points_tmp[j]
-                                                if j < len(points_tmp)-1:
-                                                    p_e_1 = points_tmp[j+1]
-                                                else:
-                                                    p_e_1 = points_tmp[0]
-                                                line_1 = p_e_1 - p_s_1
-                                                length_1 = np.linalg.norm(line_1)
-                                                for k in range(int(np.ceil(length_1))):
-                                                    tmp_delta_1 = [k*line_1[0]/length_1,k*line_1[1]/length_1]
-                                                    for _,l in enumerate(tmp_delta_1):
-                                                        if l >=0:
-                                                            tmp_delta_1[_] = np.ceil(l)
-                                                        else:
-                                                            tmp_delta_1[_] = np.floor(l)
-                                                    if np.round(p_s_1[0]+tmp_delta_1[0])>=60:
-                                                        tmp_delta_1[0]=59-p_s_1[0]
-                                                    if np.round(p_s_1[1]+tmp_delta_1[1])>=100:
-                                                        tmp_delta_1[1] = 99 - p_s_1[1]
-                                                    occu_tmp[int(np.round(p_s_1[0]+tmp_delta_1[0])),int(np.round(p_s_1[1]+tmp_delta_1[1]))] = 3
+                                            print("find the position")
+                                            print(poly)
+                                            for j in range(len(new_poly_vetices)):
+                                                occu_tmp[int(new_poly_vetices[j][1]),int(new_poly_vetices[j][0])] = 3
+                                            # for j in range(len(points_tmp)):
+                                            #     p_s_1 = points_tmp[j]
+                                            #     if j < len(points_tmp)-1:
+                                            #         p_e_1 = points_tmp[j+1]
+                                            #     else:
+                                            #         p_e_1 = points_tmp[0]
+                                            #     line_1 = p_e_1 - p_s_1
+                                            #     length_1 = np.linalg.norm(line_1)
+                                            #     for k in range(int(np.ceil(length_1))):
+                                            #         tmp_delta_1 = [k*line_1[0]/length_1,k*line_1[1]/length_1]
+                                            #         for _,l in enumerate(tmp_delta_1):
+                                            #             if l >=0:
+                                            #                 tmp_delta_1[_] = np.ceil(l)
+                                            #             else:
+                                            #                 tmp_delta_1[_] = np.floor(l)
+                                            #         if np.round(p_s_1[0]+tmp_delta_1[0])>=60:
+                                            #             tmp_delta_1[0]=59-p_s_1[0]
+                                            #         if np.round(p_s_1[1]+tmp_delta_1[1])>=100:
+                                            #             tmp_delta_1[1] = 99 - p_s_1[1]
+                                            #         occu_tmp[int(np.round(p_s_1[0]+tmp_delta_1[0])),int(np.round(p_s_1[1]+tmp_delta_1[1]))] = 3
                                             flag_found = True
                                             plt.imshow(occu_tmp)
                                             plt.show()
@@ -205,6 +215,7 @@ def place_new_obj_fun(occu_ori,new_obj):
                                     break
                             if flag_found:
                                 break
+                        
                     if flag_found:
                         break
                 else:
@@ -214,7 +225,7 @@ def place_new_obj_fun(occu_ori,new_obj):
         occu_tmp = np.array(occu)
         l = int(np.ceil(bbox[0]))
         w = int(np.ceil(bbox[1]))
-        new_poly_vetices = [[0,59-w],[l,59-w],[l,59],[0,59]]
+        new_poly_vetices = [[0,Ny-w-1],[l,Ny-1-w],[l,Ny-1],[0,Ny-1]]
         new_poly_vetices = np.array(new_poly_vetices).reshape((-1,2))
         for j in range(len(new_poly_vetices)):
             occu_tmp[new_poly_vetices[j][1],new_poly_vetices[j][0]] = 3
@@ -224,41 +235,120 @@ def get_pos(new_obj,new_poly_vetices):
     l1 = []
     l2 = []
     pos = [0,0,0]
+    obj_l1 = np.array(new_obj[1]) - np.array(new_obj[0])
+    obj_l2 = np.array(new_obj[3]) - np.array(new_obj[0])
+    sign_obj_p0 = np.sign(np.cross(obj_l1,obj_l2))
     for i in range(2):
         l1.append(np.linalg.norm(new_obj[i]-new_obj[i+1]))
         l2.append(np.linalg.norm(new_poly_vetices[i]-new_poly_vetices[i+1]))
+    print(l1,l2)
     if l1[0] >=l1[1]:
         if l2[0]>=l2[1]:
+            
             l_tmp = new_poly_vetices[1]-new_poly_vetices[0]
-            l_tmp_2 = new_poly_vetices[2]-new_poly_vetices[1]
-            angle = np.arctan2(l_tmp[1],l_tmp[0])
-            pos_tmp = new_poly_vetices[0] + abs(new_obj[0][0])*l_tmp/l2[0] + abs(new_obj[0][1])*l_tmp_2/l2[1]
-            pos[2] = angle
-            pos[0] = pos_tmp[1]
-            pos[1] = pos_tmp[0]
+            l_tmp_2 = new_poly_vetices[3]-new_poly_vetices[0]
+            sign_pos_p0 = np.sign(np.cross(l_tmp,l_tmp_2))
+            if sign_obj_p0 == sign_pos_p0:
+                angle = np.arctan2(l_tmp[1],l_tmp[0])
+                pos_tmp = new_poly_vetices[0] + abs(new_obj[0][0])*l_tmp/l2[0] + abs(new_obj[0][1])*l_tmp_2/l2[1]
+                pos[2] = angle
+                pos[0] = pos_tmp[1]
+                pos[1] = pos_tmp[0]
+            else:
+                angle = np.arctan2(-l_tmp[1],-l_tmp[0])
+                pos_tmp = new_poly_vetices[0] + abs(new_obj[2][0])*l_tmp/l2[0] + abs(new_obj[2][1])*l_tmp_2/l2[1]
+                pos[2] = angle
+                pos[0] = pos_tmp[1]
+                pos[1] = pos_tmp[0]
         else:
-            l_tmp = new_poly_vetices[2]-new_poly_vetices[1]
-            l_tmp_2 = new_poly_vetices[0]-new_poly_vetices[1]
-            angle = np.arctan2(l_tmp[1],l_tmp[0])
-            pos_tmp = new_poly_vetices[1] + abs(new_obj[0][0])*l_tmp/l2[1] + abs(new_obj[0][1])*l_tmp_2/l2[0]
-            pos[2] = angle
-            pos[0] = pos_tmp[1]
-            pos[1] = pos_tmp[0]
+            l_tmp = new_poly_vetices[3]-new_poly_vetices[0]
+            l_tmp_2 = new_poly_vetices[1]-new_poly_vetices[0]
+            sign_pos_p0 = np.sign(np.cross(l_tmp,l_tmp_2))
+            
+            if sign_obj_p0 == sign_pos_p0:
+                angle = np.arctan2(-l_tmp[1],-l_tmp[0])
+                pos_tmp = new_poly_vetices[0] + abs(new_obj[1][0])*l_tmp/l2[1] + abs(new_obj[1][1])*l_tmp_2/l2[0]
+                pos[2] = angle
+                pos[0] = pos_tmp[1]
+                pos[1] = pos_tmp[0]
+            else:
+                angle = np.arctan2(l_tmp[1],l_tmp[0])
+                pos_tmp = new_poly_vetices[0] + abs(new_obj[3][0])*l_tmp/l2[1] + abs(new_obj[3][1])*l_tmp_2/l2[0]
+                pos[2] = angle
+                pos[0] = pos_tmp[1]
+                pos[1] = pos_tmp[0]
     else:
         if l2[0]<l2[1]:
             l_tmp = new_poly_vetices[1]-new_poly_vetices[0]
-            l_tmp_2 = new_poly_vetices[2]-new_poly_vetices[1]
-            angle = np.arctan2(l_tmp[1],l_tmp[0])
-            pos_tmp = new_poly_vetices[0] + abs(new_obj[0][0])*l_tmp/l2[0] + abs(new_obj[0][1])*l_tmp_2/l2[1]
-            pos[2] = angle
-            pos[0] = pos_tmp[1]
-            pos[1] = pos_tmp[0]
+            l_tmp_2 = new_poly_vetices[3]-new_poly_vetices[0]
+            sign_pos_p0 = np.sign(np.cross(l_tmp,l_tmp_2))
+            if sign_obj_p0 == sign_pos_p0:
+                angle = np.arctan2(l_tmp[1],l_tmp[0])
+                pos_tmp = new_poly_vetices[0] + abs(new_obj[0][0])*l_tmp/l2[0] + abs(new_obj[0][1])*l_tmp_2/l2[1]
+                pos[2] = angle
+                pos[0] = pos_tmp[1]
+                pos[1] = pos_tmp[0]
+            else:
+                angle = np.arctan2(-l_tmp[1],-l_tmp[0])
+                pos_tmp = new_poly_vetices[0] + abs(new_obj[2][0])*l_tmp/l2[0] + abs(new_obj[2][1])*l_tmp_2/l2[1]
+                pos[2] = angle
+                pos[0] = pos_tmp[1]
+                pos[1] = pos_tmp[0]
         else:
-            l_tmp = new_poly_vetices[2]-new_poly_vetices[1]
-            l_tmp_2 = new_poly_vetices[0]-new_poly_vetices[1]
-            angle = np.arctan2(l_tmp[1],l_tmp[0])
-            pos_tmp = new_poly_vetices[1] + abs(new_obj[0][0])*l_tmp/l2[1] + abs(new_obj[0][1])*l_tmp_2/l2[0]
-            pos[2] = angle
-            pos[0] = pos_tmp[1]
-            pos[1] = pos_tmp[0]
+            l_tmp = new_poly_vetices[3]-new_poly_vetices[0]
+            l_tmp_2 = new_poly_vetices[1]-new_poly_vetices[0]
+            sign_pos_p0 = np.sign(np.cross(l_tmp,l_tmp_2))
+            
+            if sign_obj_p0 == sign_pos_p0:
+                angle = np.arctan2(-l_tmp[1],-l_tmp[0])
+                pos_tmp = new_poly_vetices[0] + abs(new_obj[1][0])*l_tmp/l2[1] + abs(new_obj[1][1])*l_tmp_2/l2[0]
+                pos[2] = angle
+                pos[0] = pos_tmp[1]
+                pos[1] = pos_tmp[0]
+            else:
+                angle = np.arctan2(l_tmp[1],l_tmp[0])
+                pos_tmp = new_poly_vetices[0] + abs(new_obj[3][0])*l_tmp/l2[1] + abs(new_obj[3][1])*l_tmp_2/l2[0]
+                pos[2] = angle
+                pos[0] = pos_tmp[1]
+                pos[1] = pos_tmp[0]
+        #     l_tmp = new_poly_vetices[1]-new_poly_vetices[0]
+        #     l_tmp_2 = new_poly_vetices[2]-new_poly_vetices[1]
+        #     sign_pos_p0 = np.sign(np.cross(l_tmp_2,l_tmp))
+        #     if sign_obj_p0 == sign_pos_p0:
+        #         angle = np.arctan2(l_tmp[1],l_tmp[0])
+        #         pos_tmp = new_poly_vetices[0] + abs(new_obj[0][0])*l_tmp/l2[0] + abs(new_obj[0][1])*l_tmp_2/l2[1]
+        #         pos[2] = angle
+        #         pos[0] = pos_tmp[1]
+        #         pos[1] = pos_tmp[0]
+        #     else:
+        #         angle = np.arctan2(-l_tmp[1],-l_tmp[0])
+        #         pos_tmp = new_poly_vetices[0] + abs(new_obj[2][0])*l_tmp/l2[0] + abs(new_obj[2][1])*l_tmp_2/l2[1]
+        #         pos[2] = angle
+        #         pos[0] = pos_tmp[1]
+        #         pos[1] = pos_tmp[0]
+        # else:
+        #     l_tmp = new_poly_vetices[3]-new_poly_vetices[0]
+        #     l_tmp_2 = new_poly_vetices[1]-new_poly_vetices[0]
+        #     sign_pos_p0 = np.sign(np.cross(l_tmp_2,l_tmp))
+            
+        #     if sign_obj_p0 == sign_pos_p0:
+        #         angle = np.arctan2(-l_tmp[1],-l_tmp[0])
+        #         pos_tmp = new_poly_vetices[0] + abs(new_obj[1][0])*l_tmp/l2[1] + abs(new_obj[1][1])*l_tmp_2/l2[0]
+        #         pos[2] = angle
+        #         pos[0] = pos_tmp[1]
+        #         pos[1] = pos_tmp[0]
+        #     else:
+        #         angle = np.arctan2(l_tmp_2[1],l_tmp_2[0])
+        #         pos_tmp = new_poly_vetices[0] + abs(new_obj[3][0])*l_tmp/l2[1] + abs(new_obj[3][1])*l_tmp_2/l2[0]
+        #         pos[2] = angle
+        #         pos[0] = pos_tmp[1]
+        #         pos[1] = pos_tmp[0]
+
+            # l_tmp = new_poly_vetices[2]-new_poly_vetices[1]
+            # l_tmp_2 = new_poly_vetices[0]-new_poly_vetices[1]
+            # angle = np.arctan2(l_tmp[1],l_tmp[0])
+            # pos_tmp = new_poly_vetices[1] + abs(new_obj[0][0])*l_tmp/l2[1] + abs(new_obj[0][1])*l_tmp_2/l2[0]
+            # pos[2] = angle
+            # pos[0] = pos_tmp[1]
+            # pos[1] = pos_tmp[0]
     return pos

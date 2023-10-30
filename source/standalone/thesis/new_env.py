@@ -197,7 +197,6 @@ def main():
     ##################################################################### load ycb
     
     obj_dict = dict()
-    
     for _ in range(1):
         randi = np.random.randint(0,len(ycb_name))
         angle = np.random.randint(0,180)
@@ -211,7 +210,7 @@ def main():
             obj_dict[key_ori] +=1
         key = key_ori+str(obj_dict[key_ori])
         translation = torch.rand(3).tolist()
-        translation = [translation[0]*0.8-0.4,0.45*translation[1]-0.225,0.1]
+        translation = [-translation[0]*0.3+0.2,-0.45*translation[1]-0.3,-0.2]
         # translation = [0,0,0.2]
         print(translation,angle,key_ori)
         rot = convert_quat(tf.Rotation.from_euler("XYZ", (0,0,angle), degrees=True).as_quat(), to="wxyz")
@@ -222,6 +221,32 @@ def main():
         RigidPrim(f"/World/Objects/{key}",mass=0.3)
         for _ in range(30):
             sim.step()
+    num_obj = np.random.randint(0,5)
+    if num_obj >=1:
+        for _ in range(num_obj):
+            randi = np.random.randint(0,len(ycb_name))
+            angle = np.random.randint(0,180)
+            # angle = 0
+            key_ori = ycb_name[randi]
+            # key_ori = "mug"
+            usd_path = ycb_usd_paths[key_ori]
+            if key_ori not in obj_dict:
+                obj_dict[key_ori] = 1
+            else:
+                obj_dict[key_ori] +=1
+            key = key_ori+str(obj_dict[key_ori])
+            translation = torch.rand(3).tolist()
+            translation = [translation[0]*0.8-0.4,0.45*translation[1]-0.225,0.1]
+            # translation = [0,0,0.2]
+            print(translation,angle,key_ori)
+            rot = convert_quat(tf.Rotation.from_euler("XYZ", (0,0,angle), degrees=True).as_quat(), to="wxyz")
+            if key_ori in ["mug","tomatoSoupCan","pitcherBase","tunaFishCan","bowl","banana"]:
+                rot = convert_quat(tf.Rotation.from_euler("XYZ", (-90,angle,0), degrees=True).as_quat(), to="wxyz")
+            prim_utils.create_prim(f"/World/Objects/{key}", usd_path=usd_path, translation=translation,orientation=rot)
+            GeometryPrim(f"/World/Objects/{key}",collision=True)
+            RigidPrim(f"/World/Objects/{key}",mass=0.3)
+            for _ in range(30):
+                sim.step()
     ##################################################################### 
     print("[INFO]: Setup complete...")
     
@@ -305,7 +330,7 @@ def main():
             robot.update_buffers(sim_dt)
             count +=1
             # update marker positions
-        if count >=50:
+        if count >=10:
             count = 0
             camera.update(dt=0.0)
             hand_camera.update(dt=0.0)
@@ -338,15 +363,15 @@ def main():
             pts = np.array(objects_pcd.points)
             u = (pts[:,0] - np.min(pts_tab[:,0]))/ ( np.max(pts_tab[:,0])-np.min(pts_tab[:,0]) )
             v = (pts[:,1] - np.min(pts_tab[:,1]))/ ( np.max(pts_tab[:,1])-np.min(pts_tab[:,1]) )
-            u = 99*u
-            v = 59*v
+            u = (Nx-1)*u
+            v = (Ny-1)*v
             occupancy = np.zeros( (Ny,Nx) )
             u = u.astype(int)
             v = v.astype(int)
-            u_ind = np.where(u<100)
+            u_ind = np.where(u<Nx)
             u = u[u_ind]
             v = v[u_ind]
-            v_ind = np.where(v<60)
+            v_ind = np.where(v<Ny)
             u = u[v_ind]
             v = v[v_ind]
             u_ind = np.where(u>=0)
@@ -400,7 +425,7 @@ def main():
                 # new_obj.set_world_pose(position=[(50-new_obj_pos[1])*0.01,(new_obj_pos[0]-30)*0.01,0.2],orientation=rot)
                 # new_obj.initialize()
                 print(new_obj_pos)
-                translation = [(50-new_obj_pos[1])*0.01,(new_obj_pos[0]-30)*0.01,0.1]
+                translation = [(Nx/2-new_obj_pos[1])*0.01,(new_obj_pos[0]-Ny/2)*0.01,0.1]
                 print(translation)
                 usd_path = ycb_usd_paths[obj_type]
                 prim_utils.create_prim(new_obj_path, usd_path=usd_path, position=translation,orientation=rot)
@@ -497,6 +522,9 @@ def get_new_obj_info(camera,size,hand_plane_model):
     return aabb_points,occupancy, vertices_new_obj
 def get_new_obj_contour_bbox(occu:np.array):
     mask = occu.copy()
+    shape_occu = occu.shape
+    Nx = shape_occu[1]
+    Ny = shape_occu[0]
     mask = np.array((mask-np.min(mask))*255/(np.max(mask)-np.min(mask)),dtype=np.uint8)
     ret,mask = cv2.threshold(mask,50,255,0)
     contours,hierarchy = cv2.findContours(mask,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
@@ -525,7 +553,7 @@ def get_new_obj_contour_bbox(occu:np.array):
             mask_tmp[approx[i][1],approx[i][0]] = 130
         vertices_new_obj = approx 
         print(vertices_new_obj)
-        vertices_new_obj = vertices_new_obj - np.array([20,20])
+        vertices_new_obj = vertices_new_obj - np.array([Nx/2,Ny/2])
         print(vertices_new_obj)
         plt.imshow(mask_tmp)
         plt.show()
