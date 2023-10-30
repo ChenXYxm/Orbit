@@ -142,10 +142,11 @@ def place_new_obj_fun(occu_ori,new_obj):
                     # print(p_s,p_e)
                     line = np.array(p_e) - np.array(p_s)
                     length = np.linalg.norm(line)
-                    if length!=length_ori:
+                    offset_l = [0,1,2,3,-1,-2,-3]
+                    for p in offset_l:
                         delta_l = length_ori-length
-                        p_s_ori = np.array(p_s).copy() 
-                        p_e_ori = (np.array(p_e) + delta_l*line/length).copy()
+                        p_s_ori = np.array(p_s).copy() + p*line/length
+                        p_e_ori = (np.array(p_e) + delta_l*line/length).copy() + p*line/length
                         for o in range(int(np.ceil(abs(delta_l)))):
                             p_s = p_s_ori - np.sign(delta_l)*o*line/length
                             p_e = p_e_ori - np.sign(delta_l)*o*line/length
