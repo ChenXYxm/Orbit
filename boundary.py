@@ -216,7 +216,7 @@ for cnt in contours:
     # approx = cv2.approxPolyDP(cnt,0.1*cv2.arcLength(cnt,True),True)
     # approx = cv2.convexHull(cnt)
     approx = cv2.minAreaRect(cnt)
-    (x,y) = cnt[0,0]
+    # (x,y) = cnt[0,0]
     # print(approx)
     box = cv2.boxPoints(approx)
     approx = np.int0(box)
@@ -352,7 +352,7 @@ plt.imshow(occu_tmp)
 plt.show()
 flag_found = False
 # length_arr = abs(np.array(length_list)-num_grid_l)
-flag = False
+# flag = False
 print(length_dict)
 dila_polygons = []
 for i in polygons:
@@ -448,6 +448,7 @@ for length_ori in [num_grid_l,num_grid_s]:
         # occu_tmp[int(np.round(p_e_new[1])),int(np.round(p_e_new[0]))] = 3
         # occu_tmp[int(np.round(p_s_next[1])),int(np.round(p_s_next[0]))] = 3
         # occu_tmp[int(np.round(p_e_next[1])),int(np.round(p_e_next[0]))] = 3
+print(vertices_new_obj)
 plt.imshow(occu_tmp)
 plt.show()        
 

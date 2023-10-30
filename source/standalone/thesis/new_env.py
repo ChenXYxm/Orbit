@@ -56,6 +56,10 @@ from omni.isaac.orbit.objects.rigid import RigidObject, RigidObjectCfg
 from omni.isaac.orbit.utils.math import convert_quat
 import scipy.spatial.transform as tf
 from shapely import Polygon, STRtree, area, contains
+
+
+#################
+from place_new_obj import place_new_obj_fun
 """
 Main
 """
@@ -182,15 +186,21 @@ def main():
     position = [0, 0, 2.]
     orientation = [0, 0, -1, 0]
     camera.set_world_pose_ros(position, orientation)
-    hand_camera.set_world_pose_ros([0.35,-0.9,1.2], orientation)
+    hand_camera.set_world_pose_ros([0.35,-0.9,0.8], orientation)
+    Table.initialize()
+    sideTable.initialize()
+    sideTable.set_collision_enabled(True)
+    Table.set_collision_enabled(True)
 
     for _ in range(10):
         sim.render()
     ##################################################################### load ycb
+    
     obj_dict = dict()
-    for _ in range(6):
+    
+    for _ in range(1):
         randi = np.random.randint(0,len(ycb_name))
-        angle = np.random.randint(0,360)
+        angle = np.random.randint(0,180)
         # angle = 0
         key_ori = ycb_name[randi]
         # key_ori = "mug"
@@ -201,15 +211,16 @@ def main():
             obj_dict[key_ori] +=1
         key = key_ori+str(obj_dict[key_ori])
         translation = torch.rand(3).tolist()
-        translation = [translation[0]*0.8-0.4,0.45*translation[1]-0.225,0.2]
+        translation = [translation[0]*0.8-0.4,0.45*translation[1]-0.225,0.1]
         # translation = [0,0,0.2]
+        print(translation,angle,key_ori)
         rot = convert_quat(tf.Rotation.from_euler("XYZ", (0,0,angle), degrees=True).as_quat(), to="wxyz")
-        if key_ori in ["mug","tomatoSoupCan","pitcherBase","tunaFishCan","bowl"]:
-           rot = convert_quat(tf.Rotation.from_euler("XYZ", (-90,angle,0), degrees=True).as_quat(), to="wxyz")
+        if key_ori in ["mug","tomatoSoupCan","pitcherBase","tunaFishCan","bowl","banana"]:
+            rot = convert_quat(tf.Rotation.from_euler("XYZ", (-90,angle,0), degrees=True).as_quat(), to="wxyz")
         prim_utils.create_prim(f"/World/Objects/{key}", usd_path=usd_path, translation=translation,orientation=rot)
         GeometryPrim(f"/World/Objects/{key}",collision=True)
         RigidPrim(f"/World/Objects/{key}",mass=0.3)
-        for _ in range(20):
+        for _ in range(30):
             sim.step()
     ##################################################################### 
     print("[INFO]: Setup complete...")
@@ -346,30 +357,57 @@ def main():
             v = v[v_ind]
             occupancy[v,u] = 1
             occupancy = np.fliplr(occupancy)
-            # plt.imshow(occupancy)
-            # plt.show()
+            plt.imshow(occupancy)
+            plt.show()
             #
-            bound_detect(occupancy)
-            rgb=camera.data.output["rgb"]
-            rgb = convert_to_torch(rgb, device=sim.device, dtype=torch.float32)
-            rgb = rgb[:, :, :3].cpu().data.numpy()
+            # bound_detect(occupancy)
+            # rgb=camera.data.output["rgb"]
+            # rgb = convert_to_torch(rgb, device=sim.device, dtype=torch.float32)
+            # rgb = rgb[:, :, :3].cpu().data.numpy()
             # plt.imshow(grad)
             # plt.show()
-            img = Image.fromarray((rgb).astype(np.uint8))
-            hand_rgb=hand_camera.data.output["rgb"]
-            hand_rgb = convert_to_torch(hand_rgb, device=sim.device, dtype=torch.float32)
-            hand_rgb = hand_rgb[:, :, :3].cpu().data.numpy()
-            place_new_object(occupancy,ycb_name,ycb_usd_paths,num_new,obj_dict)
+            # img = Image.fromarray((rgb).astype(np.uint8))
+            # hand_rgb=hand_camera.data.output["rgb"]
+            # hand_rgb = convert_to_torch(hand_rgb, device=sim.device, dtype=torch.float32)
+            # hand_rgb = hand_rgb[:, :, :3].cpu().data.numpy()
+            
+            obj_dict, new_obj,obj_type,new_obj_path = place_new_object(occupancy,ycb_name,ycb_usd_paths,num_new,obj_dict)
             num_new +=1
-            for _ in range(25):
+            for _ in range(30):
                 sim.step()
-            hand_img = Image.fromarray((hand_rgb).astype(np.uint8))   
+            # hand_img = Image.fromarray((hand_rgb).astype(np.uint8))   
             # plt.imshow(img)
             # plt.show()
             # plt.imshow(hand_img)
             # plt.show()
-            if num_new>=1:
-                aabb_points = get_new_obj_pcd(hand_camera,(40,40),hand_plane_model)
+            # if num_new>=1:
+                # aabb_points = get_new_obj_pcd(hand_camera,(40,40),hand_plane_model)
+            aabb_points,_,vertices_new_obj = get_new_obj_info(hand_camera,(40,40),hand_plane_model)
+            print(occupancy.shape)
+            flag_found, new_poly_vetices,occu_tmp,new_obj_pos = place_new_obj_fun(occupancy,vertices_new_obj)
+            if flag_found:
+                # for i in range(len(new_poly_vetices)):
+                #     occu_tmp[int(new_poly_vetices[i][1]),int(new_poly_vetices[i][0])] = 3
+                # plt.imshow(occu_tmp)
+                # plt.show()
+                prim_utils.delete_prim(new_obj_path)
+                if obj_type in ["mug","tomatoSoupCan","pitcherBase","tunaFishCan","bowl","banana"]:
+                    rot = convert_quat(tf.Rotation.from_euler("XYZ", (-90,np.rad2deg(new_obj_pos[2]),0), degrees=True).as_quat(), to="wxyz")
+                else:
+                    rot = convert_quat(tf.Rotation.from_euler("XYZ", (0,0,-np.rad2deg(new_obj_pos[2])), degrees=True).as_quat(), to="wxyz")
+                # new_obj.set_default_state(position=[(50-new_obj_pos[1])*0.01,(new_obj_pos[0]-30)*0.01,0.2],orientation=rot)
+                
+                # new_obj.set_world_pose(position=[(50-new_obj_pos[1])*0.01,(new_obj_pos[0]-30)*0.01,0.2],orientation=rot)
+                # new_obj.initialize()
+                print(new_obj_pos)
+                translation = [(50-new_obj_pos[1])*0.01,(new_obj_pos[0]-30)*0.01,0.1]
+                print(translation)
+                usd_path = ycb_usd_paths[obj_type]
+                prim_utils.create_prim(new_obj_path, usd_path=usd_path, position=translation,orientation=rot)
+                new_obj = GeometryPrim(new_obj_path,collision=True)
+                RigidPrim(new_obj_path,mass=0.3)
+                for _ in range(30):
+                    sim.step
             # bbox = rep_annotator.get_data()
             # print(bbox)
         sim.step()
@@ -391,7 +429,7 @@ def get_pcd(camera):
     pcd.points = o3d.utility.Vector3dVector(pointcloud_w)
     # o3d.visualization.draw_geometries([pcd])
     return pcd
-def get_new_obj_pcd(camera,size,hand_plane_model):
+def get_new_obj_info(camera,size,hand_plane_model):
     pcd = get_pcd(camera)
     # o3d.visualization.draw_geometries([pcd])
     plane_model, inliers = pcd.segment_plane(distance_threshold=0.01,
@@ -426,10 +464,119 @@ def get_new_obj_pcd(camera,size,hand_plane_model):
     aabb_points = np.array(aabb.get_box_points()).reshape((-1,3))
     aabb.color = (1, 0, 0)
     # o3d.visualization.draw_geometries([objects_pcd, aabb])
+    Nx = size[0]
+    Ny = size[1]
+    x = np.linspace(np.min(pts_tab[:,0]), np.max(pts_tab[:,0]), Nx)
+    y = np.linspace(np.min(pts_tab[:,1]), np.max(pts_tab[:,1]), Ny)
+    xv, yv = np.meshgrid(x, y)
+    pts = np.array(objects_pcd.points)
+    u = (pts[:,0] - np.min(pts_tab[:,0]))/ ( np.max(pts_tab[:,0])-np.min(pts_tab[:,0]) )
+    v = (pts[:,1] - np.min(pts_tab[:,1]))/ ( np.max(pts_tab[:,1])-np.min(pts_tab[:,1]) )
+    u = (size[0]-1)*u
+    v = (size[1]-1)*v
+    occupancy = np.zeros( (Ny,Nx) )
+    u = u.astype(int)
+    v = v.astype(int)
+    u_ind = np.where(u<size[0])
+    u = u[u_ind]
+    v = v[u_ind]
+    v_ind = np.where(v<size[1])
+    u = u[v_ind]
+    v = v[v_ind]
+    u_ind = np.where(u>=0)
+    u = u[u_ind]
+    v = v[u_ind]
+    v_ind = np.where(v>=0)
+    u = u[v_ind]
+    v = v[v_ind]
+    occupancy[v,u] = 1
+    occupancy = np.fliplr(occupancy)
+    plt.imshow(occupancy)
+    plt.show()
+    vertices_new_obj = get_new_obj_contour_bbox(occupancy)
+    return aabb_points,occupancy, vertices_new_obj
+def get_new_obj_contour_bbox(occu:np.array):
+    mask = occu.copy()
+    mask = np.array((mask-np.min(mask))*255/(np.max(mask)-np.min(mask)),dtype=np.uint8)
+    ret,mask = cv2.threshold(mask,50,255,0)
+    contours,hierarchy = cv2.findContours(mask,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
+    max_area = 0
+    cnt = []
+    for i in contours:
+        area_tmp = cv2.contourArea(i)
+        if area_tmp>max_area:
+            max_area = area_tmp
+            cnt = i
+    # approx = cv2.minAreaRect(cnt)
+    x,y,w,h = cv2.boundingRect(cnt)
+    # print(approx)
+    # box = cv2.boxPoints(approx)
+    # approx = np.int0(box)
+    if x+w >=occu.shape[1]:
+        w = occu.shape[1]-x-1
+    if y+h >=occu.shape[0]:
+        h = occu.shape[0]-1-y
+    approx = np.array([[x,y],[x+w,y],[x+w,y+h],[x,y+h]])
+    vertices_new_obj = []
+    mask_tmp = mask.copy()
+    if len(approx) >=2:
+        approx = approx.reshape((-1,2))
+        for i in range(len(approx)):
+            mask_tmp[approx[i][1],approx[i][0]] = 130
+        vertices_new_obj = approx 
+        print(vertices_new_obj)
+        vertices_new_obj = vertices_new_obj - np.array([20,20])
+        print(vertices_new_obj)
+        plt.imshow(mask_tmp)
+        plt.show()
+        
+        l = []
+        for i in range(2):
+            l.append(np.linalg.norm(vertices_new_obj[i]-vertices_new_obj[i+1]))
+        print(l)
+        return vertices_new_obj
+    else:
+        return None
+def get_new_obj_pcd(camera,size,hand_plane_model):
+    pcd = get_pcd(camera)
+    # o3d.visualization.draw_geometries([pcd])
+    plane_model, inliers = pcd.segment_plane(distance_threshold=0.01,
+                                         ransac_n=3,
+                                         num_iterations=1000)
+    outlier_cloud = pcd.select_by_index(inliers, invert=True)
+    plane_model, inliers = outlier_cloud.segment_plane(distance_threshold=0.005,
+                                         ransac_n=3,
+                                         num_iterations=1000)
+    inlier_cloud = outlier_cloud.select_by_index(inliers)
+    plane_model_ori = plane_model
+    plane_model = np.array([plane_model[0],plane_model[1],plane_model[2]])
+    pointcloud_w = np.array(outlier_cloud.points)
+    
+    # o3d.visualization.draw_geometries([inlier_cloud])
+    # o3d.visualization.draw_geometries([outlier_cloud])
+    
+    select_m = np.dot(pointcloud_w,plane_model) + float(plane_model_ori[3])
+    index_objects = np.argwhere((select_m>=0.01)).reshape(-1).astype(int)
+    objects_point = pointcloud_w[index_objects].copy()
+    # objects_pcd = outlier_cloud.select_by_index(inliers,invert = True)
+    objects_pcd = o3d.geometry.PointCloud()
+    objects_pcd.points = o3d.utility.Vector3dVector(objects_point)
+    # o3d.visualization.draw_geometries([objects_pcd])
+    pcd = inlier_cloud
+    o3d.visualization.draw_geometries([pcd])
+    pts_tab = np.array(pcd.points)
+    # pts_tab[:,2] = 0
+    # pcd.points = o3d.utility.Vector3dVector(pts_tab)
+    aabb = objects_pcd.get_oriented_bounding_box()
+    print(np.array(aabb.get_box_points()))
+    aabb_points = np.array(aabb.get_box_points()).reshape((-1,3))
+    aabb.color = (1, 0, 0)
+    o3d.visualization.draw_geometries([objects_pcd, aabb])
     return aabb_points
 def place_new_object(occu,ycb_list,ycb_path,num_new,obj_dict):
     randi = np.random.randint(0,len(ycb_list))
-    angle = np.random.randint(0,180)
+    # angle = np.random.randint(0,180)
+    angle = 0
     key_ori = ycb_list[randi]
     usd_path = ycb_path[key_ori]
     if key_ori not in obj_dict:
@@ -438,13 +585,15 @@ def place_new_object(occu,ycb_list,ycb_path,num_new,obj_dict):
         obj_dict[key_ori] +=1
     key = key_ori+str(obj_dict[key_ori])
     translation = 0
-    translation = [0.35,-0.9,0.2]
+    translation = [0.35,-0.9,0.1]
     rot = convert_quat(tf.Rotation.from_euler("XYZ", (0,0,angle), degrees=True).as_quat(), to="wxyz")
-    if key_ori in ["mug","tomatoSoupCan","pitcherBase","tunaFishCan","bowl"]:
+    if key_ori in ["mug","tomatoSoupCan","pitcherBase","tunaFishCan","bowl","banana"]:
         rot = convert_quat(tf.Rotation.from_euler("XYZ", (-90,angle,0), degrees=True).as_quat(), to="wxyz")
     prim_utils.create_prim(f"/World/newObjects/{key}", usd_path=usd_path, translation=translation,orientation=rot)
-    GeometryPrim(f"/World/newObjects/{key}",collision=True)
+    new_obj = GeometryPrim(f"/World/newObjects/{key}",collision=True)
     RigidPrim(f"/World/newObjects/{key}",mass=0.3)
+    new_obj_path = f"/World/newObjects/{key}"
+    return obj_dict,new_obj,key_ori,new_obj_path
     # prim_utils.delete_prim(f"/World/newObjects/{key+str(num_new)}")
     
 def bound_detect(occu):
@@ -488,7 +637,7 @@ def bound_detect(occu):
         if len(indice) >0:
             for j in indice:
                 if contains(poly,tree.geometries.take(j)) and area(poly)>area(tree.geometries.take(j)):
-                    if shape_dict[j+1] is not None:
+                    if j+1 in shape_dict:
                         del(shape_dict[j+1])
                         del_ind.append(int(j))
     print(del_ind)
