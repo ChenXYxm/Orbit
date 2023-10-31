@@ -245,7 +245,7 @@ def main():
             prim_utils.create_prim(f"/World/Objects/{key}", usd_path=usd_path, translation=translation,orientation=rot)
             GeometryPrim(f"/World/Objects/{key}",collision=True)
             RigidPrim(f"/World/Objects/{key}",mass=0.3)
-            for _ in range(30):
+            for _ in range(50):
                 sim.step()
     ##################################################################### 
     print("[INFO]: Setup complete...")
@@ -356,7 +356,7 @@ def main():
             pcd.points = o3d.utility.Vector3dVector(inliers)
             # o3d.visualization.draw_geometries([pcd])
             pts_tab = np.array(pcd.points)
-            Nx,Ny = 100,60
+            Nx,Ny = 200,120
             x = np.linspace(np.min(pts_tab[:,0]), np.max(pts_tab[:,0]), Nx)
             y = np.linspace(np.min(pts_tab[:,1]), np.max(pts_tab[:,1]), Ny)
             xv, yv = np.meshgrid(x, y)
@@ -382,8 +382,8 @@ def main():
             v = v[v_ind]
             occupancy[v,u] = 1
             occupancy = np.fliplr(occupancy)
-            plt.imshow(occupancy)
-            plt.show()
+            # plt.imshow(occupancy)
+            # plt.show()
             #
             # bound_detect(occupancy)
             # rgb=camera.data.output["rgb"]
@@ -398,7 +398,7 @@ def main():
             
             obj_dict, new_obj,obj_type,new_obj_path = place_new_object(occupancy,ycb_name,ycb_usd_paths,num_new,obj_dict)
             num_new +=1
-            for _ in range(30):
+            for _ in range(50):
                 sim.step()
             # hand_img = Image.fromarray((hand_rgb).astype(np.uint8))   
             # plt.imshow(img)
@@ -407,7 +407,7 @@ def main():
             # plt.show()
             # if num_new>=1:
                 # aabb_points = get_new_obj_pcd(hand_camera,(40,40),hand_plane_model)
-            aabb_points,_,vertices_new_obj = get_new_obj_info(hand_camera,(40,40),hand_plane_model)
+            aabb_points,_,vertices_new_obj = get_new_obj_info(hand_camera,(80,80),hand_plane_model)
             print(occupancy.shape)
             flag_found, new_poly_vetices,occu_tmp,new_obj_pos = place_new_obj_fun(occupancy,vertices_new_obj)
             if flag_found:
@@ -425,13 +425,13 @@ def main():
                 # new_obj.set_world_pose(position=[(50-new_obj_pos[1])*0.01,(new_obj_pos[0]-30)*0.01,0.2],orientation=rot)
                 # new_obj.initialize()
                 print(new_obj_pos)
-                translation = [(Nx/2-new_obj_pos[1])*0.01,(new_obj_pos[0]-Ny/2)*0.01,0.1]
+                translation = [(Nx/2-new_obj_pos[1])*1./Nx,(new_obj_pos[0]-Ny/2)*1./Nx,0.1]
                 print(translation)
                 usd_path = ycb_usd_paths[obj_type]
                 prim_utils.create_prim(new_obj_path, usd_path=usd_path, position=translation,orientation=rot)
                 new_obj = GeometryPrim(new_obj_path,collision=True)
                 RigidPrim(new_obj_path,mass=0.3)
-                for _ in range(30):
+                for _ in range(50):
                     sim.step
             # bbox = rep_annotator.get_data()
             # print(bbox)
@@ -489,8 +489,8 @@ def get_new_obj_info(camera,size,hand_plane_model):
     aabb_points = np.array(aabb.get_box_points()).reshape((-1,3))
     aabb.color = (1, 0, 0)
     # o3d.visualization.draw_geometries([objects_pcd, aabb])
-    Nx = size[0]
-    Ny = size[1]
+    Nx = size[1]
+    Ny = size[0]
     x = np.linspace(np.min(pts_tab[:,0]), np.max(pts_tab[:,0]), Nx)
     y = np.linspace(np.min(pts_tab[:,1]), np.max(pts_tab[:,1]), Ny)
     xv, yv = np.meshgrid(x, y)
@@ -516,8 +516,8 @@ def get_new_obj_info(camera,size,hand_plane_model):
     v = v[v_ind]
     occupancy[v,u] = 1
     occupancy = np.fliplr(occupancy)
-    plt.imshow(occupancy)
-    plt.show()
+    # plt.imshow(occupancy)
+    # plt.show()
     vertices_new_obj = get_new_obj_contour_bbox(occupancy)
     return aabb_points,occupancy, vertices_new_obj
 def get_new_obj_contour_bbox(occu:np.array):

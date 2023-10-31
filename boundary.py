@@ -99,13 +99,17 @@ from shapely import Polygon, STRtree, area, contains, buffer, Point
 # plt.figure()
 # plt.imshow(occu_dy+occu_dx)
 # plt.show()
-bbox = [0.22,0.23]
+bbox = [0.1,0.2]
 length = np.max(np.array(bbox))
 width = np.min(np.array(bbox))
 num_grid_l = int(np.ceil(np.max(np.array(bbox))/0.01))
 num_grid_s = int(np.ceil(np.min(np.array(bbox))/0.01))
 mask = np.zeros((int(2*num_grid_l),int(2*num_grid_l)))
 mask[int(num_grid_l-np.ceil(num_grid_s/2)):int(num_grid_l+np.ceil(num_grid_s/2)),int(num_grid_l-np.ceil(num_grid_l/2)):int(num_grid_l+np.ceil(num_grid_l/2))] = 1
+
+# mask[int(2*num_grid_l-np.ceil(num_grid_s/2)):int(2*num_grid_l+np.ceil(num_grid_s/2)),int(2*num_grid_l-np.ceil(num_grid_l)):int(2*num_grid_l+np.ceil(num_grid_l))] = 1
+# mask[int(num_grid_l/2):int(2*num_grid_l+np.ceil(num_grid_s/2)),int(2*num_grid_l+np.ceil(num_grid_l)):int(2*num_grid_l+np.ceil(num_grid_l)+np.ceil(num_grid_s))] = 1
+
 mask = np.array((mask-np.min(mask))*255/(np.max(mask)-np.min(mask)),dtype=np.uint8)
 ret,mask = cv2.threshold(mask,50,255,0)
 contours,hierarchy = cv2.findContours(mask,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
@@ -127,6 +131,22 @@ if len(approx) >=2:
     approx = approx.reshape((-1,2))
     for i in range(len(approx)):
         mask_tmp[approx[i][1],approx[i][0]] = 130
+    for j in range(len(approx)):
+        p_s_1 = approx[j]
+        if j < len(approx)-1:
+            p_e_1 = approx[j+1]
+        else:
+            p_e_1 = approx[0]
+        line_1 = p_e_1 - p_s_1
+        length_1 = np.linalg.norm(line_1)
+        for k in range(int(np.ceil(length_1))):
+            tmp_delta_1 = [k*line_1[0]/length_1,k*line_1[1]/length_1]
+            for _,l in enumerate(tmp_delta_1):
+                if l >=0:
+                    tmp_delta_1[_] = np.ceil(l)
+                else:
+                    tmp_delta_1[_] = np.floor(l)
+            mask_tmp[int(np.round(p_s_1[1]+tmp_delta_1[1])),int(np.round(p_s_1[0]+tmp_delta_1[0]))] = 255
     vertices_new_obj = approx
 plt.imshow(mask_tmp)
 plt.show()

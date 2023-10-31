@@ -11,6 +11,7 @@ def place_new_obj_fun(occu_ori,new_obj):
     shape_occu = occu_ori.shape
     Nx = shape_occu[1]
     Ny = shape_occu[0]
+    print(shape_occu)
     num_check_edge = 0
     occu = occu_ori.copy()
     bbox = []
@@ -142,12 +143,25 @@ def place_new_obj_fun(occu_ori,new_obj):
                     # print(p_s,p_e)
                     line = np.array(p_e) - np.array(p_s)
                     length = np.linalg.norm(line)
-                    offset_l = [0,1,2,3,-1,-2,-3]
+                    offset_l = [0,1,2,3,4,-1,-2,-3,-4]
                     for p in offset_l:
+                        p_s = length_dict[length_list[ind_tmp]][2*m]
+                        p_e = length_dict[length_list[ind_tmp]][2*m+1]
+                        p_s = [p_s[1],p_s[0]]
+                        p_e = [p_e[1],p_e[0]]
+                        # print("points")
+                        # print(p_s,p_e)
+                        line = np.array(p_e) - np.array(p_s)
+                        length = np.linalg.norm(line)
                         delta_l = length_ori-length
                         p_s_ori = np.array(p_s).copy() + p*line/length
-                        p_e_ori = (np.array(p_e) + delta_l*line/length).copy() + p*line/length
-                        for o in range(int(np.ceil(abs(delta_l)))):
+                        p_e_ori = (np.array(p_e).copy() + delta_l*line/length).copy() + p*line/length
+                        if p == 0:
+                            print("ordinary")
+                            range_o = int(np.ceil(abs(delta_l)))
+                        else:
+                            range_o = 1
+                        for o in range(range_o):
                             p_s = p_s_ori - np.sign(delta_l)*o*line/length
                             p_e = p_e_ori - np.sign(delta_l)*o*line/length
                             # print("check original points")
@@ -182,28 +196,28 @@ def place_new_obj_fun(occu_ori,new_obj):
                                         if poly.disjoint(nearest_poly):
                                             print("find the position")
                                             print(poly)
-                                            for j in range(len(new_poly_vetices)):
-                                                occu_tmp[int(new_poly_vetices[j][1]),int(new_poly_vetices[j][0])] = 3
-                                            # for j in range(len(points_tmp)):
-                                            #     p_s_1 = points_tmp[j]
-                                            #     if j < len(points_tmp)-1:
-                                            #         p_e_1 = points_tmp[j+1]
-                                            #     else:
-                                            #         p_e_1 = points_tmp[0]
-                                            #     line_1 = p_e_1 - p_s_1
-                                            #     length_1 = np.linalg.norm(line_1)
-                                            #     for k in range(int(np.ceil(length_1))):
-                                            #         tmp_delta_1 = [k*line_1[0]/length_1,k*line_1[1]/length_1]
-                                            #         for _,l in enumerate(tmp_delta_1):
-                                            #             if l >=0:
-                                            #                 tmp_delta_1[_] = np.ceil(l)
-                                            #             else:
-                                            #                 tmp_delta_1[_] = np.floor(l)
-                                            #         if np.round(p_s_1[0]+tmp_delta_1[0])>=60:
-                                            #             tmp_delta_1[0]=59-p_s_1[0]
-                                            #         if np.round(p_s_1[1]+tmp_delta_1[1])>=100:
-                                            #             tmp_delta_1[1] = 99 - p_s_1[1]
-                                            #         occu_tmp[int(np.round(p_s_1[0]+tmp_delta_1[0])),int(np.round(p_s_1[1]+tmp_delta_1[1]))] = 3
+                                            # for j in range(len(new_poly_vetices)):
+                                            #     occu_tmp[int(new_poly_vetices[j][1]),int(new_poly_vetices[j][0])] = 3
+                                            for j in range(len(points_tmp)):
+                                                p_s_1 = points_tmp[j]
+                                                if j < len(points_tmp)-1:
+                                                    p_e_1 = points_tmp[j+1]
+                                                else:
+                                                    p_e_1 = points_tmp[0]
+                                                line_1 = p_e_1 - p_s_1
+                                                length_1 = np.linalg.norm(line_1)
+                                                for k in range(int(np.ceil(length_1))):
+                                                    tmp_delta_1 = [k*line_1[0]/length_1,k*line_1[1]/length_1]
+                                                    for _,l in enumerate(tmp_delta_1):
+                                                        if l >=0:
+                                                            tmp_delta_1[_] = np.ceil(l)
+                                                        else:
+                                                            tmp_delta_1[_] = np.floor(l)
+                                                    if np.round(p_s_1[0]+tmp_delta_1[0])>=Ny:
+                                                        tmp_delta_1[0]=Ny-1-p_s_1[0]
+                                                    if np.round(p_s_1[1]+tmp_delta_1[1])>=Nx:
+                                                        tmp_delta_1[1] = Nx-1 - p_s_1[1]
+                                                    occu_tmp[int(np.round(p_s_1[0]+tmp_delta_1[0])),int(np.round(p_s_1[1]+tmp_delta_1[1]))] = 3
                                             flag_found = True
                                             plt.imshow(occu_tmp)
                                             plt.show()
@@ -216,7 +230,8 @@ def place_new_obj_fun(occu_ori,new_obj):
                                     break
                             if flag_found:
                                 break
-                        
+                        if flag_found:
+                            break
                     if flag_found:
                         break
                 else:
