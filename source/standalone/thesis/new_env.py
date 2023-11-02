@@ -9,12 +9,12 @@
 
 import pickle
 import argparse
-
+import os
 from omni.isaac.kit import SimulationApp
 
 # add argparse arguments
 parser = argparse.ArgumentParser("Welcome to Orbit: Omniverse Robotics Environments!")
-parser.add_argument("--headless", action="store_true", default=False, help="Force display off at all times.")
+parser.add_argument("--headless", action="store_true", default=True, help="Force display off at all times.")
 parser.add_argument("--num_envs", type=int, default=3, help="Number of environments to spawn.")
 args_cli = parser.parse_args()
 
@@ -72,9 +72,9 @@ class sim_cfg:
                 # num_position_iterations=8,
                 gpu_max_rigid_contact_count=1024**2*2,
                 gpu_max_rigid_patch_count=160*2048*10, #160*2048*10,
-                gpu_found_lost_pairs_capacity = 1024 * 1024 * 2 * 1, #1024 * 1024 * 2 * 8,
+                gpu_found_lost_pairs_capacity = 1024 * 1024 * 2 * 8, #1024 * 1024 * 2 * 8,
                 gpu_found_lost_aggregate_pairs_capacity=1024 * 1024 * 32 * 1, #1024 * 1024 * 32,
-                gpu_total_aggregate_pairs_capacity=1024 * 1024 * 2 *1, #1024 * 1024 * 2 * 8
+                gpu_total_aggregate_pairs_capacity=1024 * 1024 * 2 *8, #1024 * 1024 * 2 * 8
                 friction_correlation_distance=0.0025,
                 friction_offset_threshold=0.04,
                 bounce_threshold_velocity=0.5,
@@ -123,7 +123,7 @@ def main():
     sim = SimulationContext(
         stage_units_in_meters=1.0,
         physics_dt=0.01,
-        rendering_dt=1,
+        rendering_dt=0.1,
         backend="torch",
         sim_params=sim_params,
         # physics_prim_path="/physicsScene",
@@ -271,7 +271,7 @@ def main():
         RigidPrim(f"/World/Objects/{key}",mass=0.3)
         for _ in range(30):
             sim.step()
-    num_obj = np.random.randint(0,5)
+    num_obj = np.random.randint(0,3)
     table_obj_pos_rot = dict()
     if num_obj >=1:
         for _ in range(num_obj):
@@ -296,10 +296,10 @@ def main():
             prim_utils.create_prim(f"/World/Objects/{key}", usd_path=usd_path, translation=translation,orientation=rot)
             GeometryPrim(f"/World/Objects/{key}",collision=True)
             RigidPrim(f"/World/Objects/{key}",mass=0.3)
-            if key not in table_obj_pos_rot:
-                table_obj_pos_rot[key] = [(translation,rot)]
+            if key_ori not in table_obj_pos_rot:
+                table_obj_pos_rot[key_ori] = [(translation,rot)]
             else:
-                table_obj_pos_rot[key].append((translation,rot))
+                table_obj_pos_rot[key_ori].append((translation,rot))
                 # table_obj_pos_rot[key].append
             for _ in range(50):
                 sim.step()
@@ -497,9 +497,24 @@ def main():
                 for _ in range(50):
                     sim.step
             else:
-                f_save = open('generated_fulltablescene/dict_file.pkl','wb')
-                pickle.dump(table_obj_pos_rot,f_save)
-                f_save.close()
+                file_name_ori = "dict_"
+                file_list = os.listdir("generated_table/")
+                
+                num_file = 0
+                while True:
+                    file_name = file_name_ori+str(num_file)+".pkl"
+                    if file_name in file_list:
+                        num_file +=1
+                    else:
+                        file_path = "generated_table/"+file_name
+                        f_save = open(file_path,'wb')
+                        table_obj_pos_rot = [table_obj_pos_rot,obj_type]
+                        pickle.dump(table_obj_pos_rot,f_save)
+                        f_save.close()
+                        break
+                # f_save = open('generated_table/dict_file.pkl','wb')
+                # pickle.dump(table_obj_pos_rot,f_save)
+                # f_save.close()
                 break
                 
             # bbox = rep_annotator.get_data()
