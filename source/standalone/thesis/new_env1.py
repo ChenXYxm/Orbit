@@ -7,7 +7,7 @@
 
 """Launch Isaac Sim Simulator first."""
 
-import pickle
+
 import argparse
 
 from omni.isaac.kit import SimulationApp
@@ -245,7 +245,7 @@ def main():
     for _ in range(10):
         sim.render()
     ##################################################################### load ycb
-    
+    table_objs_pos_rot = dict()
     obj_dict = dict()
     for _ in range(1):
         randi = np.random.randint(0,len(ycb_name))
@@ -272,7 +272,6 @@ def main():
         for _ in range(30):
             sim.step()
     num_obj = np.random.randint(0,5)
-    table_obj_pos_rot = dict()
     if num_obj >=1:
         for _ in range(num_obj):
             randi = np.random.randint(0,len(ycb_name))
@@ -296,11 +295,6 @@ def main():
             prim_utils.create_prim(f"/World/Objects/{key}", usd_path=usd_path, translation=translation,orientation=rot)
             GeometryPrim(f"/World/Objects/{key}",collision=True)
             RigidPrim(f"/World/Objects/{key}",mass=0.3)
-            if key not in table_obj_pos_rot:
-                table_obj_pos_rot[key] = [(translation,rot)]
-            else:
-                table_obj_pos_rot[key].append((translation,rot))
-                # table_obj_pos_rot[key].append
             for _ in range(50):
                 sim.step()
     ##################################################################### 
@@ -487,18 +481,10 @@ def main():
                 prim_utils.create_prim(new_obj_path, usd_path=usd_path, position=translation,orientation=rot)
                 new_obj = GeometryPrim(new_obj_path,collision=True)
                 RigidPrim(new_obj_path,mass=0.3)
-                if obj_type not in table_obj_pos_rot:
-                    table_obj_pos_rot[obj_type] = [(translation,rot)]
-                else:
-                    table_obj_pos_rot[obj_type].append((translation,rot))
                 for _ in range(50):
                     sim.step
             else:
-                f_save = open('dict_file.pkl','a')
-                pickle.dump(table_obj_pos_rot,f_save)
-                f_save.close()
                 break
-                
             # bbox = rep_annotator.get_data()
             # print(bbox)
         sim.step()
@@ -763,8 +749,7 @@ def bound_detect(occu):
 
 if __name__ == "__main__":
     # Run empty stage
-    # for i in range(3):
-        # simulation_app = SimulationApp(config)
+    for i in range(3):
         main()
         # Close the simulator
         simulation_app.close()

@@ -219,8 +219,8 @@ def place_new_obj_fun(occu_ori,new_obj):
                                                         tmp_delta_1[1] = Nx-1 - p_s_1[1]
                                                     occu_tmp[int(np.round(p_s_1[0]+tmp_delta_1[0])),int(np.round(p_s_1[1]+tmp_delta_1[1]))] = 3
                                             flag_found = True
-                                            # plt.imshow(occu_tmp)
-                                            # plt.show()
+                                            plt.imshow(occu_tmp)
+                                            plt.show()
                                             new_obj_pos = get_pos(new_obj,new_poly_vetices)
                                             return flag_found,new_poly_vetices,occu_tmp,new_obj_pos
                                             break

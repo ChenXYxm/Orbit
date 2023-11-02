@@ -15,8 +15,6 @@ from omni.isaac.orbit.sensors.camera import PinholeCameraCfg
 ##
 # Scene settings
 ##
-
-
 @configclass
 class CameraCfg:
     camera_cfg = PinholeCameraCfg(
@@ -28,9 +26,11 @@ class CameraCfg:
             focal_length=24.0, focus_distance=400.0, horizontal_aperture=20.955, clipping_range=(0.1, 1.0e5)
         ),
     )
+
+@configclass
 class TableCfg:
     """Properties for the table."""
-
+    table_path = f"{ISAAC_NUCLEUS_DIR}/Props/Shapes/cube.usd"
     # note: we use instanceable asset since it consumes less memory
     usd_path = f"{ISAAC_NUCLEUS_DIR}/Props/Mounts/SeattleLabTable/table_instanceable.usd"
 
@@ -130,6 +130,7 @@ class ObservationsCfg:
         enable_corruption: bool = True
         # observation terms
         # -- joint state
+        
         arm_dof_pos = {"scale": 1.0}
         # arm_dof_pos_scaled = {"scale": 1.0}
         # arm_dof_vel = {"scale": 0.5, "noise": {"name": "uniform", "min": -0.01, "max": 0.01}}
@@ -153,6 +154,8 @@ class ObservationsCfg:
     """Whether to return observations as dictionary or flattened vector within groups."""
     # observation groups
     policy: PolicyCfg = PolicyCfg()
+
+@configclass
 class YCBobjectsCfg:
     ######################################### load ycb objects
     ycb_usd_paths = {
@@ -198,21 +201,27 @@ class TerminationsCfg:
 
     episode_timeout = True  # reset when episode length ended
     object_falling = True  # reset when object falls off the table
-    is_success = False  # reset when object is lifted
+    is_success = False  # reset when object is placed
 
-
+@configclass
+class occupancy_grid_resolution:
+    """resolution of the occupancy grid"""
+    tabletop = [200,160]
+    new_obj = [80,80]
 @configclass
 class ControlCfg:
     """Processing of MDP actions."""
 
     # action space
-    control_type = "inverse_kinematics"  # "default", "inverse_kinematics"
+    # control_type = "default"  # "default", "inverse_kinematics"
+    control_type = "inverse_kinematics"
     # decimation: Number of control action updates @ sim dt per policy dt
     decimation = 2
 
     # configuration loaded when control_type == "inverse_kinematics"
     inverse_kinematics: DifferentialInverseKinematicsCfg = DifferentialInverseKinematicsCfg(
-        command_type="pose_rel",
+        # command_type="pose_rel",
+        command_type = "pose_rel",
         ik_method="dls",
         position_command_scale=(0.1, 0.1, 0.1),
         rotation_command_scale=(0.1, 0.1, 0.1),
@@ -226,11 +235,11 @@ class ControlCfg:
 
 @configclass
 class PushEnvCfg(IsaacEnvCfg):
-    """Configuration for the Lift environment."""
+    """Configuration for the push environment."""
 
     # General Settings
     env: EnvCfg = EnvCfg(num_envs=4096, env_spacing=2.5, episode_length_s=5.0)
-    viewer: ViewerCfg = ViewerCfg(debug_vis=True, eye=(7.5, 7.5, 7.5), lookat=(0.0, 0.0, 0.0))
+    viewer: ViewerCfg = ViewerCfg(debug_vis=False, eye=(7.5, 7.5, 7.5), lookat=(0.0, 0.0, 0.0))
     # Physics settings
     sim: SimCfg = SimCfg(
         dt=0.01,
@@ -263,3 +272,9 @@ class PushEnvCfg(IsaacEnvCfg):
 
     # Controller settings
     control: ControlCfg = ControlCfg()
+    # Camera settings
+    camera: CameraCfg = CameraCfg()
+    YCBdata: YCBobjectsCfg = YCBobjectsCfg()
+    # resolution of the occupancy grid
+    og_resolution: occupancy_grid_resolution = occupancy_grid_resolution()
+    

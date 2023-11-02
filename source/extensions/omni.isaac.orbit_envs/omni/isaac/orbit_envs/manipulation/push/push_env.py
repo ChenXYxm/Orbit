@@ -8,7 +8,9 @@ import math
 import torch
 from typing import List
 import numpy as np
+import open3d as o3d
 import omni.isaac.core.utils.prims as prim_utils
+from omni.isaac.orbit.sensors.camera.utils import create_pointcloud_from_rgbd
 
 import omni.isaac.orbit.utils.kit as kit_utils
 from omni.isaac.orbit.controllers.differential_inverse_kinematics import DifferentialInverseKinematics
@@ -18,19 +20,16 @@ from omni.isaac.orbit.robots.single_arm import SingleArmManipulator
 from omni.isaac.orbit.utils.dict import class_to_dict
 from omni.isaac.orbit.utils.math import quat_inv, quat_mul, random_orientation, sample_uniform, scale_transform
 from omni.isaac.orbit.utils.mdp import ObservationManager, RewardManager
-
-from omni.isaac.orbit_envs.isaac_env import IsaacEnv, VecEnvIndices, VecEnvObs
-
-from .push_cfg import PushEnvCfg, RandomizationCfg,YCBobjectsCfg, CameraCfg
-
-from omni.isaac.orbit.utils.assets import ISAAC_NUCLEUS_DIR
-from omni.isaac.core.objects import FixedCuboid
 from omni.isaac.orbit.sensors.camera import Camera
+from omni.isaac.orbit_envs.isaac_env import IsaacEnv, VecEnvIndices, VecEnvObs
+from omni.isaac.core.objects import FixedCuboid
+from .push_cfg import PushEnvCfg, RandomizationCfg, YCBobjectsCfg, CameraCfg
+from omni.isaac.orbit.utils.assets import ISAAC_NUCLEUS_DIR
+from omni.isaac.core.prims import RigidPrim,GeometryPrim
 from omni.isaac.orbit.utils.math import convert_quat
 import scipy.spatial.transform as tf
-from omni.isaac.core.prims import RigidPrim,GeometryPrim
 class PushEnv(IsaacEnv):
-    """Environment for pushing object on table with a single-arm manipulator."""
+    """Environment for lifting an object off a table with a single-arm manipulator."""
 
     def __init__(self, cfg: PushEnvCfg = None, **kwargs):
         # copy configuration
@@ -40,7 +39,7 @@ class PushEnv(IsaacEnv):
         self._pre_process_cfg()
         # create classes (these are called by the function :meth:`_design_scene`)
         self.robot = SingleArmManipulator(cfg=self.cfg.robot)
-        # self.object = RigidObject(cfg=self.cfg.object)
+        self.object = RigidObject(cfg=self.cfg.object)
 
         # initialize the base class to setup the scene.
         super().__init__(self.cfg, **kwargs)
@@ -61,81 +60,68 @@ class PushEnv(IsaacEnv):
 
         # compute the observation space: arm joint state + ee-position + goal-position + actions
         num_obs = self._observation_manager.group_obs_dim["policy"][0]
+        # print("num_obs")
+        # print(num_obs)
         self.observation_space = gym.spaces.Box(low=-math.inf, high=math.inf, shape=(num_obs,))
         # compute the action space
         self.action_space = gym.spaces.Box(low=-1.0, high=1.0, shape=(self.num_actions,))
         print("[INFO]: Completed setting up the environment...")
-
+        # flag to check whether the new object is placed or not
+        self.success_place = False
         # Take an initial step to initialize the scene.
         # This is required to compute quantities like Jacobians used in step().
         self.sim.step()
         # -- fill up buffers
         self.object.update_buffers(self.dt)
         self.robot.update_buffers(self.dt)
-
+        self.obj_list = []
     """
     Implementation specifics.
     """
-
+    
     def _design_scene(self) -> List[str]:
         # ground plane
         kit_utils.create_ground_plane("/World/defaultGroundPlane", z_position=-.5)
         # table
-        Table = FixedCuboid(prim_path=self.template_env_ns + "/Table",position=(0,0,-0.25),scale=(1,0.6,0.5))
-        sideTable = FixedCuboid(prim_path=self.template_env_ns + "/sideTable",position=(0.35,-0.9,-0.3),scale=(0.4,0.4,0.4))
         # prim_utils.create_prim(self.template_env_ns + "/Table", usd_path=self.cfg.table.usd_path)
+        # prim_utils.create_prim(self.template_env_ns + "/Table", usd_path=self.cfg.table.table_path,position=(0,0,-0.25),scale=(1,0.6,0.5))
+        # Table = GeometryPrim(self.template_env_ns + "/Table",collision=True)
+        # Table = RigidPrim(self.template_env_ns + "/Table",mass=100000)
+        self.Table = FixedCuboid(self.template_env_ns + "/Table",position=(0,0,-0.25),scale=(1,0.6,0.5))
+        self.Table.set_collision_enabled(True)
+        self.Table.set_collision_approximation("convexHull")
+        # prim_utils.create_prim(self.template_env_ns + "/sideTable", usd_path=self.cfg.table.table_path,position=(0.35,-0.9,-0.3),scale=(0.4,0.4,0.4))
+        # sideTable = GeometryPrim(self.template_env_ns + "/sideTable",collision=True)
+        # sideTable = RigidPrim(self.template_env_ns + "/sideTable",mass=10000)
+        self.sideTable = FixedCuboid(self.template_env_ns + "/sideTable",position=(0.35,-0.9,-0.3),scale=(0.4,0.4,0.4))
+        self.sideTable.set_collision_enabled(True)
+        self.sideTable.set_collision_approximation("convexHull")
+        prim_utils.create_prim(self.template_env_ns + "/Robotbase", usd_path=self.cfg.table.table_path,position=(0,-0.45,-0.25),scale=(0.3,0.26,0.5))
+        # GeometryPrim(self.template_env_ns + "/Robotbase",collision=True)
+        # RigidPrim(self.template_env_ns + "/Robotbase",mass=10000)
         # robot
         self.robot.spawn(self.template_env_ns + "/Robot",translation=(0.0, -.45, 0))
         # object
         self.object.spawn(self.template_env_ns + "/Object")
-        ##################### camera
-        self.camera = Camera(cfg=CameraCfg.camera_cfg, device=self.device)
-        self.hand_camera = Camera(cfg=CameraCfg.camera_cfg,device=self.device)
-        self.hand_camera.spawn(self.template_env_ns +"/hand_camera")
+        # camera
+        position_camera = [0, 0, 1.7]
+        orientation = [1, 0, 0, 0]
+        position_handcamera = [0.35,-0.9,0.8]
+        self.camera = Camera(cfg=self.cfg.camera.camera_cfg, device='cuda')
+        self.hand_camera = Camera(cfg=self.cfg.camera.camera_cfg,device='cuda')
+        # hand_camera.spawn("/World/Robot/panda_hand/hand_camera", translation=(0.1, 0.0, 0.0),orientation=(0,0,1,0))
+        self.hand_camera.spawn(self.template_env_ns + "/hand_camera",translation=position_handcamera,orientation=orientation)
         # Spawn camera
-        self.camera.spawn(self.template_env_ns +"/CameraSensor")
-        position = [0, 0, 2.]
-        orientation = [0, 0, -1, 0]
-        self.camera.set_world_pose_ros(position, orientation)
-        self.hand_camera.set_world_pose_ros([0.35,-0.9,0.8], orientation)
-        ##################### load ycb
-        self.obj_dict = dict()
-        self.ycb_name = YCBobjectsCfg.ycb_name
-        self.ycb_usd_paths = YCBobjectsCfg.ycb_usd_paths
-        for _ in range(1):
-            randi = np.random.randint(0,len(self.ycb_name))
-            angle = np.random.randint(0,180)
-            # angle = 0
-            key_ori = self.ycb_name[randi]
-            # key_ori = "mug"
-            usd_path = self.ycb_usd_paths[key_ori]
-            if key_ori not in self.obj_dict:
-                self.obj_dict[key_ori] = 1
-            else:
-                self.obj_dict[key_ori] +=1
-            key = key_ori+str(self.obj_dict[key_ori])
-            translation = torch.rand(3).tolist()
-            translation = [-translation[0]*0.3+0.2,-0.45*translation[1]-0.3,-0.2]
-            # translation = [0,0,0.2]
-            print(translation,angle,key_ori)
-            rot = convert_quat(tf.Rotation.from_euler("XYZ", (0,0,angle), degrees=True).as_quat(), to="wxyz")
-            if key_ori in ["mug","tomatoSoupCan","pitcherBase","tunaFishCan","bowl","banana"]:
-                rot = convert_quat(tf.Rotation.from_euler("XYZ", (-90,angle,0), degrees=True).as_quat(), to="wxyz")
-            prim_utils.create_prim(self.template_env_ns +"/"+key, usd_path=usd_path, translation=translation,orientation=rot)
-            GeometryPrim(self.template_env_ns +"/"+key,collision=True)
-            RigidPrim(self.template_env_ns +"/"+key,mass=0.3)
-        
-            for _ in range(30):
-                self.sim.step()
+        self.camera.spawn(self.template_env_ns + "/CameraSensor",translation=position_camera,orientation=orientation)
         # setup debug visualization
         if self.cfg.viewer.debug_vis and self.enable_render:
             # create point instancer to visualize the goal points
-            self._goal_markers = StaticMarker(
-                "/Visuals/object_goal",
-                self.num_envs,
-                usd_path=self.cfg.goal_marker.usd_path,
-                scale=self.cfg.goal_marker.scale,
-            )
+            # self._goal_markers = StaticMarker(
+            #     "/Visuals/object_goal",
+            #     self.num_envs,
+            #     usd_path=self.cfg.goal_marker.usd_path,
+            #     scale=self.cfg.goal_marker.scale,
+            # )
             # create marker for viewing end-effector pose
             self._ee_markers = StaticMarker(
                 "/Visuals/ee_current",
@@ -151,18 +137,21 @@ class PushEnv(IsaacEnv):
                     usd_path=self.cfg.frame_marker.usd_path,
                     scale=self.cfg.frame_marker.scale,
                 )
+        self._randomize_table_scene()        
         # return list of global prims
         return ["/World/defaultGroundPlane"]
-
+    
     def _reset_idx(self, env_ids: VecEnvIndices):
         # randomize the MDP
         # -- robot DOF state
         dof_pos, dof_vel = self.robot.get_default_dof_state(env_ids=env_ids)
         self.robot.set_dof_state(dof_pos, dof_vel, env_ids=env_ids)
         # -- object pose
+        self.env_obj = dict()
         self._randomize_object_initial_pose(env_ids=env_ids, cfg=self.cfg.randomization.object_initial_pose)
         # -- goal pose
         self._randomize_object_desired_pose(env_ids=env_ids, cfg=self.cfg.randomization.object_desired_pose)
+        
 
         # -- Reward logging
         # fill extras with episode information
@@ -170,6 +159,8 @@ class PushEnv(IsaacEnv):
         # reset
         # -- rewards manager: fills the sums for terminated episodes
         self._reward_manager.reset_idx(env_ids, self.extras["episode"])
+        # print("env_ids")
+        # print(env_ids)
         # -- obs manager
         self._observation_manager.reset_idx(env_ids)
         # -- reset history
@@ -278,11 +269,31 @@ class PushEnv(IsaacEnv):
         # play the simulator to activate physics handles
         # note: this activates the physics simulation view that exposes TensorAPIs
         self.sim.reset()
-
+        
         # define views over instances
         self.robot.initialize(self.env_ns + "/.*/Robot")
         self.object.initialize(self.env_ns + "/.*/Object")
-
+        print("camera")
+        print(self.camera)
+        self.camera.initialize()
+        self.hand_camera.initialize()
+        self.camera.update(self.dt)
+        self.hand_camera.update(self.dt)
+        self.cams = [self.camera] + [Camera(cfg=self.cfg.camera.camera_cfg,device='cpu') for _ in range(self.num_envs - 1)]
+        self.hand_cams = [self.hand_camera] + [Camera(cfg=self.cfg.camera.camera_cfg, device = 'cpu') for _ in range(self.num_envs - 1)]
+        self.get_pcd(self.camera)
+        # for i in range(self.num_envs):
+        #    self.cams[i].initialize(self.env_ns + f"/env_{i}/CameraSensor/Camera")
+        #    env_pos = np.array(self.envs_positions[i].cpu().numpy())
+        #    self.cams[i].set_world_pose_from_view(eye=np.array([0, 0, 1.8]) + env_pos, target=np.array([0, 0, 0]) + env_pos)
+        #    self.cams[i].update(self.dt)
+        #    self.hand_cams[i].initialize(self.env_ns + f"/env_{i}/hand_camera/Camera")
+        # #    env_pos = np.array(self.envs_positions[i].cpu().numpy())
+        #    self.hand_cams[i].set_world_pose_from_view(eye=np.array([0.35,-0.9,0.8]) + env_pos, target=np.array([0.35, -0.9, 0]) + env_pos)
+        #    self.hand_cams[i].update(self.dt)
+        
+        # self.camera.initialize(self.env_ns + "/.*/CameraSensor/Camera")
+        # self.hand_camera.initialize(self.env_ns + "/.*/hand_camera")
         # create controller
         if self.cfg.control.control_type == "inverse_kinematics":
             self._ik_controller = DifferentialInverseKinematics(
@@ -303,12 +314,29 @@ class PushEnv(IsaacEnv):
         self.object_root_pose_ee = torch.zeros((self.num_envs, 7), device=self.device)
         # time-step = 0
         self.object_init_pose_w = torch.zeros((self.num_envs, 7), device=self.device)
-
+    def get_pcd(self,camera):
+        camera.update(dt=0.0)
+        pointcloud_w, pointcloud_rgb = create_pointcloud_from_rgbd(
+                camera.data.intrinsic_matrix,
+                depth=camera.data.output["distance_to_image_plane"],
+                rgb=camera.data.output["rgb"],
+                position=camera.data.position,
+                orientation=camera.data.orientation,
+                normalize_rgb=True,
+                num_channels=4,
+        )
+        if not isinstance(pointcloud_w, np.ndarray):
+            pointcloud_w = pointcloud_w.cpu().numpy()
+        pcd = o3d.geometry.PointCloud()
+        pcd.points = o3d.utility.Vector3dVector(pointcloud_w)
+        o3d.visualization.draw_geometries([pcd])
+        return pcd
+    
     def _debug_vis(self):
         """Visualize the environment in debug mode."""
         # apply to instance manager
         # -- goal
-        self._goal_markers.set_world_poses(self.object_des_pose_w[:, 0:3], self.object_des_pose_w[:, 3:7])
+        # self._goal_markers.set_world_poses(self.object_des_pose_w[:, 0:3], self.object_des_pose_w[:, 3:7])
         # -- end-effector
         self._ee_markers.set_world_poses(self.robot.data.ee_state_w[:, 0:3], self.robot.data.ee_state_w[:, 3:7])
         # -- task-space commands
@@ -339,9 +367,48 @@ class PushEnv(IsaacEnv):
         # -- episode length
         if self.cfg.terminations.episode_timeout:
             self.reset_buf = torch.where(self.episode_length_buf >= self.max_episode_length, 1, self.reset_buf)
+    # def take_image(self,env_ids:torch.Tensor):
 
+
+    def _randomize_table_scene(self):
+        
+        
+        ycb_usd_paths = self.cfg.YCBdata.ycb_usd_paths
+        ycb_name = self.cfg.YCBdata.ycb_name
+        self.obj_dict = dict()
+        num_obj = np.random.randint(1,5)
+        if num_obj >=1:
+            for _ in range(num_obj):
+                randi = np.random.randint(0,len(ycb_name))
+                angle = np.random.randint(0,180)
+                # angle = 0
+                key_ori = ycb_name[randi]
+                # key_ori = "mug"
+                usd_path = ycb_usd_paths[key_ori]
+                if key_ori not in self.obj_dict:
+                    self.obj_dict[key_ori] = 1
+                else:
+                    self.obj_dict[key_ori] +=1
+                key = key_ori+str(self.obj_dict[key_ori])
+                translation = torch.rand(3).tolist()
+                translation = [translation[0]*0.8-0.4,0.45*translation[1]-0.225,0.1]
+                # translation = [0,0,0.2]
+                print(translation,angle,key_ori)
+                rot = convert_quat(tf.Rotation.from_euler("XYZ", (0,0,angle), degrees=True).as_quat(), to="wxyz")
+                if key_ori in ["mug","tomatoSoupCan","pitcherBase","tunaFishCan","bowl","banana"]:
+                    rot = convert_quat(tf.Rotation.from_euler("XYZ", (-90,angle,0), degrees=True).as_quat(), to="wxyz")
+                prim_utils.create_prim(self.template_env_ns+f"/{key}",usd_path=usd_path, translation=translation,orientation=rot)
+                GeometryPrim(self.template_env_ns+f"/{key}",collision=True).set_collision_approximation("convexHull")
+                RigidPrim(self.template_env_ns+f"/{key}",mass=0.3)
+                # prim_utils.create_prim(f"/World/Objects/{key}", usd_path=usd_path, translation=translation,orientation=rot)
+                # GeometryPrim(f"/World/Objects/{key}",collision=True)
+                # RigidPrim(f"/World/Objects/{key}",mass=0.3)
+                for _ in range(50):
+                    self.sim.step()
+    
     def _randomize_object_initial_pose(self, env_ids: torch.Tensor, cfg: RandomizationCfg.ObjectInitialPoseCfg):
         """Randomize the initial pose of the object."""
+        
         # get the default root state
         root_state = self.object.get_default_root_state(env_ids)
         # -- object root position
@@ -370,6 +437,9 @@ class PushEnv(IsaacEnv):
         # set the root state
         self.object.set_root_state(root_state, env_ids=env_ids)
 
+    def _get_table_scene(self,env_ids:torch.Tensor):
+        
+        return 0
     def _randomize_object_desired_pose(self, env_ids: torch.Tensor, cfg: RandomizationCfg.ObjectDesiredPoseCfg):
         """Randomize the desired pose of the object."""
         # -- desired object root position
@@ -399,113 +469,149 @@ class PushEnv(IsaacEnv):
 
 
 class PushObservationManager(ObservationManager):
-    """Observation manager for single-arm pushing environment."""
+    """Reward manager for single-arm reaching environment."""
     def table_scene(self,env:PushEnv):
-        return env.table_scene_now.copy()
-    def new_object(self,env:PushEnv):
-        return env.new_object.copy()
-    # def arm_dof_pos(self, env: PushEnv):
-    #     """DOF positions for the arm."""
-    #     return env.robot.data.arm_dof_pos
+        return env.tabletop_og
+    def new_obj_mask(self,env:PushEnv):
+        return env.new_obj_mask
+    def arm_dof_pos(self, env: PushEnv):
+        """DOF positions for the arm."""
+        return env.robot.data.arm_dof_pos
 
-    # def arm_dof_pos_scaled(self, env: PushEnv):
-    #     """DOF positions for the arm normalized to its max and min ranges."""
-    #     return scale_transform(
-    #         env.robot.data.arm_dof_pos,
-    #         env.robot.data.soft_dof_pos_limits[:, : env.robot.arm_num_dof, 0],
-    #         env.robot.data.soft_dof_pos_limits[:, : env.robot.arm_num_dof, 1],
-    #     )
+    def arm_dof_pos_scaled(self, env: PushEnv):
+        """DOF positions for the arm normalized to its max and min ranges."""
+        return scale_transform(
+            env.robot.data.arm_dof_pos,
+            env.robot.data.soft_dof_pos_limits[:, : env.robot.arm_num_dof, 0],
+            env.robot.data.soft_dof_pos_limits[:, : env.robot.arm_num_dof, 1],
+        )
 
-    # def arm_dof_vel(self, env: PushEnv):
-    #     """DOF velocity of the arm."""
-    #     return env.robot.data.arm_dof_vel
+    def arm_dof_vel(self, env: PushEnv):
+        """DOF velocity of the arm."""
+        return env.robot.data.arm_dof_vel
 
-    # def tool_dof_pos_scaled(self, env: PushEnv):
-    #     """DOF positions of the tool normalized to its max and min ranges."""
-    #     return scale_transform(
-    #         env.robot.data.tool_dof_pos,
-    #         env.robot.data.soft_dof_pos_limits[:, env.robot.arm_num_dof :, 0],
-    #         env.robot.data.soft_dof_pos_limits[:, env.robot.arm_num_dof :, 1],
-    #     )
+    def tool_dof_pos_scaled(self, env: PushEnv):
+        """DOF positions of the tool normalized to its max and min ranges."""
+        return scale_transform(
+            env.robot.data.tool_dof_pos,
+            env.robot.data.soft_dof_pos_limits[:, env.robot.arm_num_dof :, 0],
+            env.robot.data.soft_dof_pos_limits[:, env.robot.arm_num_dof :, 1],
+        )
 
-    # def tool_positions(self, env: PushEnv):
-    #     """Current end-effector position of the arm."""
-    #     return env.robot.data.ee_state_w[:, :3] - env.envs_positions
+    def tool_positions(self, env: PushEnv):
+        """Current end-effector position of the arm."""
+        return env.robot.data.ee_state_w[:, :3] - env.envs_positions
 
-    # def tool_orientations(self, env: PushEnv):
-    #     """Current end-effector orientation of the arm."""
-    #     # make the first element positive
-    #     quat_w = env.robot.data.ee_state_w[:, 3:7]
-    #     quat_w[quat_w[:, 0] < 0] *= -1
-    #     return quat_w
+    def tool_orientations(self, env: PushEnv):
+        """Current end-effector orientation of the arm."""
+        # make the first element positive
+        quat_w = env.robot.data.ee_state_w[:, 3:7]
+        quat_w[quat_w[:, 0] < 0] *= -1
+        return quat_w
 
-    # def object_positions(self, env: PushEnv):
-    #     """Current object position."""
-    #     return env.object.data.root_pos_w - env.envs_positions
+    def object_positions(self, env: PushEnv):
+        """Current object position."""
+        return env.object.data.root_pos_w - env.envs_positions
 
-    # def object_orientations(self, env: PushEnv):
-    #     """Current object orientation."""
-    #     # make the first element positive
-    #     quat_w = env.object.data.root_quat_w
-    #     quat_w[quat_w[:, 0] < 0] *= -1
-    #     return quat_w
+    def object_orientations(self, env: PushEnv):
+        """Current object orientation."""
+        # make the first element positive
+        quat_w = env.object.data.root_quat_w
+        quat_w[quat_w[:, 0] < 0] *= -1
+        return quat_w
 
-    # def object_relative_tool_positions(self, env: PushEnv):
-    #     """Current object position w.r.t. end-effector frame."""
-    #     return env.object.data.root_pos_w - env.robot.data.ee_state_w[:, :3]
+    def object_relative_tool_positions(self, env:PushEnv):
+        """Current object position w.r.t. end-effector frame."""
+        return env.object.data.root_pos_w - env.robot.data.ee_state_w[:, :3]
 
-    # def object_relative_tool_orientations(self, env: PushEnv):
-    #     """Current object orientation w.r.t. end-effector frame."""
-    #     # compute the relative orientation
-    #     quat_ee = quat_mul(quat_inv(env.robot.data.ee_state_w[:, 3:7]), env.object.data.root_quat_w)
-    #     # make the first element positive
-    #     quat_ee[quat_ee[:, 0] < 0] *= -1
-    #     return quat_ee
+    def object_relative_tool_orientations(self, env: PushEnv):
+        """Current object orientation w.r.t. end-effector frame."""
+        # compute the relative orientation
+        quat_ee = quat_mul(quat_inv(env.robot.data.ee_state_w[:, 3:7]), env.object.data.root_quat_w)
+        # make the first element positive
+        quat_ee[quat_ee[:, 0] < 0] *= -1
+        return quat_ee
 
-    # def object_desired_positions(self, env: PushEnv):
-    #     """Desired object position."""
-    #     return env.object_des_pose_w[:, 0:3] - env.envs_positions
+    def object_desired_positions(self, env: PushEnv):
+        """Desired object position."""
+        return env.object_des_pose_w[:, 0:3] - env.envs_positions
 
-    # def object_desired_orientations(self, env: PushEnv):
-    #     """Desired object orientation."""
-    #     # make the first element positive
-    #     quat_w = env.object_des_pose_w[:, 3:7]
-    #     quat_w[quat_w[:, 0] < 0] *= -1
-    #     return quat_w
+    def object_desired_orientations(self, env: PushEnv):
+        """Desired object orientation."""
+        # make the first element positive
+        quat_w = env.object_des_pose_w[:, 3:7]
+        quat_w[quat_w[:, 0] < 0] *= -1
+        return quat_w
 
-    # def arm_actions(self, env: PushEnv):
-    #     """Last arm actions provided to env."""
-    #     return env.actions[:, :-1]
+    def arm_actions(self, env: PushEnv):
+        """Last arm actions provided to env."""
+        return env.actions[:, :-1]
 
-    # def tool_actions(self, env: PushEnv):
-    #     """Last tool actions provided to env."""
-    #     return env.actions[:, -1].unsqueeze(1)
+    def tool_actions(self, env: PushEnv):
+        """Last tool actions provided to env."""
+        return env.actions[:, -1].unsqueeze(1)
 
-    # def tool_actions_bool(self, env: PushEnv):
-    #     """Last tool actions transformed to a boolean command."""
-    #     return torch.sign(env.actions[:, -1]).unsqueeze(1)
+    def tool_actions_bool(self, env: PushEnv):
+        """Last tool actions transformed to a boolean command."""
+        return torch.sign(env.actions[:, -1]).unsqueeze(1)
 
 
 class PushRewardManager(RewardManager):
-    """Reward manager for single-arm object pushing environment."""
+    """Reward manager for single-arm object lifting environment."""
 
-    def successful_placing(self, env: PushEnv):
-        if env.place_flag:
-            return 1
-        else:
-            return 0
-    def pushing_change_tablescene(self, env: PushEnv):
-        if (np.min(env.table_scene_pre.copy()-env.table_scene_now.copy())<0 or
-            np.max(env.table_scene_pre.copy()-env.table_scene_now.copy())>0):
-            return 0.1
-        else:
-            return 0
-    
+    def reaching_object_position_l2(self, env: PushEnv):
+        """Penalize end-effector tracking position error using L2-kernel."""
+        return torch.sum(torch.square(env.robot.data.ee_state_w[:, 0:3] - env.object.data.root_pos_w), dim=1)
 
-    def penalizing_fallen_object(self, env: PushEnv):
+    def reaching_object_position_exp(self, env: PushEnv, sigma: float):
+        """Penalize end-effector tracking position error using exp-kernel."""
+        error = torch.sum(torch.square(env.robot.data.ee_state_w[:, 0:3] - env.object.data.root_pos_w), dim=1)
+        return torch.exp(-error / sigma)
+
+    def reaching_object_position_tanh(self, env: PushEnv, sigma: float):
+        """Penalize tool sites tracking position error using tanh-kernel."""
+        # distance of end-effector to the object: (num_envs,)
+        ee_distance = torch.norm(env.robot.data.ee_state_w[:, 0:3] - env.object.data.root_pos_w, dim=1)
+        # distance of the tool sites to the object: (num_envs, num_tool_sites)
+        object_root_pos = env.object.data.root_pos_w.unsqueeze(1)  # (num_envs, 1, 3)
+        tool_sites_distance = torch.norm(env.robot.data.tool_sites_state_w[:, :, :3] - object_root_pos, dim=-1)
+        # average distance of the tool sites to the object: (num_envs,)
+        # note: we add the ee distance to the average to make sure that the ee is always closer to the object
+        num_tool_sites = tool_sites_distance.shape[1]
+        average_distance = (ee_distance + torch.sum(tool_sites_distance, dim=1)) / (num_tool_sites + 1)
+
+        return 1 - torch.tanh(average_distance / sigma)
+
+    def penalizing_arm_dof_velocity_l2(self, env: PushEnv):
         """Penalize large movements of the robot arm."""
-        for i in env.table_objs:
-            pos = i.get_local_pose()
-            if pos[0][2]<-0.05:
-                return -1
-        return 0
+        return -torch.sum(torch.square(env.robot.data.arm_dof_vel), dim=1)
+
+    def penalizing_tool_dof_velocity_l2(self, env: PushEnv):
+        """Penalize large movements of the robot tool."""
+        return -torch.sum(torch.square(env.robot.data.tool_dof_vel), dim=1)
+
+    def penalizing_arm_action_rate_l2(self, env: PushEnv):
+        """Penalize large variations in action commands besides tool."""
+        return -torch.sum(torch.square(env.actions[:, :-1] - env.previous_actions[:, :-1]), dim=1)
+
+    def penalizing_tool_action_l2(self, env: PushEnv):
+        """Penalize large values in action commands for the tool."""
+        return -torch.square(env.actions[:, -1])
+
+    def tracking_object_position_exp(self, env: PushEnv, sigma: float, threshold: float):
+        """Penalize tracking object position error using exp-kernel."""
+        # distance of the end-effector to the object: (num_envs,)
+        error = torch.sum(torch.square(env.object_des_pose_w[:, 0:3] - env.object.data.root_pos_w), dim=1)
+        # rewarded if the object is lifted above the threshold
+        return (env.object.data.root_pos_w[:, 2] > threshold) * torch.exp(-error / sigma)
+
+    def tracking_object_position_tanh(self, env: PushEnv, sigma: float, threshold: float):
+        """Penalize tracking object position error using tanh-kernel."""
+        # distance of the end-effector to the object: (num_envs,)
+        distance = torch.norm(env.object_des_pose_w[:, 0:3] - env.object.data.root_pos_w, dim=1)
+        # rewarded if the object is lifted above the threshold
+        return (env.object.data.root_pos_w[:, 2] > threshold) * (1 - torch.tanh(distance / sigma))
+
+    def lifting_object_success(self, env: PushEnv, threshold: float):
+        """Sparse reward if object is lifted successfully."""
+        return torch.where(env.object.data.root_pos_w[:, 2] > threshold, 1.0, 0.0)

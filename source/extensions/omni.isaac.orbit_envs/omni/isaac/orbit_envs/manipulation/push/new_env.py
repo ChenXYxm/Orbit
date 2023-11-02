@@ -7,7 +7,7 @@
 
 """Launch Isaac Sim Simulator first."""
 
-import pickle
+
 import argparse
 
 from omni.isaac.kit import SimulationApp
@@ -56,34 +56,14 @@ from omni.isaac.orbit.objects.rigid import RigidObject, RigidObjectCfg
 from omni.isaac.orbit.utils.math import convert_quat
 import scipy.spatial.transform as tf
 from shapely import Polygon, STRtree, area, contains
-from omni.isaac.orbit_envs.isaac_env_cfg import EnvCfg, IsaacEnvCfg, PhysxCfg, SimCfg, ViewerCfg
 
-import carb
+
 #################
 from place_new_obj import place_new_obj_fun
 """
 Main
 """
-class sim_cfg:
-    sim: SimCfg = SimCfg(
-            dt=0.01,
-            substeps=4,
-            physx=PhysxCfg(
-                # num_position_iterations=8,
-                gpu_max_rigid_contact_count=1024**2*2,
-                gpu_max_rigid_patch_count=160*2048*10, #160*2048*10,
-                gpu_found_lost_pairs_capacity = 1024 * 1024 * 2 * 1, #1024 * 1024 * 2 * 8,
-                gpu_found_lost_aggregate_pairs_capacity=1024 * 1024 * 32 * 1, #1024 * 1024 * 32,
-                gpu_total_aggregate_pairs_capacity=1024 * 1024 * 2 *1, #1024 * 1024 * 2 * 8
-                friction_correlation_distance=0.0025,
-                friction_offset_threshold=0.04,
-                bounce_threshold_velocity=0.5,
-                gpu_max_num_partitions=8,
-                
-                
-            ),
-            
-        )
+
 
 def point_cloud_process(pcd):
 
@@ -96,47 +76,17 @@ def point_cloud_process(pcd):
                                          num_iterations=1000)
     print(plane_model)
     return plane_model
-def _configure_simulation_flags( sim_params: dict = None):
-        """Configure simulation flags and extensions at load and run time."""
-        # acquire settings interface
-        carb_settings_iface = carb.settings.get_settings()
-        # enable hydra scene-graph instancing
-        # note: this allows rendering of instanceable assets on the GUI
-        carb_settings_iface.set_bool("/persistent/omnihydra/useSceneGraphInstancing", True)
-        # change dispatcher to use the default dispatcher in PhysX SDK instead of carb tasking
-        # note: dispatcher handles how threads are launched for multi-threaded physics
-        carb_settings_iface.set_bool("/physics/physxDispatcher", True)
-        # disable contact processing in omni.physx if requested
-        # note: helpful when creating contact reporting over limited number of objects in the scene
-        if sim_params["disable_contact_processing"]:
-            carb_settings_iface.set_bool("/physics/disableContactProcessing", True)
+
 def main():
     """Spawns lights in the stage and sets the camera view."""
-    sim_params = sim_cfg.sim.to_dict()
-    if sim_params is not None:
-        if "physx" in sim_params:
-            physx_params = sim_params.pop("physx")
-            sim_params.update(physx_params)
-    # set flags for simulator
-    _configure_simulation_flags(sim_params)
-    # create a simulation context to control the simulator
-    sim = SimulationContext(
-        stage_units_in_meters=1.0,
-        physics_dt=0.01,
-        rendering_dt=1,
-        backend="torch",
-        sim_params=sim_params,
-        # physics_prim_path="/physicsScene",
-        device='cuda:0',
-    )
+
     # Load kit helper
-    # sim = SimulationContext(physics_dt=0.01, rendering_dt=1, backend="torch",device='cuda:0',)
+    sim = SimulationContext(physics_dt=0.01, rendering_dt=0.01, backend="torch",device='cuda:0')
     # Set main camera
     set_camera_view([0, 2, 3.], [0.0, 0.0, 0])
     # Enable GPU pipeline and flatcache
     if sim.get_physics_context().use_gpu_pipeline:
         sim.get_physics_context().enable_flatcache(True)
-    # PhysicsContext.set_gpu_total_aggregate_pairs_capacity(4000)
     # Enable hydra scene-graph instancing
     set_carb_setting(sim._settings, "/persistent/omnihydra/useSceneGraphInstancing", True)
 
@@ -166,8 +116,10 @@ def main():
     #################### create table 
     table_path = f"{ISAAC_NUCLEUS_DIR}/Props/Shapes/cube.usd"
     Table = FixedCuboid(prim_path="/World/Table",position=(0,0,-0.25),scale=(1,0.6,0.5))
+    Table.set_collision_approximation("convexHull")
     # Table.set_mass(10000000) 
     sideTable = FixedCuboid(prim_path="/World/sideTable",position=(0.35,-0.9,-0.3),scale=(0.4,0.4,0.4))
+    
     # sideTable.set_mass(10)
     #################### robot base
     prim_utils.create_prim("/World/Robotbase", usd_path=table_path,position=(0,-0.45,-0.2),scale=(0.3,0.26,0.4))
@@ -272,7 +224,6 @@ def main():
         for _ in range(30):
             sim.step()
     num_obj = np.random.randint(0,5)
-    table_obj_pos_rot = dict()
     if num_obj >=1:
         for _ in range(num_obj):
             randi = np.random.randint(0,len(ycb_name))
@@ -296,11 +247,6 @@ def main():
             prim_utils.create_prim(f"/World/Objects/{key}", usd_path=usd_path, translation=translation,orientation=rot)
             GeometryPrim(f"/World/Objects/{key}",collision=True)
             RigidPrim(f"/World/Objects/{key}",mass=0.3)
-            if key not in table_obj_pos_rot:
-                table_obj_pos_rot[key] = [(translation,rot)]
-            else:
-                table_obj_pos_rot[key].append((translation,rot))
-                # table_obj_pos_rot[key].append
             for _ in range(50):
                 sim.step()
     ##################################################################### 
@@ -471,34 +417,28 @@ def main():
                 #     occu_tmp[int(new_poly_vetices[i][1]),int(new_poly_vetices[i][0])] = 3
                 # plt.imshow(occu_tmp)
                 # plt.show()
+                
                 prim_utils.delete_prim(new_obj_path)
                 if obj_type in ["mug","tomatoSoupCan","pitcherBase","tunaFishCan","bowl","banana"]:
                     rot = convert_quat(tf.Rotation.from_euler("XYZ", (-90,np.rad2deg(new_obj_pos[2]),0), degrees=True).as_quat(), to="wxyz")
                 else:
                     rot = convert_quat(tf.Rotation.from_euler("XYZ", (0,0,-np.rad2deg(new_obj_pos[2])), degrees=True).as_quat(), to="wxyz")
-                # new_obj.set_default_state(position=[(50-new_obj_pos[1])*0.01,(new_obj_pos[0]-30)*0.01,0.2],orientation=rot)
                 
-                # new_obj.set_world_pose(position=[(50-new_obj_pos[1])*0.01,(new_obj_pos[0]-30)*0.01,0.2],orientation=rot)
-                # new_obj.initialize()
                 print(new_obj_pos)
                 translation = [(Nx/2-new_obj_pos[1])*1./Nx,(new_obj_pos[0]-Ny/2)*1./Nx,0.1]
                 print(translation)
                 usd_path = ycb_usd_paths[obj_type]
-                prim_utils.create_prim(new_obj_path, usd_path=usd_path, position=translation,orientation=rot)
-                new_obj = GeometryPrim(new_obj_path,collision=True)
-                RigidPrim(new_obj_path,mass=0.3)
-                if obj_type not in table_obj_pos_rot:
-                    table_obj_pos_rot[obj_type] = [(translation,rot)]
-                else:
-                    table_obj_pos_rot[obj_type].append((translation,rot))
+
+                # new_obj.set_default_state(position=[(50-new_obj_pos[1])*0.01,(new_obj_pos[0]-30)*0.01,0.2],orientation=rot)
+                
+                new_obj.set_world_pose(position=translation,orientation=rot)
+                new_obj.initialize()
+                
+                # prim_utils.create_prim(new_obj_path, usd_path=usd_path, position=translation,orientation=rot)
+                # new_obj = GeometryPrim(new_obj_path,collision=True)
+                # RigidPrim(new_obj_path,mass=0.3)
                 for _ in range(50):
                     sim.step
-            else:
-                f_save = open('dict_file.pkl','a')
-                pickle.dump(table_obj_pos_rot,f_save)
-                f_save.close()
-                break
-                
             # bbox = rep_annotator.get_data()
             # print(bbox)
         sim.step()
@@ -763,8 +703,6 @@ def bound_detect(occu):
 
 if __name__ == "__main__":
     # Run empty stage
-    # for i in range(3):
-        # simulation_app = SimulationApp(config)
-        main()
-        # Close the simulator
-        simulation_app.close()
+    main()
+    # Close the simulator
+    simulation_app.close()
