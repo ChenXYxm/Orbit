@@ -438,6 +438,9 @@ def main():
             v = v[v_ind]
             occupancy[v,u] = 1
             occupancy = np.fliplr(occupancy)
+            if len(table_obj_pos_rot)>=1:
+                if np.sum(occupancy)==0:
+                    break
             # plt.imshow(occupancy)
             # plt.show()
             #
@@ -494,7 +497,7 @@ def main():
                 for _ in range(50):
                     sim.step
             else:
-                f_save = open('dict_file.pkl','a')
+                f_save = open('generated_fulltablescene/dict_file.pkl','wb')
                 pickle.dump(table_obj_pos_rot,f_save)
                 f_save.close()
                 break
