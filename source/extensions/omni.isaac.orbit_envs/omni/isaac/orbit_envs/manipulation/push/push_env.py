@@ -40,7 +40,7 @@ class PushEnv(IsaacEnv):
         self._pre_process_cfg()
         # create classes (these are called by the function :meth:`_design_scene`)
         self.robot = SingleArmManipulator(cfg=self.cfg.robot)
-        self.object = RigidObject(cfg=self.cfg.object)
+        # self.object = RigidObject(cfg=self.cfg.object)
 
         # initialize the base class to setup the scene.
         super().__init__(self.cfg, **kwargs)
@@ -73,7 +73,7 @@ class PushEnv(IsaacEnv):
         # This is required to compute quantities like Jacobians used in step().
         self.sim.step()
         # -- fill up buffers
-        self.object.update_buffers(self.dt)
+        # self.object.update_buffers(self.dt)
         self.robot.update_buffers(self.dt)
         self.obj_list = []
     """
@@ -103,7 +103,7 @@ class PushEnv(IsaacEnv):
         # robot
         self.robot.spawn(self.template_env_ns + "/Robot",translation=(0.0, -.45, 0))
         # object
-        self.object.spawn(self.template_env_ns + "/Object")
+        # self.object.spawn(self.template_env_ns + "/Object")
         # camera
         position_camera = [0, 0, 1.7]
         orientation = [1, 0, 0, 0]
@@ -142,17 +142,24 @@ class PushEnv(IsaacEnv):
         self._set_table_scene()      
         # return list of global prims
         return ["/World/defaultGroundPlane"]
-    
+    def _del_objs(self):
+        if self.obj_dict is not None and self.obj_on_table is not None:
+            for i in range(self.num_envs):
+        #    self.cams[i].initialize(self.env_ns + f"/env_{i}/CameraSensor/Camera")
+                for _ in self.obj_on_table:
+                    prim_utils.delete_prim(self.env_ns + f"/env_{i}/table_obj/"+_)
     def _reset_idx(self, env_ids: VecEnvIndices):
         # randomize the MDP
         # -- robot DOF state
         dof_pos, dof_vel = self.robot.get_default_dof_state(env_ids=env_ids)
         self.robot.set_dof_state(dof_pos, dof_vel, env_ids=env_ids)
         # -- object pose
-        self.env_obj = dict()
-        self._randomize_object_initial_pose(env_ids=env_ids, cfg=self.cfg.randomization.object_initial_pose)
+        # self.env_obj = dict()
+        self._del_objs()
+        self._set_table_scene()  
+        # self._randomize_object_initial_pose(env_ids=env_ids, cfg=self.cfg.randomization.object_initial_pose)
         # -- goal pose
-        self._randomize_object_desired_pose(env_ids=env_ids, cfg=self.cfg.randomization.object_desired_pose)
+        # self._randomize_object_desired_pose(env_ids=env_ids, cfg=self.cfg.randomization.object_desired_pose)
         
 
         # -- Reward logging
@@ -207,7 +214,7 @@ class PushEnv(IsaacEnv):
         # post-step:
         # -- compute common buffers
         self.robot.update_buffers(self.dt)
-        self.object.update_buffers(self.dt)
+        # self.object.update_buffers(self.dt)
         # -- compute MDP signals
         # reward
         self.reward_buf = self._reward_manager.compute()
@@ -220,8 +227,8 @@ class PushEnv(IsaacEnv):
         # Note: this is used by algorithms like PPO where time-outs are handled differently
         self.extras["time_outs"] = self.episode_length_buf >= self.max_episode_length
         # -- add information to extra if task completed
-        object_position_error = torch.norm(self.object.data.root_pos_w - self.object_des_pose_w[:, 0:3], dim=1)
-        self.extras["is_success"] = torch.where(object_position_error < 0.02, 1, self.reset_buf)
+        # object_position_error = torch.norm(self.object.data.root_pos_w - self.object_des_pose_w[:, 0:3], dim=1)
+        self.extras["is_success"] = torch.where(torch.from_numpy(np.ones(self.num_envs)).to(self.device) < 0.02, 1, self.reset_buf)
         # -- update USD visualization
         if self.cfg.viewer.debug_vis and self.enable_render:
             self._debug_vis()
@@ -274,7 +281,7 @@ class PushEnv(IsaacEnv):
         
         # define views over instances
         self.robot.initialize(self.env_ns + "/.*/Robot")
-        self.object.initialize(self.env_ns + "/.*/Object")
+        # self.object.initialize(self.env_ns + "/.*/Object")
         print("camera")
         print(self.camera)
         # self.camera.initialize()
@@ -355,58 +362,58 @@ class PushEnv(IsaacEnv):
 
     def _check_termination(self) -> None:
         # access buffers from simulator
-        object_pos = self.object.data.root_pos_w - self.envs_positions
+        # object_pos = self.object.data.root_pos_w - self.envs_positions
         # extract values from buffer
         self.reset_buf[:] = 0
         # compute resets
         # -- when task is successful
-        if self.cfg.terminations.is_success:
-            object_position_error = torch.norm(self.object.data.root_pos_w - self.object_des_pose_w[:, 0:3], dim=1)
-            self.reset_buf = torch.where(object_position_error < 0.02, 1, self.reset_buf)
-        # -- object fell off the table (table at height: 0.0 m)
-        if self.cfg.terminations.object_falling:
-            self.reset_buf = torch.where(object_pos[:, 2] < -0.05, 1, self.reset_buf)
+        # if self.cfg.terminations.is_success:
+        #     object_position_error = torch.norm(self.object.data.root_pos_w - self.object_des_pose_w[:, 0:3], dim=1)
+        #     self.reset_buf = torch.where(object_position_error < 0.02, 1, self.reset_buf)
+        # # -- object fell off the table (table at height: 0.0 m)
+        # if self.cfg.terminations.object_falling:
+        #     self.reset_buf = torch.where(object_pos[:, 2] < -0.05, 1, self.reset_buf)
         # -- episode length
         if self.cfg.terminations.episode_timeout:
             self.reset_buf = torch.where(self.episode_length_buf >= self.max_episode_length, 1, self.reset_buf)
     # def take_image(self,env_ids:torch.Tensor):
 
 
-    def _randomize_table_scene(self):
+    # def _randomize_table_scene(self):
         
         
-        ycb_usd_paths = self.cfg.YCBdata.ycb_usd_paths
-        ycb_name = self.cfg.YCBdata.ycb_name
-        self.obj_dict = dict()
-        num_obj = np.random.randint(1,5)
-        if num_obj >=1:
-            for _ in range(num_obj):
-                randi = np.random.randint(0,len(ycb_name))
-                angle = np.random.randint(0,180)
-                # angle = 0
-                key_ori = ycb_name[randi]
-                # key_ori = "mug"
-                usd_path = ycb_usd_paths[key_ori]
-                if key_ori not in self.obj_dict:
-                    self.obj_dict[key_ori] = 1
-                else:
-                    self.obj_dict[key_ori] +=1
-                key = key_ori+str(self.obj_dict[key_ori])
-                translation = torch.rand(3).tolist()
-                translation = [translation[0]*0.8-0.4,0.45*translation[1]-0.225,0.1]
-                # translation = [0,0,0.2]
-                print(translation,angle,key_ori)
-                rot = convert_quat(tf.Rotation.from_euler("XYZ", (0,0,angle), degrees=True).as_quat(), to="wxyz")
-                if key_ori in ["mug","tomatoSoupCan","pitcherBase","tunaFishCan","bowl","banana"]:
-                    rot = convert_quat(tf.Rotation.from_euler("XYZ", (-90,angle,0), degrees=True).as_quat(), to="wxyz")
-                prim_utils.create_prim(self.template_env_ns+f"/{key}",usd_path=usd_path, translation=translation,orientation=rot)
-                GeometryPrim(self.template_env_ns+f"/{key}",collision=True).set_collision_approximation("convexHull")
-                RigidPrim(self.template_env_ns+f"/{key}",mass=0.3)
-                # prim_utils.create_prim(f"/World/Objects/{key}", usd_path=usd_path, translation=translation,orientation=rot)
-                # GeometryPrim(f"/World/Objects/{key}",collision=True)
-                # RigidPrim(f"/World/Objects/{key}",mass=0.3)
-                for _ in range(50):
-                    self.sim.step()
+    #     ycb_usd_paths = self.cfg.YCBdata.ycb_usd_paths
+    #     ycb_name = self.cfg.YCBdata.ycb_name
+    #     self.obj_dict = dict()
+    #     num_obj = np.random.randint(1,5)
+    #     if num_obj >=1:
+    #         for _ in range(num_obj):
+    #             randi = np.random.randint(0,len(ycb_name))
+    #             angle = np.random.randint(0,180)
+    #             # angle = 0
+    #             key_ori = ycb_name[randi]
+    #             # key_ori = "mug"
+    #             usd_path = ycb_usd_paths[key_ori]
+    #             if key_ori not in self.obj_dict:
+    #                 self.obj_dict[key_ori] = 1
+    #             else:
+    #                 self.obj_dict[key_ori] +=1
+    #             key = key_ori+str(self.obj_dict[key_ori])
+    #             translation = torch.rand(3).tolist()
+    #             translation = [translation[0]*0.8-0.4,0.45*translation[1]-0.225,0.1]
+    #             # translation = [0,0,0.2]
+    #             print(translation,angle,key_ori)
+    #             rot = convert_quat(tf.Rotation.from_euler("XYZ", (0,0,angle), degrees=True).as_quat(), to="wxyz")
+    #             if key_ori in ["mug","tomatoSoupCan","pitcherBase","tunaFishCan","bowl","banana"]:
+    #                 rot = convert_quat(tf.Rotation.from_euler("XYZ", (-90,angle,0), degrees=True).as_quat(), to="wxyz")
+    #             prim_utils.create_prim(self.template_env_ns+f"/{key}",usd_path=usd_path, translation=translation,orientation=rot)
+    #             GeometryPrim(self.template_env_ns+f"/{key}",collision=True).set_collision_approximation("convexHull")
+    #             RigidPrim(self.template_env_ns+f"/{key}",mass=0.3)
+    #             # prim_utils.create_prim(f"/World/Objects/{key}", usd_path=usd_path, translation=translation,orientation=rot)
+    #             # GeometryPrim(f"/World/Objects/{key}",collision=True)
+    #             # RigidPrim(f"/World/Objects/{key}",mass=0.3)
+    #             for _ in range(50):
+    #                 self.sim.step()
     
     def _randomize_object_initial_pose(self, env_ids: torch.Tensor, cfg: RandomizationCfg.ObjectInitialPoseCfg):
         """Randomize the initial pose of the object."""
@@ -454,6 +461,7 @@ class PushEnv(IsaacEnv):
         self.new_obj_mask = self.cfg.obj_mask.mask[env[1]]
         fileObject2.close()
         # print(env)
+        print(env[1])
         for _ in obj_pos_rot:
             for k in obj_pos_rot[_]:
                 # print(_)
@@ -509,7 +517,8 @@ class PushObservationManager(ObservationManager):
     def table_scene(self,env:PushEnv):
         return env.tabletop_og
     def new_obj_mask(self,env:PushEnv):
-        return env.new_obj_mask
+        print(env.new_obj_mask.shape)
+        return torch.from_numpy(env.new_obj_mask)
     def arm_dof_pos(self, env: PushEnv):
         """DOF positions for the arm."""
         return env.robot.data.arm_dof_pos
@@ -545,39 +554,39 @@ class PushObservationManager(ObservationManager):
         quat_w[quat_w[:, 0] < 0] *= -1
         return quat_w
 
-    def object_positions(self, env: PushEnv):
-        """Current object position."""
-        return env.object.data.root_pos_w - env.envs_positions
+    # def object_positions(self, env: PushEnv):
+    #     """Current object position."""
+    #     return env.object.data.root_pos_w - env.envs_positions
 
-    def object_orientations(self, env: PushEnv):
-        """Current object orientation."""
-        # make the first element positive
-        quat_w = env.object.data.root_quat_w
-        quat_w[quat_w[:, 0] < 0] *= -1
-        return quat_w
+    # def object_orientations(self, env: PushEnv):
+    #     """Current object orientation."""
+    #     # make the first element positive
+    #     quat_w = env.object.data.root_quat_w
+    #     quat_w[quat_w[:, 0] < 0] *= -1
+    #     return quat_w
 
-    def object_relative_tool_positions(self, env:PushEnv):
-        """Current object position w.r.t. end-effector frame."""
-        return env.object.data.root_pos_w - env.robot.data.ee_state_w[:, :3]
+    # def object_relative_tool_positions(self, env:PushEnv):
+    #     """Current object position w.r.t. end-effector frame."""
+    #     return env.object.data.root_pos_w - env.robot.data.ee_state_w[:, :3]
 
-    def object_relative_tool_orientations(self, env: PushEnv):
-        """Current object orientation w.r.t. end-effector frame."""
-        # compute the relative orientation
-        quat_ee = quat_mul(quat_inv(env.robot.data.ee_state_w[:, 3:7]), env.object.data.root_quat_w)
-        # make the first element positive
-        quat_ee[quat_ee[:, 0] < 0] *= -1
-        return quat_ee
+    # def object_relative_tool_orientations(self, env: PushEnv):
+    #     """Current object orientation w.r.t. end-effector frame."""
+    #     # compute the relative orientation
+    #     quat_ee = quat_mul(quat_inv(env.robot.data.ee_state_w[:, 3:7]), env.object.data.root_quat_w)
+    #     # make the first element positive
+    #     quat_ee[quat_ee[:, 0] < 0] *= -1
+    #     return quat_ee
 
-    def object_desired_positions(self, env: PushEnv):
-        """Desired object position."""
-        return env.object_des_pose_w[:, 0:3] - env.envs_positions
+    # def object_desired_positions(self, env: PushEnv):
+    #     """Desired object position."""
+    #     return env.object_des_pose_w[:, 0:3] - env.envs_positions
 
-    def object_desired_orientations(self, env: PushEnv):
-        """Desired object orientation."""
-        # make the first element positive
-        quat_w = env.object_des_pose_w[:, 3:7]
-        quat_w[quat_w[:, 0] < 0] *= -1
-        return quat_w
+    # def object_desired_orientations(self, env: PushEnv):
+    #     """Desired object orientation."""
+    #     # make the first element positive
+    #     quat_w = env.object_des_pose_w[:, 3:7]
+    #     quat_w[quat_w[:, 0] < 0] *= -1
+    #     return quat_w
 
     def arm_actions(self, env: PushEnv):
         """Last arm actions provided to env."""
@@ -595,22 +604,22 @@ class PushObservationManager(ObservationManager):
 class PushRewardManager(RewardManager):
     """Reward manager for single-arm object lifting environment."""
 
-    def reaching_object_position_l2(self, env: PushEnv):
-        """Penalize end-effector tracking position error using L2-kernel."""
-        return torch.sum(torch.square(env.robot.data.ee_state_w[:, 0:3] - env.object.data.root_pos_w), dim=1)
+    # def reaching_object_position_l2(self, env: PushEnv):
+    #     """Penalize end-effector tracking position error using L2-kernel."""
+    #     return torch.sum(torch.square(env.robot.data.ee_state_w[:, 0:3]), dim=1)
 
-    def reaching_object_position_exp(self, env: PushEnv, sigma: float):
-        """Penalize end-effector tracking position error using exp-kernel."""
-        error = torch.sum(torch.square(env.robot.data.ee_state_w[:, 0:3] - env.object.data.root_pos_w), dim=1)
-        return torch.exp(-error / sigma)
+    # def reaching_object_position_exp(self, env: PushEnv, sigma: float):
+    #     """Penalize end-effector tracking position error using exp-kernel."""
+    #     error = torch.sum(torch.square(env.robot.data.ee_state_w[:, 0:3]), dim=1)
+    #     return torch.exp(-error / sigma)
 
     def reaching_object_position_tanh(self, env: PushEnv, sigma: float):
         """Penalize tool sites tracking position error using tanh-kernel."""
         # distance of end-effector to the object: (num_envs,)
-        ee_distance = torch.norm(env.robot.data.ee_state_w[:, 0:3] - env.object.data.root_pos_w, dim=1)
+        ee_distance = torch.norm(env.robot.data.ee_state_w[:, 0:3], dim=1)
         # distance of the tool sites to the object: (num_envs, num_tool_sites)
-        object_root_pos = env.object.data.root_pos_w.unsqueeze(1)  # (num_envs, 1, 3)
-        tool_sites_distance = torch.norm(env.robot.data.tool_sites_state_w[:, :, :3] - object_root_pos, dim=-1)
+        # object_root_pos = env.object.data.root_pos_w.unsqueeze(1)  # (num_envs, 1, 3)
+        tool_sites_distance = torch.norm(env.robot.data.tool_sites_state_w[:, :, :3], dim=-1)
         # average distance of the tool sites to the object: (num_envs,)
         # note: we add the ee distance to the average to make sure that the ee is always closer to the object
         num_tool_sites = tool_sites_distance.shape[1]
@@ -618,36 +627,36 @@ class PushRewardManager(RewardManager):
 
         return 1 - torch.tanh(average_distance / sigma)
 
-    def penalizing_arm_dof_velocity_l2(self, env: PushEnv):
-        """Penalize large movements of the robot arm."""
-        return -torch.sum(torch.square(env.robot.data.arm_dof_vel), dim=1)
+    # def penalizing_arm_dof_velocity_l2(self, env: PushEnv):
+    #     """Penalize large movements of the robot arm."""
+    #     return -torch.sum(torch.square(env.robot.data.arm_dof_vel), dim=1)
 
-    def penalizing_tool_dof_velocity_l2(self, env: PushEnv):
-        """Penalize large movements of the robot tool."""
-        return -torch.sum(torch.square(env.robot.data.tool_dof_vel), dim=1)
+    # def penalizing_tool_dof_velocity_l2(self, env: PushEnv):
+    #     """Penalize large movements of the robot tool."""
+    #     return -torch.sum(torch.square(env.robot.data.tool_dof_vel), dim=1)
 
     def penalizing_arm_action_rate_l2(self, env: PushEnv):
         """Penalize large variations in action commands besides tool."""
         return -torch.sum(torch.square(env.actions[:, :-1] - env.previous_actions[:, :-1]), dim=1)
 
-    def penalizing_tool_action_l2(self, env: PushEnv):
-        """Penalize large values in action commands for the tool."""
-        return -torch.square(env.actions[:, -1])
+    # def penalizing_tool_action_l2(self, env: PushEnv):
+    #     """Penalize large values in action commands for the tool."""
+    #     return -torch.square(env.actions[:, -1])
 
-    def tracking_object_position_exp(self, env: PushEnv, sigma: float, threshold: float):
-        """Penalize tracking object position error using exp-kernel."""
-        # distance of the end-effector to the object: (num_envs,)
-        error = torch.sum(torch.square(env.object_des_pose_w[:, 0:3] - env.object.data.root_pos_w), dim=1)
-        # rewarded if the object is lifted above the threshold
-        return (env.object.data.root_pos_w[:, 2] > threshold) * torch.exp(-error / sigma)
+    # def tracking_object_position_exp(self, env: PushEnv, sigma: float, threshold: float):
+    #     """Penalize tracking object position error using exp-kernel."""
+    #     # distance of the end-effector to the object: (num_envs,)
+    #     error = torch.sum(torch.square(env.object_des_pose_w[:, 0:3] - env.object.data.root_pos_w), dim=1)
+    #     # rewarded if the object is lifted above the threshold
+    #     return (env.object.data.root_pos_w[:, 2] > threshold) * torch.exp(-error / sigma)
 
-    def tracking_object_position_tanh(self, env: PushEnv, sigma: float, threshold: float):
-        """Penalize tracking object position error using tanh-kernel."""
-        # distance of the end-effector to the object: (num_envs,)
-        distance = torch.norm(env.object_des_pose_w[:, 0:3] - env.object.data.root_pos_w, dim=1)
-        # rewarded if the object is lifted above the threshold
-        return (env.object.data.root_pos_w[:, 2] > threshold) * (1 - torch.tanh(distance / sigma))
+    # def tracking_object_position_tanh(self, env: PushEnv, sigma: float, threshold: float):
+    #     """Penalize tracking object position error using tanh-kernel."""
+    #     # distance of the end-effector to the object: (num_envs,)
+    #     distance = torch.norm(env.object_des_pose_w[:, 0:3] - env.object.data.root_pos_w, dim=1)
+    #     # rewarded if the object is lifted above the threshold
+    #     return (env.object.data.root_pos_w[:, 2] > threshold) * (1 - torch.tanh(distance / sigma))
 
-    def lifting_object_success(self, env: PushEnv, threshold: float):
-        """Sparse reward if object is lifted successfully."""
-        return torch.where(env.object.data.root_pos_w[:, 2] > threshold, 1.0, 0.0)
+    # def lifting_object_success(self, env: PushEnv, threshold: float):
+    #     """Sparse reward if object is lifted successfully."""
+    #     return torch.where(env.object.data.root_pos_w[:, 2] > threshold, 1.0, 0.0)

@@ -133,24 +133,25 @@ class ObservationsCfg:
         enable_corruption: bool = True
         # observation terms
         # -- joint state
-        
-        arm_dof_pos = {"scale": 1.0}
-        # arm_dof_pos_scaled = {"scale": 1.0}
-        # arm_dof_vel = {"scale": 0.5, "noise": {"name": "uniform", "min": -0.01, "max": 0.01}}
-        tool_dof_pos_scaled = {"scale": 1.0}
-        # -- end effector state
-        tool_positions = {"scale": 1.0}
-        tool_orientations = {"scale": 1.0}
-        # -- object state
-        # object_positions = {"scale": 1.0}
-        # object_orientations = {"scale": 1.0}
-        object_relative_tool_positions = {"scale": 1.0}
-        # object_relative_tool_orientations = {"scale": 1.0}
-        # -- object desired state
-        object_desired_positions = {"scale": 1.0}
-        # -- previous action
-        arm_actions = {"scale": 1.0}
-        tool_actions = {"scale": 1.0}
+        # table_scene = {"scale": 1.0}
+        new_obj_mask = {"scale": 1.0}
+        # arm_dof_pos = {"scale": 1.0}
+        # # arm_dof_pos_scaled = {"scale": 1.0}
+        # # arm_dof_vel = {"scale": 0.5, "noise": {"name": "uniform", "min": -0.01, "max": 0.01}}
+        # tool_dof_pos_scaled = {"scale": 1.0}
+        # # -- end effector state
+        # tool_positions = {"scale": 1.0}
+        # tool_orientations = {"scale": 1.0}
+        # # -- object state
+        # # object_positions = {"scale": 1.0}
+        # # object_orientations = {"scale": 1.0}
+        # object_relative_tool_positions = {"scale": 1.0}
+        # # object_relative_tool_orientations = {"scale": 1.0}
+        # # -- object desired state
+        # object_desired_positions = {"scale": 1.0}
+        # # -- previous action
+        # arm_actions = {"scale": 1.0}
+        # tool_actions = {"scale": 1.0}
 
     # global observation settings
     return_dict_obs_in_group = False
@@ -194,8 +195,8 @@ class RewardsCfg:
     # penalizing_tool_action_l2 = {"weight": 1e-2}
     # -- object-centric
     # tracking_object_position_exp = {"weight": 5.0, "sigma": 0.25, "threshold": 0.08}
-    tracking_object_position_tanh = {"weight": 5.0, "sigma": 0.2, "threshold": 0.08}
-    lifting_object_success = {"weight": 3.5, "threshold": 0.08}
+    # tracking_object_position_tanh = {"weight": 5.0, "sigma": 0.2, "threshold": 0.08}
+    # lifting_object_success = {"weight": 3.5, "threshold": 0.08}
 
 
 @configclass
@@ -203,8 +204,8 @@ class TerminationsCfg:
     """Termination terms for the MDP."""
 
     episode_timeout = True  # reset when episode length ended
-    object_falling = True  # reset when object falls off the table
-    is_success = False  # reset when object is placed
+    # object_falling = True  # reset when object falls off the table
+    # is_success = False  # reset when object is placed
 
 @configclass
 class occupancy_grid_resolution:
