@@ -2,7 +2,8 @@
 # All rights reserved.
 #
 # SPDX-License-Identifier: BSD-3-Clause
-
+import os
+import pickle as pkl
 from omni.isaac.orbit.controllers.differential_inverse_kinematics import DifferentialInverseKinematicsCfg
 from omni.isaac.orbit.objects import RigidObjectCfg
 from omni.isaac.orbit.robots.config.franka import FRANKA_PANDA_ARM_WITH_PANDA_HAND_CFG
@@ -19,8 +20,8 @@ from omni.isaac.orbit.sensors.camera import PinholeCameraCfg
 class CameraCfg:
     camera_cfg = PinholeCameraCfg(
         sensor_tick=0,
-        height=480,
-        width=640,
+        height=180,
+        width=240,
         data_types=["rgb", "distance_to_image_plane", "normals", "motion_vectors"],
         usd_params=PinholeCameraCfg.UsdCameraCfg(
             focal_length=24.0, focus_distance=400.0, horizontal_aperture=20.955, clipping_range=(0.1, 1.0e5)
@@ -58,7 +59,9 @@ class ManipulationObjectCfg(RigidObjectCfg):
         static_friction=0.5, dynamic_friction=0.5, restitution=0.0, prim_path="/World/Materials/cubeMaterial"
     )
 
-
+@configclass
+class env_name:
+    file_list = os.listdir("generated_table/")
 @configclass
 class GoalMarkerCfg:
     """Properties for visualization marker."""
@@ -231,6 +234,23 @@ class ControlCfg:
 ##
 # Environment configuration
 ##
+@configclass
+class ObjMask:
+    def __init__(self) -> None:
+        self.mask = dict()
+        file_list = os.listdir("obj_mask/")
+        obj_name = ['crackerBox','sugarBox','tomatoSoupCan','mustardBottle','mug','largeMarker','tunaFishCan',
+                'banana','bowl','largeClamp','scissors']
+        for i in range(len(file_list)):
+            for j in range(len(obj_name)):
+                if obj_name[j] in file_list[i]:
+                    print(obj_name[j],file_list[i])
+                    fileObject2 = open('obj_mask/'+file_list[i], 'rb')
+                    self.mask[obj_name[j]]=  pkl.load(fileObject2)
+
+                    fileObject2.close()
+                    
+
 
 
 @configclass
@@ -277,4 +297,6 @@ class PushEnvCfg(IsaacEnvCfg):
     YCBdata: YCBobjectsCfg = YCBobjectsCfg()
     # resolution of the occupancy grid
     og_resolution: occupancy_grid_resolution = occupancy_grid_resolution()
+    obj_mask: ObjMask = ObjMask()
+    env_name: env_name = env_name().file_list
     

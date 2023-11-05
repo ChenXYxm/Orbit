@@ -14,7 +14,7 @@ from omni.isaac.kit import SimulationApp
 
 # add argparse arguments
 parser = argparse.ArgumentParser("Welcome to Orbit: Omniverse Robotics Environments!")
-parser.add_argument("--headless", action="store_true", default=True, help="Force display off at all times.")
+parser.add_argument("--headless", action="store_true", default=False, help="Force display off at all times.")
 parser.add_argument("--num_envs", type=int, default=3, help="Number of environments to spawn.")
 args_cli = parser.parse_args()
 
@@ -70,11 +70,11 @@ class sim_cfg:
             substeps=4,
             physx=PhysxCfg(
                 # num_position_iterations=8,
-                gpu_max_rigid_contact_count=1024**2*2,
-                gpu_max_rigid_patch_count=160*2048*10, #160*2048*10,
-                gpu_found_lost_pairs_capacity = 1024 * 1024 * 2 * 8, #1024 * 1024 * 2 * 8,
-                gpu_found_lost_aggregate_pairs_capacity=1024 * 1024 * 32 * 1, #1024 * 1024 * 32,
-                gpu_total_aggregate_pairs_capacity=1024 * 1024 * 2 *8, #1024 * 1024 * 2 * 8
+                gpu_max_rigid_contact_count=1024, #1024**2*2,
+                gpu_max_rigid_patch_count=200, #160*2048*10, #160*2048*10,
+                gpu_found_lost_pairs_capacity = 200,#1024 * 1024 * 2 * 1, #1024 * 1024 * 2 * 8,
+                gpu_found_lost_aggregate_pairs_capacity=100,#1024 * 1024 * 32 * 1, #1024 * 1024 * 32,
+                gpu_total_aggregate_pairs_capacity=100, #1024 * 1024 * 2 *1, #1024 * 1024 * 2 * 8
                 friction_correlation_distance=0.0025,
                 friction_offset_threshold=0.04,
                 bounce_threshold_velocity=0.5,
@@ -438,9 +438,10 @@ def main():
             v = v[v_ind]
             occupancy[v,u] = 1
             occupancy = np.fliplr(occupancy)
-            if len(table_obj_pos_rot)>=1:
+            if len(table_obj_pos_rot)>=2:
                 if np.sum(occupancy)==0:
-                    break
+                    Table.set_collision_approximation("convexDecomposition")
+                    # break
             # plt.imshow(occupancy)
             # plt.show()
             #
@@ -466,7 +467,7 @@ def main():
             # plt.show()
             # if num_new>=1:
                 # aabb_points = get_new_obj_pcd(hand_camera,(40,40),hand_plane_model)
-            aabb_points,_,vertices_new_obj = get_new_obj_info(hand_camera,(80,80),hand_plane_model)
+            aabb_points,_,vertices_new_obj = get_new_obj_info(hand_camera,(80,80),hand_plane_model,obj_type)
             print(occupancy.shape)
             flag_found, new_poly_vetices,occu_tmp,new_obj_pos = place_new_obj_fun(occupancy,vertices_new_obj)
             if flag_found:
@@ -500,7 +501,7 @@ def main():
                 file_name_ori = "dict_"
                 file_list = os.listdir("generated_table/")
                 
-                num_file = 0
+                num_file = 73
                 while True:
                     file_name = file_name_ori+str(num_file)+".pkl"
                     if file_name in file_list:
@@ -538,7 +539,7 @@ def get_pcd(camera):
     pcd.points = o3d.utility.Vector3dVector(pointcloud_w)
     # o3d.visualization.draw_geometries([pcd])
     return pcd
-def get_new_obj_info(camera,size,hand_plane_model):
+def get_new_obj_info(camera,size,hand_plane_model,obj_type):
     pcd = get_pcd(camera)
     # o3d.visualization.draw_geometries([pcd])
     plane_model, inliers = pcd.segment_plane(distance_threshold=0.01,
@@ -600,6 +601,13 @@ def get_new_obj_info(camera,size,hand_plane_model):
     v = v[v_ind]
     occupancy[v,u] = 1
     occupancy = np.fliplr(occupancy)
+    file_list = os.listdir("obj_mask/")
+    file_name = obj_type +"_mask.pkl"
+    if file_name not in file_list:
+        file_path = "obj_mask/"+file_name
+        f_save = open(file_path,'wb')
+        pickle.dump(occupancy,f_save)
+        f_save.close()
     # plt.imshow(occupancy)
     # plt.show()
     vertices_new_obj = get_new_obj_contour_bbox(occupancy)

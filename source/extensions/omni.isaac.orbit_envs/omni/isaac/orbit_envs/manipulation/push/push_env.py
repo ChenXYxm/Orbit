@@ -2,7 +2,7 @@
 # All rights reserved.
 #
 # SPDX-License-Identifier: BSD-3-Clause
-
+import os
 import gym.spaces
 import math
 import torch
@@ -11,7 +11,7 @@ import numpy as np
 import open3d as o3d
 import omni.isaac.core.utils.prims as prim_utils
 from omni.isaac.orbit.sensors.camera.utils import create_pointcloud_from_rgbd
-
+import pickle as pkl
 import omni.isaac.orbit.utils.kit as kit_utils
 from omni.isaac.orbit.controllers.differential_inverse_kinematics import DifferentialInverseKinematics
 from omni.isaac.orbit.markers import StaticMarker
@@ -32,6 +32,7 @@ class PushEnv(IsaacEnv):
     """Environment for lifting an object off a table with a single-arm manipulator."""
 
     def __init__(self, cfg: PushEnvCfg = None, **kwargs):
+        
         # copy configuration
         self.cfg = cfg
         # parse the configuration for controller configuration
@@ -108,9 +109,9 @@ class PushEnv(IsaacEnv):
         orientation = [1, 0, 0, 0]
         position_handcamera = [0.35,-0.9,0.8]
         self.camera = Camera(cfg=self.cfg.camera.camera_cfg, device='cuda')
-        self.hand_camera = Camera(cfg=self.cfg.camera.camera_cfg,device='cuda')
+        # self.hand_camera = Camera(cfg=self.cfg.camera.camera_cfg,device='cuda')
         # hand_camera.spawn("/World/Robot/panda_hand/hand_camera", translation=(0.1, 0.0, 0.0),orientation=(0,0,1,0))
-        self.hand_camera.spawn(self.template_env_ns + "/hand_camera",translation=position_handcamera,orientation=orientation)
+        # self.hand_camera.spawn(self.template_env_ns + "/hand_camera",translation=position_handcamera,orientation=orientation)
         # Spawn camera
         self.camera.spawn(self.template_env_ns + "/CameraSensor",translation=position_camera,orientation=orientation)
         # setup debug visualization
@@ -137,7 +138,8 @@ class PushEnv(IsaacEnv):
                     usd_path=self.cfg.frame_marker.usd_path,
                     scale=self.cfg.frame_marker.scale,
                 )
-        self._randomize_table_scene()        
+        # self._randomize_table_scene()  
+        self._set_table_scene()      
         # return list of global prims
         return ["/World/defaultGroundPlane"]
     
@@ -275,15 +277,15 @@ class PushEnv(IsaacEnv):
         self.object.initialize(self.env_ns + "/.*/Object")
         print("camera")
         print(self.camera)
-        self.camera.initialize()
-        self.hand_camera.initialize()
-        self.camera.update(self.dt)
-        self.hand_camera.update(self.dt)
+        # self.camera.initialize()
+        # self.hand_camera.initialize()
+        # self.camera.update(self.dt)
+        # self.hand_camera.update(self.dt)
         self.cams = [self.camera] + [Camera(cfg=self.cfg.camera.camera_cfg,device='cpu') for _ in range(self.num_envs - 1)]
-        self.hand_cams = [self.hand_camera] + [Camera(cfg=self.cfg.camera.camera_cfg, device = 'cpu') for _ in range(self.num_envs - 1)]
-        self.get_pcd(self.camera)
-        # for i in range(self.num_envs):
-        #    self.cams[i].initialize(self.env_ns + f"/env_{i}/CameraSensor/Camera")
+        # self.hand_cams = [self.hand_camera] + [Camera(cfg=self.cfg.camera.camera_cfg, device = 'cpu') for _ in range(self.num_envs - 1)]
+        # self.get_pcd(self.camera)
+        for i in range(self.num_envs):
+           self.cams[i].initialize(self.env_ns + f"/env_{i}/CameraSensor/Camera")
         #    env_pos = np.array(self.envs_positions[i].cpu().numpy())
         #    self.cams[i].set_world_pose_from_view(eye=np.array([0, 0, 1.8]) + env_pos, target=np.array([0, 0, 0]) + env_pos)
         #    self.cams[i].update(self.dt)
@@ -437,8 +439,42 @@ class PushEnv(IsaacEnv):
         # set the root state
         self.object.set_root_state(root_state, env_ids=env_ids)
 
-    def _get_table_scene(self,env_ids:torch.Tensor):
-        
+    def _set_table_scene(self):
+        file_name = self.cfg.env_name
+        ycb_usd_paths = self.cfg.YCBdata.ycb_usd_paths
+        ycb_name = self.cfg.YCBdata.ycb_name
+        self.obj_dict = dict()
+        self.obj_on_table = []
+        num_env = len(file_name)
+        choosen_env_id = np.random.randint(0,num_env)
+        env_path = "generated_table/"+file_name[choosen_env_id]
+        fileObject2 = open(env_path, 'rb')
+        env =  pkl.load(fileObject2)
+        obj_pos_rot = env[0]
+        self.new_obj_mask = self.cfg.obj_mask.mask[env[1]]
+        fileObject2.close()
+        # print(env)
+        for _ in obj_pos_rot:
+            for k in obj_pos_rot[_]:
+                # print(_)
+                # print(ycb_usd_paths["largeClamp"])
+                usd_path = ycb_usd_paths[_]
+                # print(usd_path)
+                if _ not in self.obj_dict:
+                    self.obj_dict[_] = 1
+                else:
+                    self.obj_dict[_] +=1
+                # print(self.obj_dict)
+                key = _+str(self.obj_dict[_])
+                prim_utils.create_prim(self.template_env_ns+f"/table_obj/{key}",usd_path=usd_path, translation=k[0],orientation=k[1])
+                GeometryPrim(self.template_env_ns+f"/table_obj/{key}",collision=True).set_collision_approximation("convexHull")
+                RigidPrim(self.template_env_ns+f"/table_obj/{key}",mass=0.3)
+                self.obj_on_table.append(key)
+                for j in range(5):
+                    self.sim.step()
+
+        # print(env)
+        # print(new_obj_mask)
         return 0
     def _randomize_object_desired_pose(self, env_ids: torch.Tensor, cfg: RandomizationCfg.ObjectDesiredPoseCfg):
         """Randomize the desired pose of the object."""
