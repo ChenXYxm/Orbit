@@ -10,6 +10,7 @@ from typing import List
 import numpy as np
 import open3d as o3d
 import omni.isaac.core.utils.prims as prim_utils
+import matplotlib.pyplot as plt
 from omni.isaac.orbit.sensors.camera.utils import create_pointcloud_from_rgbd
 import pickle as pkl
 import omni.isaac.orbit.utils.kit as kit_utils
@@ -18,7 +19,7 @@ from omni.isaac.orbit.markers import StaticMarker
 from omni.isaac.orbit.objects import RigidObject
 from omni.isaac.orbit.robots.single_arm import SingleArmManipulator
 from omni.isaac.orbit.utils.dict import class_to_dict
-from omni.isaac.orbit.utils.math import quat_inv, quat_mul, random_orientation, sample_uniform, scale_transform
+from omni.isaac.orbit.utils.math import quat_inv, quat_mul, convert_quat,random_orientation, sample_uniform, scale_transform
 from omni.isaac.orbit.utils.mdp import ObservationManager, RewardManager
 from omni.isaac.orbit.sensors.camera import Camera
 from omni.isaac.orbit_envs.isaac_env import IsaacEnv, VecEnvIndices, VecEnvObs
@@ -26,7 +27,8 @@ from omni.isaac.core.objects import FixedCuboid
 from .push_cfg import PushEnvCfg, RandomizationCfg, YCBobjectsCfg, CameraCfg
 from omni.isaac.orbit.utils.assets import ISAAC_NUCLEUS_DIR
 from omni.isaac.core.prims import RigidPrim,GeometryPrim
-from omni.isaac.orbit.utils.math import convert_quat
+# from omni.isaac.orbit.utils.math import 
+from omni.isaac.orbit.utils.array import convert_to_torch
 import scipy.spatial.transform as tf
 class PushEnv(IsaacEnv):
     """Environment for lifting an object off a table with a single-arm manipulator."""
@@ -34,6 +36,8 @@ class PushEnv(IsaacEnv):
     def __init__(self, cfg: PushEnvCfg = None, **kwargs):
         
         # copy configuration
+        self.reset_f = False
+        self.show_first_og = True
         self.cfg = cfg
         # parse the configuration for controller configuration
         # note: controller decides the robot control mode
@@ -76,6 +80,8 @@ class PushEnv(IsaacEnv):
         # self.object.update_buffers(self.dt)
         self.robot.update_buffers(self.dt)
         self.obj_list = []
+        self.obj_dict = dict()
+        self.obj_on_table = dict()
     """
     Implementation specifics.
     """
@@ -90,18 +96,18 @@ class PushEnv(IsaacEnv):
         # Table = RigidPrim(self.template_env_ns + "/Table",mass=100000)
         self.Table = FixedCuboid(self.template_env_ns + "/Table",position=(0,0,-0.25),scale=(1,0.6,0.5))
         self.Table.set_collision_enabled(True)
-        self.Table.set_collision_approximation("convexHull")
+        self.Table.set_collision_approximation("convexDecomposition")
         # prim_utils.create_prim(self.template_env_ns + "/sideTable", usd_path=self.cfg.table.table_path,position=(0.35,-0.9,-0.3),scale=(0.4,0.4,0.4))
         # sideTable = GeometryPrim(self.template_env_ns + "/sideTable",collision=True)
         # sideTable = RigidPrim(self.template_env_ns + "/sideTable",mass=10000)
-        self.sideTable = FixedCuboid(self.template_env_ns + "/sideTable",position=(0.35,-0.9,-0.3),scale=(0.4,0.4,0.4))
-        self.sideTable.set_collision_enabled(True)
-        self.sideTable.set_collision_approximation("convexHull")
-        prim_utils.create_prim(self.template_env_ns + "/Robotbase", usd_path=self.cfg.table.table_path,position=(0,-0.45,-0.25),scale=(0.3,0.26,0.5))
+        # self.sideTable = FixedCuboid(self.template_env_ns + "/sideTable",position=(0.35,-0.9,-0.3),scale=(0.4,0.4,0.4))
+        # self.sideTable.set_collision_enabled(True)
+        # self.sideTable.set_collision_approximation("convexHull")
+        prim_utils.create_prim(self.template_env_ns + "/Robotbase", usd_path=self.cfg.table.table_path,position=(0,-0.45,-0.2),scale=(0.3,0.26,0.4))
         # GeometryPrim(self.template_env_ns + "/Robotbase",collision=True)
         # RigidPrim(self.template_env_ns + "/Robotbase",mass=10000)
         # robot
-        self.robot.spawn(self.template_env_ns + "/Robot",translation=(0.0, -.45, 0))
+        self.robot.spawn(self.template_env_ns + "/Robot",translation=(0.0, -.45, -0.1))
         # object
         # self.object.spawn(self.template_env_ns + "/Object")
         # camera
@@ -113,7 +119,7 @@ class PushEnv(IsaacEnv):
         # hand_camera.spawn("/World/Robot/panda_hand/hand_camera", translation=(0.1, 0.0, 0.0),orientation=(0,0,1,0))
         # self.hand_camera.spawn(self.template_env_ns + "/hand_camera",translation=position_handcamera,orientation=orientation)
         # Spawn camera
-        self.camera.spawn(self.template_env_ns + "/CameraSensor",translation=position_camera,orientation=orientation)
+        # self.camera.spawn(self.template_env_ns + "/CameraSensor",translation=position_camera,orientation=orientation)
         # setup debug visualization
         if self.cfg.viewer.debug_vis and self.enable_render:
             # create point instancer to visualize the goal points
@@ -139,15 +145,16 @@ class PushEnv(IsaacEnv):
                     scale=self.cfg.frame_marker.scale,
                 )
         # self._randomize_table_scene()  
-        self._set_table_scene()      
+        # self._set_table_scene()      
         # return list of global prims
         return ["/World/defaultGroundPlane"]
     def _del_objs(self):
-        if self.obj_dict is not None and self.obj_on_table is not None:
+        if len(self.obj_dict)>0:
             for i in range(self.num_envs):
         #    self.cams[i].initialize(self.env_ns + f"/env_{i}/CameraSensor/Camera")
                 for _ in self.obj_on_table:
                     prim_utils.delete_prim(self.env_ns + f"/env_{i}/table_obj/"+_)
+                prim_utils.delete_prim(self.env_ns + f"/env_{i}/new_obj/"+self.new_obj_type)
     def _reset_idx(self, env_ids: VecEnvIndices):
         # randomize the MDP
         # -- robot DOF state
@@ -155,6 +162,10 @@ class PushEnv(IsaacEnv):
         self.robot.set_dof_state(dof_pos, dof_vel, env_ids=env_ids)
         # -- object pose
         # self.env_obj = dict()
+        self.table_og = torch.zeros((self.num_envs,self.cfg.og_resolution.tabletop[1],
+                                     self.cfg.og_resolution.tabletop[0]),device=self.device)
+        self.obj_masks = torch.zeros((self.num_envs,self.cfg.og_resolution.tabletop[1],
+                                     self.cfg.og_resolution.tabletop[0]),device=self.device)
         self._del_objs()
         self._set_table_scene()  
         # self._randomize_object_initial_pose(env_ids=env_ids, cfg=self.cfg.randomization.object_initial_pose)
@@ -180,7 +191,21 @@ class PushEnv(IsaacEnv):
         # controller reset
         if self.cfg.control.control_type == "inverse_kinematics":
             self._ik_controller.reset_idx(env_ids)
-
+        self._get_obj_mask()
+        self.reset_f = True
+    def _get_obj_mask(self):
+        mask = np.zeros((self.cfg.og_resolution.tabletop[1],self.cfg.og_resolution.tabletop[0]))
+        s_x_ind = int(self.cfg.og_resolution.tabletop[1]/2-self.new_obj_mask.shape[1]/2)
+        e_x_ind = int(self.cfg.og_resolution.tabletop[1]/2+self.new_obj_mask.shape[1]/2)
+        s_y_ind = int(self.cfg.og_resolution.tabletop[0]/2-self.new_obj_mask.shape[0]/2)
+        e_y_ind = int(self.cfg.og_resolution.tabletop[0]/2+self.new_obj_mask.shape[0]/2)
+        mask[s_x_ind:e_x_ind,s_y_ind:e_y_ind] = self.new_obj_mask
+        for i in range(self.num_envs):
+            self.obj_masks[i] = torch.from_numpy(mask).to(self.device)
+        # plt.imshow(self.new_obj_mask)
+        # plt.draw()
+        # plt.imshow(mask)
+        # plt.show() 
     def _step_impl(self, actions: torch.Tensor):
         # pre-step: set actions into buffer
         self.actions = actions.clone().to(device=self.device)
@@ -277,25 +302,44 @@ class PushEnv(IsaacEnv):
         """Creates views and extract useful quantities from them."""
         # play the simulator to activate physics handles
         # note: this activates the physics simulation view that exposes TensorAPIs
+        self.cams = [self.camera] + [Camera(cfg=self.cfg.camera.camera_cfg,device='cuda') for _ in range(self.num_envs - 1)]
+        # self.hand_cams = [self.hand_camera] + [Camera(cfg=self.cfg.camera.camera_cfg, device = 'cpu') for _ in range(self.num_envs - 1)]
+        # self.get_pcd(self.camera)
+        for i in range(self.num_envs):
+        #    print(i)
+           self.cams[i].spawn(self.env_ns + f"/env_{i}/CameraSensor")
         self.sim.reset()
         
         # define views over instances
         self.robot.initialize(self.env_ns + "/.*/Robot")
         # self.object.initialize(self.env_ns + "/.*/Object")
-        print("camera")
-        print(self.camera)
+        # print("camera")
+        # print(self.camera)
         # self.camera.initialize()
         # self.hand_camera.initialize()
         # self.camera.update(self.dt)
         # self.hand_camera.update(self.dt)
-        self.cams = [self.camera] + [Camera(cfg=self.cfg.camera.camera_cfg,device='cpu') for _ in range(self.num_envs - 1)]
-        # self.hand_cams = [self.hand_camera] + [Camera(cfg=self.cfg.camera.camera_cfg, device = 'cpu') for _ in range(self.num_envs - 1)]
-        # self.get_pcd(self.camera)
+        # self.cams = [self.camera] + [Camera(cfg=self.cfg.camera.camera_cfg,device='cuda') for _ in range(self.num_envs - 1)]
+        # # self.hand_cams = [self.hand_camera] + [Camera(cfg=self.cfg.camera.camera_cfg, device = 'cpu') for _ in range(self.num_envs - 1)]
+        # # self.get_pcd(self.camera)
+        # for i in range(self.num_envs):
+        # #    print(i)
+        #    self.cams[i].spawn(self.env_ns + f"/env_{i}/CameraSensor")
+        #    self.cams[i].initialize(self.env_ns + f"/env_{i}/CameraSensor/Camera")
+        # self.sim.reset()
+        for _ in range(15):
+            self.sim.render()
         for i in range(self.num_envs):
-           self.cams[i].initialize(self.env_ns + f"/env_{i}/CameraSensor/Camera")
-        #    env_pos = np.array(self.envs_positions[i].cpu().numpy())
-        #    self.cams[i].set_world_pose_from_view(eye=np.array([0, 0, 1.8]) + env_pos, target=np.array([0, 0, 0]) + env_pos)
-        #    self.cams[i].update(self.dt)
+           self.cams[i].initialize()
+           env_pos = np.array(self.envs_positions[i].cpu().numpy())
+           self.cams[i].set_world_pose_from_view(eye=np.array([0, 0, 1.7]) + env_pos, target=np.array([0, 0, 0]) + env_pos)
+           self.cams[i].update(self.dt)
+        #    self.get_og(self.cams[i])
+        #    rgb=self.cams[i].data.output["rgb"]
+        #    rgb = convert_to_torch(rgb, device=self.device, dtype=torch.float32)
+        #    rgb = rgb[:, :, :3].cpu().data.numpy()
+        #    plt.imshow(rgb)
+        #    plt.show()
         #    self.hand_cams[i].initialize(self.env_ns + f"/env_{i}/hand_camera/Camera")
         # #    env_pos = np.array(self.envs_positions[i].cpu().numpy())
         #    self.hand_cams[i].set_world_pose_from_view(eye=np.array([0.35,-0.9,0.8]) + env_pos, target=np.array([0.35, -0.9, 0]) + env_pos)
@@ -323,8 +367,17 @@ class PushEnv(IsaacEnv):
         self.object_root_pose_ee = torch.zeros((self.num_envs, 7), device=self.device)
         # time-step = 0
         self.object_init_pose_w = torch.zeros((self.num_envs, 7), device=self.device)
+        self.table_og = torch.zeros((self.num_envs,self.cfg.og_resolution.tabletop[1],
+                                     self.cfg.og_resolution.tabletop[0]),device=self.device)
+        self.obj_masks = torch.zeros((self.num_envs,self.cfg.og_resolution.tabletop[1],
+                                     self.cfg.og_resolution.tabletop[0]),device=self.device)
     def get_pcd(self,camera):
-        camera.update(dt=0.0)
+        camera.update(dt=self.dt)
+        rgb=camera.data.output["rgb"]
+        rgb = convert_to_torch(rgb, device=self.device, dtype=torch.uint8)
+        rgb = rgb[:, :, :3].cpu().data.numpy()
+        # plt.imshow(rgb)
+        # plt.show()
         pointcloud_w, pointcloud_rgb = create_pointcloud_from_rgbd(
                 camera.data.intrinsic_matrix,
                 depth=camera.data.output["distance_to_image_plane"],
@@ -338,9 +391,78 @@ class PushEnv(IsaacEnv):
             pointcloud_w = pointcloud_w.cpu().numpy()
         pcd = o3d.geometry.PointCloud()
         pcd.points = o3d.utility.Vector3dVector(pointcloud_w)
-        o3d.visualization.draw_geometries([pcd])
+        # o3d.visualization.draw_geometries([pcd])
         return pcd
-    
+    def point_cloud_process(self,pcd):
+        plane_model, inliers = pcd.segment_plane(distance_threshold=0.01,
+                                            ransac_n=3,
+                                            num_iterations=1000)
+        outlier_cloud = pcd.select_by_index(inliers, invert=True)
+        plane_model, inliers = outlier_cloud.segment_plane(distance_threshold=0.01,
+                                            ransac_n=3,
+                                            num_iterations=1000)
+        return plane_model
+    def get_og(self,camera):
+        camera.update(dt=0.0)
+        pcd = self.get_pcd(camera)
+        cam_pos = camera.data.position
+        # print(cam_pos)
+        plane_model = self.point_cloud_process(pcd)
+        plane_model_ori = plane_model
+        plane_model = np.array([plane_model[0],plane_model[1],plane_model[2]])
+        pointcloud_w = np.array(pcd.points)
+        select_m = np.dot(pointcloud_w,plane_model) + float(plane_model_ori[3])
+        index_inliers = np.argwhere((select_m >=-0.01)).reshape(-1).astype(int)
+        inliers = pointcloud_w[index_inliers]
+        select_m = np.dot(inliers,plane_model) + float(plane_model_ori[3])
+        index_inliers = np.argwhere((select_m <=0.3)).reshape(-1).astype(int)
+        inliers = inliers[index_inliers]
+        index_inliers = np.argwhere((inliers[:,1]>=-0.3+cam_pos[1])).reshape(-1).astype(int)
+        inliers = inliers[index_inliers]
+        # objects_pcd = o3d.geometry.PointCloud()
+        # objects_pcd.points = o3d.utility.Vector3dVector(inliers)
+        pts_tab = np.array(inliers)
+        # o3d.visualization.draw_geometries([objects_pcd])
+        # print(camera.data.output["distance_to_image_plane"].shape)
+        # print(pointcloud_w.shape)
+        select_m = np.dot(inliers,plane_model) + float(plane_model_ori[3])
+        index_objects = np.argwhere((select_m>=0.005)).reshape(-1).astype(int)
+        pts = inliers[index_objects].copy()
+        Nx = self.cfg.og_resolution.tabletop[0]
+        Ny = self.cfg.og_resolution.tabletop[1]
+        # print("tab size")
+        # print(np.min(pts_tab[:,0]),np.min(pts_tab[:,1]),np.max(pts_tab[:,0]),np.max(pts_tab[:,1]))
+        x = np.linspace(np.min(pts_tab[:,0]), np.max(pts_tab[:,0]), Nx)
+        y = np.linspace(np.min(pts_tab[:,1]), np.max(pts_tab[:,1]), Ny)
+        xv, yv = np.meshgrid(x, y)
+        u = (pts[:,0] - np.min(pts_tab[:,0]))/ ( np.max(pts_tab[:,0])-np.min(pts_tab[:,0]) )
+        v = (pts[:,1] - np.min(pts_tab[:,1]))/ ( np.max(pts_tab[:,1])-np.min(pts_tab[:,1]) )
+        u = (Nx-1)*u
+        v = (Ny-1)*v
+        occupancy = np.zeros( (Ny,Nx) )
+        u = u.astype(int)
+        v = v.astype(int)
+        u_ind = np.where(u<Nx)
+        u = u[u_ind]
+        v = v[u_ind]
+        v_ind = np.where(v<Ny)
+        u = u[v_ind]
+        v = v[v_ind]
+        u_ind = np.where(u>=0)
+        u = u[u_ind]
+        v = v[u_ind]
+        v_ind = np.where(v>=0)
+        u = u[v_ind]
+        v = v[v_ind]
+        occupancy[v,u] = 1
+        occupancy = np.fliplr(occupancy)
+        if self.reset_f and self.show_first_og:
+            plt.imshow(occupancy)
+            plt.show()
+            # self.reset_f = False
+            self.show_first_og = False
+        return occupancy
+
     def _debug_vis(self):
         """Visualize the environment in debug mode."""
         # apply to instance manager
@@ -459,9 +581,11 @@ class PushEnv(IsaacEnv):
         env =  pkl.load(fileObject2)
         obj_pos_rot = env[0]
         self.new_obj_mask = self.cfg.obj_mask.mask[env[1]]
+        self.new_obj_type = env[1]
         fileObject2.close()
+        
         # print(env)
-        print(env[1])
+        # print(env[1])
         for _ in obj_pos_rot:
             for k in obj_pos_rot[_]:
                 # print(_)
@@ -475,11 +599,21 @@ class PushEnv(IsaacEnv):
                 # print(self.obj_dict)
                 key = _+str(self.obj_dict[_])
                 prim_utils.create_prim(self.template_env_ns+f"/table_obj/{key}",usd_path=usd_path, translation=k[0],orientation=k[1])
-                GeometryPrim(self.template_env_ns+f"/table_obj/{key}",collision=True).set_collision_approximation("convexHull")
+                GeometryPrim(self.template_env_ns+f"/table_obj/{key}",collision=True).set_collision_approximation("convexDecomposition")
                 RigidPrim(self.template_env_ns+f"/table_obj/{key}",mass=0.3)
                 self.obj_on_table.append(key)
                 for j in range(5):
                     self.sim.step()
+
+        usd_path = ycb_usd_paths[env[1]]
+        rot = convert_quat(tf.Rotation.from_euler("XYZ", (0,0,0), degrees=True).as_quat(), to="wxyz")
+        if env[1] in ["mug","tomatoSoupCan","pitcherBase","tunaFishCan","bowl","banana"]:
+            rot = convert_quat(tf.Rotation.from_euler("XYZ", (-90,0,0), degrees=True).as_quat(), to="wxyz")
+        prim_utils.create_prim(self.template_env_ns+f"/new_obj/{env[1]}",usd_path=usd_path,translation=[0.75,0,-0.45],orientation=rot)
+        self.new_obj=GeometryPrim(self.template_env_ns+f"/new_obj/{env[1]}",collision=True).set_collision_approximation("convexDecomposition")
+        RigidPrim(self.template_env_ns+f"/new_obj/{env[1]}",mass=0.3)
+        for j in range(15):
+            self.sim.step()
 
         # print(env)
         # print(new_obj_mask)
@@ -515,10 +649,22 @@ class PushEnv(IsaacEnv):
 class PushObservationManager(ObservationManager):
     """Reward manager for single-arm reaching environment."""
     def table_scene(self,env:PushEnv):
-        return env.tabletop_og
+        if env.reset_f:
+            for i in range(env.num_envs):
+                env.cams[i].update(env.dt)
+                rgb=env.cams[i].data.output["rgb"]
+                # print(env.cams[i],rgb)
+                rgb = convert_to_torch(rgb, device=env.device, dtype=torch.uint8)
+                rgb = rgb[:, :, :3].cpu().data.numpy()
+                # plt.imshow(rgb)
+                # plt.show()
+                og = env.get_og(env.cams[i])
+                env.table_og[i] = torch.from_numpy(og.copy()).to(env.device)
+        return env.table_og
     def new_obj_mask(self,env:PushEnv):
-        print(env.new_obj_mask.shape)
-        return torch.from_numpy(env.new_obj_mask)
+        # print(env.new_obj_mask.shape)
+        
+        return env.obj_masks
     def arm_dof_pos(self, env: PushEnv):
         """DOF positions for the arm."""
         return env.robot.data.arm_dof_pos

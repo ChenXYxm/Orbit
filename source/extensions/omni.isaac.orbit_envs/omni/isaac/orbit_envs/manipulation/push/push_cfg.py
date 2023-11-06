@@ -20,8 +20,8 @@ from omni.isaac.orbit.sensors.camera import PinholeCameraCfg
 class CameraCfg:
     camera_cfg = PinholeCameraCfg(
         sensor_tick=0,
-        height=180,
-        width=240,
+        height=270,
+        width=360,
         data_types=["rgb", "distance_to_image_plane", "normals", "motion_vectors"],
         usd_params=PinholeCameraCfg.UsdCameraCfg(
             focal_length=24.0, focus_distance=400.0, horizontal_aperture=20.955, clipping_range=(0.1, 1.0e5)
@@ -134,6 +134,7 @@ class ObservationsCfg:
         # observation terms
         # -- joint state
         # table_scene = {"scale": 1.0}
+        table_scene = {"scale": 1.0}
         new_obj_mask = {"scale": 1.0}
         # arm_dof_pos = {"scale": 1.0}
         # # arm_dof_pos_scaled = {"scale": 1.0}
@@ -210,7 +211,7 @@ class TerminationsCfg:
 @configclass
 class occupancy_grid_resolution:
     """resolution of the occupancy grid"""
-    tabletop = [200,160]
+    tabletop = [200,120]
     new_obj = [80,80]
 @configclass
 class ControlCfg:
@@ -245,7 +246,7 @@ class ObjMask:
         for i in range(len(file_list)):
             for j in range(len(obj_name)):
                 if obj_name[j] in file_list[i]:
-                    print(obj_name[j],file_list[i])
+                    # print(obj_name[j],file_list[i])
                     fileObject2 = open('obj_mask/'+file_list[i], 'rb')
                     self.mask[obj_name[j]]=  pkl.load(fileObject2)
 

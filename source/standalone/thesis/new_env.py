@@ -395,14 +395,14 @@ def main():
             select_m = np.dot(pointcloud_w,plane_model) + float(plane_model_ori[3])
             index_inliers = np.argwhere((select_m >=-0.01)).reshape(-1).astype(int)
             inliers = pointcloud_w[index_inliers]
-            select_m = np.dot(inliers,plane_model) - float(plane_model_ori[3])
+            select_m = np.dot(inliers,plane_model) + float(plane_model_ori[3])
             index_inliers = np.argwhere((select_m <=0.3)).reshape(-1).astype(int)
             inliers = inliers[index_inliers]
             index_inliers = np.argwhere((inliers[:,1]>=-0.3)).reshape(-1).astype(int)
             inliers = inliers[index_inliers]
             # print(camera.data.output["distance_to_image_plane"].shape)
             # print(pointcloud_w.shape)
-            select_m = np.dot(inliers,plane_model) - float(plane_model_ori[3])
+            select_m = np.dot(inliers,plane_model) + float(plane_model_ori[3])
             index_objects = np.argwhere((select_m>=0.005)).reshape(-1).astype(int)
             objects_point = inliers[index_objects].copy()
             objects_pcd = o3d.geometry.PointCloud()
