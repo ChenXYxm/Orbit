@@ -30,11 +30,13 @@ from omni.isaac.core.prims import RigidPrim,GeometryPrim
 # from omni.isaac.orbit.utils.math import 
 from omni.isaac.orbit.utils.array import convert_to_torch
 import scipy.spatial.transform as tf
+from .place_new_obj import place_new_obj_fun
+from omni.isaac.dynamic_control import _dynamic_control
 class PushEnv(IsaacEnv):
     """Environment for lifting an object off a table with a single-arm manipulator."""
 
     def __init__(self, cfg: PushEnvCfg = None, **kwargs):
-        
+        self.step_num = 0
         # copy configuration
         self.reset_f = False
         self.show_first_og = True
@@ -45,7 +47,7 @@ class PushEnv(IsaacEnv):
         # create classes (these are called by the function :meth:`_design_scene`)
         self.robot = SingleArmManipulator(cfg=self.cfg.robot)
         # self.object = RigidObject(cfg=self.cfg.object)
-
+        self.obj_env_dict = dict()
         # initialize the base class to setup the scene.
         super().__init__(self.cfg, **kwargs)
         # parse the configuration for information
@@ -72,7 +74,7 @@ class PushEnv(IsaacEnv):
         self.action_space = gym.spaces.Box(low=-1.0, high=1.0, shape=(self.num_actions,))
         print("[INFO]: Completed setting up the environment...")
         # flag to check whether the new object is placed or not
-        self.success_place = False
+        # self.success_place = False
         # Take an initial step to initialize the scene.
         # This is required to compute quantities like Jacobians used in step().
         self.sim.step()
@@ -113,13 +115,13 @@ class PushEnv(IsaacEnv):
         # camera
         position_camera = [0, 0, 1.7]
         orientation = [1, 0, 0, 0]
-        position_handcamera = [0.35,-0.9,0.8]
+        # position_handcamera = [0.35,-0.9,0.8]
         self.camera = Camera(cfg=self.cfg.camera.camera_cfg, device='cuda')
         # self.hand_camera = Camera(cfg=self.cfg.camera.camera_cfg,device='cuda')
         # hand_camera.spawn("/World/Robot/panda_hand/hand_camera", translation=(0.1, 0.0, 0.0),orientation=(0,0,1,0))
         # self.hand_camera.spawn(self.template_env_ns + "/hand_camera",translation=position_handcamera,orientation=orientation)
         # Spawn camera
-        # self.camera.spawn(self.template_env_ns + "/CameraSensor",translation=position_camera,orientation=orientation)
+        self.camera.spawn(self.template_env_ns + "/CameraSensor",translation=position_camera,orientation=orientation)
         # setup debug visualization
         if self.cfg.viewer.debug_vis and self.enable_render:
             # create point instancer to visualize the goal points
@@ -168,6 +170,7 @@ class PushEnv(IsaacEnv):
                                      self.cfg.og_resolution.tabletop[0]),device=self.device)
         self._del_objs()
         self._set_table_scene()  
+        self.show_first_og = True
         # self._randomize_object_initial_pose(env_ids=env_ids, cfg=self.cfg.randomization.object_initial_pose)
         # -- goal pose
         # self._randomize_object_desired_pose(env_ids=env_ids, cfg=self.cfg.randomization.object_desired_pose)
@@ -208,6 +211,8 @@ class PushEnv(IsaacEnv):
         # plt.show() 
     def _step_impl(self, actions: torch.Tensor):
         # pre-step: set actions into buffer
+        self.step_num +=1
+        print(self.step_num)
         self.actions = actions.clone().to(device=self.device)
         # transform actions based on controller
         if self.cfg.control.control_type == "inverse_kinematics":
@@ -241,10 +246,14 @@ class PushEnv(IsaacEnv):
         self.robot.update_buffers(self.dt)
         # self.object.update_buffers(self.dt)
         # -- compute MDP signals
+        # fallen objects
+        self._check_fallen_objs()
         # reward
         self.reward_buf = self._reward_manager.compute()
+
         # terminations
         self._check_termination()
+        
         # -- store history
         self.previous_actions = self.actions.clone()
 
@@ -253,7 +262,8 @@ class PushEnv(IsaacEnv):
         self.extras["time_outs"] = self.episode_length_buf >= self.max_episode_length
         # -- add information to extra if task completed
         # object_position_error = torch.norm(self.object.data.root_pos_w - self.object_des_pose_w[:, 0:3], dim=1)
-        self.extras["is_success"] = torch.where(torch.from_numpy(np.ones(self.num_envs)).to(self.device) < 0.02, 1, self.reset_buf)
+        # self.extras["is_success"] = torch.where(torch.from_numpy(np.ones(self.num_envs)).to(self.device) < 0.02, 1, self.reset_buf)
+        self.extras["is_success"] = torch.where(self.place_success>=0.5, 1, self.reset_buf)
         # -- update USD visualization
         if self.cfg.viewer.debug_vis and self.enable_render:
             self._debug_vis()
@@ -305,9 +315,9 @@ class PushEnv(IsaacEnv):
         self.cams = [self.camera] + [Camera(cfg=self.cfg.camera.camera_cfg,device='cuda') for _ in range(self.num_envs - 1)]
         # self.hand_cams = [self.hand_camera] + [Camera(cfg=self.cfg.camera.camera_cfg, device = 'cpu') for _ in range(self.num_envs - 1)]
         # self.get_pcd(self.camera)
-        for i in range(self.num_envs):
-        #    print(i)
-           self.cams[i].spawn(self.env_ns + f"/env_{i}/CameraSensor")
+        # for i in range(self.num_envs):
+        # #    print(i)
+        #    self.cams[i].spawn(self.env_ns + f"/env_{i}/CameraSensor")
         self.sim.reset()
         
         # define views over instances
@@ -330,7 +340,7 @@ class PushEnv(IsaacEnv):
         for _ in range(15):
             self.sim.render()
         for i in range(self.num_envs):
-           self.cams[i].initialize()
+           self.cams[i].initialize(self.env_ns + f"/env_{i}/CameraSensor/Camera")
            env_pos = np.array(self.envs_positions[i].cpu().numpy())
            self.cams[i].set_world_pose_from_view(eye=np.array([0, 0, 1.7]) + env_pos, target=np.array([0, 0, 0]) + env_pos)
            self.cams[i].update(self.dt)
@@ -371,6 +381,8 @@ class PushEnv(IsaacEnv):
                                      self.cfg.og_resolution.tabletop[0]),device=self.device)
         self.obj_masks = torch.zeros((self.num_envs,self.cfg.og_resolution.tabletop[1],
                                      self.cfg.og_resolution.tabletop[0]),device=self.device)
+        self.place_success = torch.zeros((self.num_envs,),device=self.device)
+        self.falling_obj = torch.zeros((self.num_envs,),device=self.device)
     def get_pcd(self,camera):
         camera.update(dt=self.dt)
         rgb=camera.data.output["rgb"]
@@ -409,7 +421,7 @@ class PushEnv(IsaacEnv):
         # print(cam_pos)
         plane_model = self.point_cloud_process(pcd)
         plane_model_ori = plane_model
-        plane_model = np.array([plane_model[0],plane_model[1],plane_model[2]])
+        plane_model= np.array([plane_model[0],plane_model[1],plane_model[2]])
         pointcloud_w = np.array(pcd.points)
         select_m = np.dot(pointcloud_w,plane_model) + float(plane_model_ori[3])
         index_inliers = np.argwhere((select_m >=-0.01)).reshape(-1).astype(int)
@@ -481,7 +493,17 @@ class PushEnv(IsaacEnv):
     """
     Helper functions - MDP.
     """
-
+    def _check_fallen_objs(self):
+        dc=_dynamic_control.acquire_dynamic_control_interface()
+        for _ in range(self.num_envs):
+            for j in self.obj_on_table:
+                object=dc.get_rigid_body(self.env_ns + f"/env_{_}/table_obj/"+j)
+                object_pose=dc.get_rigid_body_pose(object)
+                print(object_pose.p)
+                object=dc.get_rigid_body(self.env_ns + f"/env_{_}/new_obj/"+self.new_obj_type)
+                object_pose=dc.get_rigid_body_pose(object)
+                print(object_pose.p)
+                
     def _check_termination(self) -> None:
         # access buffers from simulator
         # object_pos = self.object.data.root_pos_w - self.envs_positions
@@ -489,9 +511,10 @@ class PushEnv(IsaacEnv):
         self.reset_buf[:] = 0
         # compute resets
         # -- when task is successful
-        # if self.cfg.terminations.is_success:
+        if self.cfg.terminations.is_success:
         #     object_position_error = torch.norm(self.object.data.root_pos_w - self.object_des_pose_w[:, 0:3], dim=1)
         #     self.reset_buf = torch.where(object_position_error < 0.02, 1, self.reset_buf)
+            self.reset_buf = torch.where(self.place_success >= 0.5, 1, self.reset_buf)
         # # -- object fell off the table (table at height: 0.0 m)
         # if self.cfg.terminations.object_falling:
         #     self.reset_buf = torch.where(object_pos[:, 2] < -0.05, 1, self.reset_buf)
@@ -569,6 +592,8 @@ class PushEnv(IsaacEnv):
         self.object.set_root_state(root_state, env_ids=env_ids)
 
     def _set_table_scene(self):
+        for j in range(self.num_envs):
+            self.obj_env_dict[j] = []
         file_name = self.cfg.env_name
         ycb_usd_paths = self.cfg.YCBdata.ycb_usd_paths
         ycb_name = self.cfg.YCBdata.ycb_name
@@ -600,7 +625,11 @@ class PushEnv(IsaacEnv):
                 key = _+str(self.obj_dict[_])
                 prim_utils.create_prim(self.template_env_ns+f"/table_obj/{key}",usd_path=usd_path, translation=k[0],orientation=k[1])
                 GeometryPrim(self.template_env_ns+f"/table_obj/{key}",collision=True).set_collision_approximation("convexDecomposition")
-                RigidPrim(self.template_env_ns+f"/table_obj/{key}",mass=0.3)
+                
+                for j in range(self.num_envs):
+                    prim_tmp = RigidPrim(self.env_ns+ f"/env_{j}/table_obj/"+key)
+                    self.obj_env_dict[j].append(prim_tmp)
+                    # prim_tmp.initialize()
                 self.obj_on_table.append(key)
                 for j in range(5):
                     self.sim.step()
@@ -609,15 +638,19 @@ class PushEnv(IsaacEnv):
         rot = convert_quat(tf.Rotation.from_euler("XYZ", (0,0,0), degrees=True).as_quat(), to="wxyz")
         if env[1] in ["mug","tomatoSoupCan","pitcherBase","tunaFishCan","bowl","banana"]:
             rot = convert_quat(tf.Rotation.from_euler("XYZ", (-90,0,0), degrees=True).as_quat(), to="wxyz")
-        prim_utils.create_prim(self.template_env_ns+f"/new_obj/{env[1]}",usd_path=usd_path,translation=[0.75,0,-0.45],orientation=rot)
-        self.new_obj=GeometryPrim(self.template_env_ns+f"/new_obj/{env[1]}",collision=True).set_collision_approximation("convexDecomposition")
-        RigidPrim(self.template_env_ns+f"/new_obj/{env[1]}",mass=0.3)
-        for j in range(15):
+        prim_utils.create_prim(self.template_env_ns+f"/new_obj/{env[1]}",usd_path=usd_path,translation=[0.75,0,-0.3],orientation=rot)
+        GeometryPrim(self.template_env_ns+f"/new_obj/{env[1]}",collision=True).set_collision_approximation("convexDecomposition")
+        self.new_obj=RigidPrim(self.template_env_ns+f"/new_obj/{env[1]}",mass=0.3)
+        for j in range(25):
             self.sim.step()
-
+        self.sim.reset(True)
+        for _ in self.obj_env_dict:
+            for j in self.obj_env_dict[_]:
+                j.initialize()
+        self.new_obj.initialize()
         # print(env)
         # print(new_obj_mask)
-        return 0
+        # return 0
     def _randomize_object_desired_pose(self, env_ids: torch.Tensor, cfg: RandomizationCfg.ObjectDesiredPoseCfg):
         """Randomize the desired pose of the object."""
         # -- desired object root position
@@ -784,7 +817,11 @@ class PushRewardManager(RewardManager):
     def penalizing_arm_action_rate_l2(self, env: PushEnv):
         """Penalize large variations in action commands besides tool."""
         return -torch.sum(torch.square(env.actions[:, :-1] - env.previous_actions[:, :-1]), dim=1)
-
+    def penalizing_falling(self,env:PushEnv):
+        return -env.falling_obj
+    def check_placing(self,env:PushEnv):
+        """try to place new object"""
+        return env.place_success
     # def penalizing_tool_action_l2(self, env: PushEnv):
     #     """Penalize large values in action commands for the tool."""
     #     return -torch.square(env.actions[:, -1])
