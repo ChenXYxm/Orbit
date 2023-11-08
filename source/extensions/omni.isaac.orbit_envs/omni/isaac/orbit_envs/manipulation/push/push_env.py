@@ -46,6 +46,7 @@ class PushEnv(IsaacEnv):
         self.obj_handle_list = []
         ycb_usd_paths = self.cfg.YCBdata.ycb_usd_paths
         ycb_name = self.cfg.YCBdata.ycb_name
+        
         # parse the configuration for controller configuration
         # note: controller decides the robot control mode
         self._pre_process_cfg()
@@ -174,6 +175,7 @@ class PushEnv(IsaacEnv):
         # self.success_place = False
         # Take an initial step to initialize the scene.
         # This is required to compute quantities like Jacobians used in step().
+        self.new_obj_vertices = []
         self.sim.step()
         # -- fill up buffers
         # self.object.update_buffers(self.dt)
@@ -309,6 +311,8 @@ class PushEnv(IsaacEnv):
         self._randomize_table_scene(env_ids=env_ids)
         for _ in range(10):
             self.sim.step()
+        self._update_table_og()
+        self.table_og_pre = self.table_og.clone()
         self.falling_obj[env_ids] = 0
         self.falling_obj_all[env_ids] = 0
         self._check_fallen_objs()
@@ -348,6 +352,7 @@ class PushEnv(IsaacEnv):
         if self.cfg.control.control_type == "inverse_kinematics":
             self._ik_controller.reset_idx(env_ids)
         self._get_obj_mask(env_ids=env_ids)
+        self._get_obj_info(env_ids=env_ids)
         self.reset_f = True
 
     def _get_obj_mask(self,env_ids: VecEnvIndices):
@@ -359,8 +364,8 @@ class PushEnv(IsaacEnv):
         mask[s_x_ind:e_x_ind,s_y_ind:e_y_ind] = self.new_obj_mask
         for j in range(len(env_ids.cpu().numpy())):
             # print("mask j")
-            # print(j)
-            self.obj_masks[j] = torch.from_numpy(mask).to(self.device)
+            # print(env_ids[j])
+            self.obj_masks[int(env_ids.cpu().numpy()[j])] = torch.from_numpy(mask).to(self.device)
         # plt.imshow(self.new_obj_mask)
         # plt.draw()
         plt.imshow(mask)
@@ -371,6 +376,8 @@ class PushEnv(IsaacEnv):
         print(self.step_num)
         # print(self.obj1[0].data.root_pos_w)
         self.actions = actions.clone().to(device=self.device)
+        self.actions[:,-1] = 1
+        print(self.actions)
         # transform actions based on controller
         if self.cfg.control.control_type == "inverse_kinematics":
             # set the controller commands
@@ -400,8 +407,13 @@ class PushEnv(IsaacEnv):
                 return
         # post-step:
         # -- compute common buffers
-        for _ in range(10):
+        for _ in range(50):
             self.sim.step()
+        env_ids=torch.from_numpy(np.arange(self.num_envs)).to(self.device)
+        dof_pos, dof_vel = self.robot.get_default_dof_state(env_ids=env_ids)
+        self.robot.set_dof_state(dof_pos, dof_vel, env_ids=env_ids)
+        print("robot dof pos")
+        print(self.robot.data.ee_state_w[:, 0:3])
         self.robot.update_buffers(self.dt)
         for i,obj_t in enumerate(self.obj1):
             obj_t.update_buffers(self.dt)
@@ -417,7 +429,8 @@ class PushEnv(IsaacEnv):
         self._check_fallen_objs()
         # reward
         self.reward_buf = self._reward_manager.compute()
-
+        # check_placing
+        self._check_placing()
         # terminations
         self._check_termination()
         
@@ -497,6 +510,7 @@ class PushEnv(IsaacEnv):
             obj_t.initialize(self.env_ns + "/.*" + f"/Objs/obj3/obj_{i}")
         for i,obj_t in enumerate(self.obj4):
             obj_t.initialize(self.env_ns + "/.*" + f"/Objs/obj4/obj_{i}")
+        self.new_obj_vertices = [i for i in range(self.num_envs)]
         # self.obj1.initialize(self.env_ns + "/.*/Objs/obj1")
         # print("camera")
         # print(self.camera)
@@ -560,6 +574,8 @@ class PushEnv(IsaacEnv):
         # time-step = 0
         self.object_init_pose_w = torch.zeros((self.num_envs, 7), device=self.device)
         self.table_og = torch.zeros((self.num_envs,self.cfg.og_resolution.tabletop[1],
+                                     self.cfg.og_resolution.tabletop[0]),device=self.device)
+        self.table_og_pre = torch.zeros((self.num_envs,self.cfg.og_resolution.tabletop[1],
                                      self.cfg.og_resolution.tabletop[0]),device=self.device)
         self.obj_masks = torch.zeros((self.num_envs,self.cfg.og_resolution.tabletop[1],
                                      self.cfg.og_resolution.tabletop[0]),device=self.device)
@@ -678,6 +694,13 @@ class PushEnv(IsaacEnv):
     """
     Helper functions - MDP.
     """
+    def _get_obj_info(self,env_ids: VecEnvIndices):
+        if len(self.new_obj_vertices)==0:
+            self.new_obj_vertices = [i for i in range(self.num_envs)]
+        for i in range(len(env_ids.cpu().numpy())):
+            mask_obj = self.obj_masks[env_ids[i]].cpu().numpy()
+            obj_vertices = get_new_obj_contour_bbox(mask_obj) 
+            self.new_obj_vertices[int(env_ids[i])] = obj_vertices
     def _check_fallen_objs(self):
         torch_fallen = torch.zeros((self.num_envs,),device=self.device)
         for k in self.obj_on_table:
@@ -696,7 +719,30 @@ class PushEnv(IsaacEnv):
         #         object=dc.get_rigid_body(self.env_ns + f"/env_{_}/new_obj/"+self.new_obj_type)
         #         object_pose=dc.get_rigid_body_pose(object)
         #         print(object_pose.p)
-                
+    def _update_table_og(self):
+        if self.reset_f:
+            for i in range(self.num_envs):
+                self.cams[i].update(self.dt)
+                # rgb=self.cams[i].data.output["rgb"]
+                # # print(env.cams[i],rgb)
+                # rgb = convert_to_torch(rgb, device=self.device, dtype=torch.uint8)
+                # rgb = rgb[:, :, :3].cpu().data.numpy()
+                # plt.imshow(rgb)
+                # plt.show()
+                og = self.get_og(self.cams[i])
+                # plt.imshow(og)
+                # plt.show()
+                self.table_og[i] = torch.from_numpy(og.copy()).to(self.device)
+    def _check_placing(self):
+        self._update_table_og()
+        for i in range(self.num_envs):
+            occupancy = self.table_og[i].cpu().numpy()
+            vertices_new_obj = self.new_obj_vertices[i]
+            flag_found, new_poly_vetices,occu_tmp,new_obj_pos = place_new_obj_fun(occupancy,vertices_new_obj)  
+            # plt.imshow(occu_tmp)
+            # plt.show()
+            if flag_found:
+                self.place_success[i] = 1
     def _check_termination(self) -> None:
         # access buffers from simulator
         # object_pos = self.object.data.root_pos_w - self.envs_positions
@@ -791,10 +837,13 @@ class PushEnv(IsaacEnv):
         fileObject2 = open(env_path, 'rb')
         env =  pkl.load(fileObject2)
         obj_pos_rot = env[0]
+        
+        # self.new_obj_mask = self.cfg.obj_mask.mask["tomatoSoupCan"]
         self.new_obj_mask = self.cfg.obj_mask.mask[env[1]]
         self.new_obj_type = env[1]
+        # self.new_obj_type = "tomatoSoupCan"
         fileObject2.close()
-        print(env_ids)
+        # print(env_ids)
         for i in obj_pos_rot:
             if i == ycb_name[0]:
                 for _,pos_rot in enumerate(obj_pos_rot[i]):
@@ -966,17 +1015,7 @@ class PushEnv(IsaacEnv):
 class PushObservationManager(ObservationManager):
     """Reward manager for single-arm reaching environment."""
     def table_scene(self,env:PushEnv):
-        if env.reset_f:
-            for i in range(env.num_envs):
-                env.cams[i].update(env.dt)
-                rgb=env.cams[i].data.output["rgb"]
-                # print(env.cams[i],rgb)
-                rgb = convert_to_torch(rgb, device=env.device, dtype=torch.uint8)
-                rgb = rgb[:, :, :3].cpu().data.numpy()
-                # plt.imshow(rgb)
-                # plt.show()
-                og = env.get_og(env.cams[i])
-                env.table_og[i] = torch.from_numpy(og.copy()).to(env.device)
+        
         return env.table_og
     def new_obj_mask(self,env:PushEnv):
         # print(env.new_obj_mask.shape)

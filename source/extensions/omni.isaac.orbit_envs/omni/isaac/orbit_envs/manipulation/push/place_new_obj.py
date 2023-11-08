@@ -34,16 +34,16 @@ def get_new_obj_contour_bbox(occu:np.array):
         for i in range(len(approx)):
             mask_tmp[approx[i][1],approx[i][0]] = 130
         vertices_new_obj = approx 
-        print(vertices_new_obj)
+        # print(vertices_new_obj)
         vertices_new_obj = vertices_new_obj - np.array([Nx/2,Ny/2])
-        print(vertices_new_obj)
+        # print(vertices_new_obj)
         # plt.imshow(mask_tmp)
         # plt.show()
         
         l = []
         for i in range(2):
             l.append(np.linalg.norm(vertices_new_obj[i]-vertices_new_obj[i+1]))
-        print(l)
+        # print(l)
         return vertices_new_obj
     else:
         return None
@@ -55,7 +55,7 @@ def place_new_obj_fun(occu_ori,new_obj):
     shape_occu = occu_ori.shape
     Nx = shape_occu[1]
     Ny = shape_occu[0]
-    print(shape_occu)
+    # print(shape_occu)
     num_check_edge = 0
     occu = occu_ori.copy()
     bbox = []
@@ -66,7 +66,7 @@ def place_new_obj_fun(occu_ori,new_obj):
     occu = np.array(occu*255,dtype=np.uint8)
     ret,thresh = cv2.threshold(occu,50,255,0)
     contours,hierarchy = cv2.findContours(thresh,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
-    print("Number of contours detected:",len(contours))
+    # print("Number of contours detected:",len(contours))
     shape_dict = dict()
     i = 0
     polygons = []
@@ -161,7 +161,7 @@ def place_new_obj_fun(occu_ori,new_obj):
         flag_found = False
         dila_polygons = []
         for i in polygons:
-            dila_polygons.append(i.buffer(3))
+            dila_polygons.append(i.buffer(5))
         tree = STRtree(dila_polygons)
         for length_ori in [num_grid_l,num_grid_s]:
             if length_ori == num_grid_l:
@@ -171,14 +171,14 @@ def place_new_obj_fun(occu_ori,new_obj):
 
             length_arr = abs(np.array(length_list)-length_ori)
             for i in range(len(length_list)):
-                print(i)
+                # print(i)
                 # if flag_found:
                 #     break
                 ind_tmp = np.argmin(length_arr)
                 for m in range(int(len(length_dict[length_list[ind_tmp]])/2)):
                     num_check_edge +=1
-                    print("num check edge")
-                    print(num_check_edge,len(length_dict[length_list[ind_tmp]]))
+                    # print("num check edge")
+                    # print(num_check_edge,len(length_dict[length_list[ind_tmp]]))
                     p_s = length_dict[length_list[ind_tmp]][2*m]
                     p_e = length_dict[length_list[ind_tmp]][2*m+1]
                     p_s = [p_s[1],p_s[0]]
@@ -197,11 +197,14 @@ def place_new_obj_fun(occu_ori,new_obj):
                         # print(p_s,p_e)
                         line = np.array(p_e) - np.array(p_s)
                         length = np.linalg.norm(line)
+                        if length == 0:
+                            length = 1
+                        
                         delta_l = length_ori-length
                         p_s_ori = np.array(p_s).copy() + p*line/length
                         p_e_ori = (np.array(p_e).copy() + delta_l*line/length).copy() + p*line/length
                         if p == 0:
-                            print("ordinary")
+                            # print("ordinary")
                             range_o = int(np.ceil(abs(delta_l)))
                         else:
                             range_o = 1
@@ -238,8 +241,8 @@ def place_new_obj_fun(occu_ori,new_obj):
                                         nearest_poly = tree.geometries.take(indices)
                                         # print(poly,nearest_poly)
                                         if poly.disjoint(nearest_poly):
-                                            print("find the position")
-                                            print(poly)
+                                            # print("find the position")
+                                            # print(poly)
                                             # for j in range(len(new_poly_vetices)):
                                             #     occu_tmp[int(new_poly_vetices[j][1]),int(new_poly_vetices[j][0])] = 3
                                             for j in range(len(points_tmp)):
@@ -301,7 +304,7 @@ def get_pos(new_obj,new_poly_vetices):
     for i in range(2):
         l1.append(np.linalg.norm(new_obj[i]-new_obj[i+1]))
         l2.append(np.linalg.norm(new_poly_vetices[i]-new_poly_vetices[i+1]))
-    print(l1,l2)
+    # print(l1,l2)
     if l1[0] >=l1[1]:
         if l2[0]>=l2[1]:
             
