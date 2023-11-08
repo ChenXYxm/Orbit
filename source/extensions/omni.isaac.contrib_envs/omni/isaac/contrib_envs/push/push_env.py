@@ -165,9 +165,9 @@ class PushEnv(IsaacEnv):
 
         # compute the observation space: arm joint state + ee-position + goal-position + actions
         num_obs = self._observation_manager.group_obs_dim["policy"]
-        print("num_obs")
-        print(num_obs)
-        self.observation_space = gym.spaces.Box(low=0, high=255, shape=num_obs,dtype=np.uint8)
+        # print("num_obs")
+        # print(num_obs)
+        self.observation_space = gym.spaces.Box(low=0, high=1, shape=num_obs,dtype=int)
         # compute the action space
         self.action_space = gym.spaces.Box(low=-1.0, high=1.0, shape=(self.num_actions,))
         print("[INFO]: Completed setting up the environment...")
@@ -1058,30 +1058,12 @@ class PushEnv(IsaacEnv):
 class PushObservationManager(ObservationManager):
     """Reward manager for single-arm reaching environment."""
     def table_scene(self,env:PushEnv):
-        obs_ta = torch.zeros((env.num_envs,env.cfg.og_resolution.tabletop[1],
-                                     env.cfg.og_resolution.tabletop[0],2),device=env.device)
-        for i in range(env.num_envs):
-            im = env.table_og[i].cpu().numpy()*255
-            observation = np.array(im,dtype=np.uint8)
-            observation = observation[:,np.newaxis].reshape([env.cfg.og_resolution.tabletop[1],
-                                     env.cfg.og_resolution.tabletop[0]])
-            obs_ta[i,:,:,0] = torch.from_numpy(observation).to(env.device)
-        # obs_mask = torch.zeros((env.num_envs,env.cfg.og_resolution.tabletop[1],
-                                    #  env.cfg.og_resolution.tabletop[0],1),device=env.device)
-        for i in range(env.num_envs):
-            im = env.obj_masks[i].cpu().numpy()*255
-            observation = np.array(im,dtype=np.uint8)
-            observation = observation[:,np.newaxis].reshape([env.cfg.og_resolution.tabletop[1],
-                                     env.cfg.og_resolution.tabletop[0]])
-            obs_ta[i,:,:,1]  = torch.from_numpy(observation).to(env.device)
-        return obs_ta
-        # return env.table_og
         
-    # def new_obj_mask(self,env:PushEnv):
-    #     # print(env.new_obj_mask.shape)
+        return env.table_og
+    def new_obj_mask(self,env:PushEnv):
+        # print(env.new_obj_mask.shape)
         
-    #     return obs_mask
-        # return env.obj_masks
+        return env.obj_masks
     def arm_dof_pos(self, env: PushEnv):
         """DOF positions for the arm."""
         return env.robot.data.arm_dof_pos

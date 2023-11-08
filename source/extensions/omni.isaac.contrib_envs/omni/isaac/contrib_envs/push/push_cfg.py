@@ -140,7 +140,7 @@ class ObservationsCfg:
         # -- joint state
         # table_scene = {"scale": 1.0}
         table_scene = {"scale": 1.0}
-        # new_obj_mask = {"scale": 1.0}
+        new_obj_mask = {"scale": 1.0}
         # arm_dof_pos = {"scale": 1.0}
         # # arm_dof_pos_scaled = {"scale": 1.0}
         # # arm_dof_vel = {"scale": 0.5, "noise": {"name": "uniform", "min": -0.01, "max": 0.01}}
