@@ -33,14 +33,14 @@ FRANKA_PANDA_ARM_WITH_PANDA_HAND_CFG = SingleArmManipulatorCfg(
     ),
     init_state=SingleArmManipulatorCfg.InitialStateCfg(
         dof_pos={
-            "panda_joint1": 1.7,
-            "panda_joint2": -1.009,
-            "panda_joint3": 1.5,
+            "panda_joint1": 0.0,
+            "panda_joint2": -0.569,
+            "panda_joint3": 0.0,
             "panda_joint4": -2.810,
             "panda_joint5": 0.0,
             "panda_joint6": 3.037,
             "panda_joint7": 0.741,
-            "panda_finger_joint*": 1,
+            "panda_finger_joint*": 0.04,
         },
         dof_vel={".*": 0.0},
     ),

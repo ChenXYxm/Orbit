@@ -48,6 +48,7 @@ def main():
     while simulation_app.is_running():
         # compute zero actions
         actions = torch.zeros((env.num_envs, env.action_space.shape[0]), device=env.device)
+        actions[:,1] = -0.2
         # apply actions
         _, _, _, _ = env.step(actions)
         # check if simulator is stopped

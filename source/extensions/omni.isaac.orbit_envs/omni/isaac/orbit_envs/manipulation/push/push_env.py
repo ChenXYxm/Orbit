@@ -164,10 +164,10 @@ class PushEnv(IsaacEnv):
         print("[INFO] Reward Manager: ", self._reward_manager)
 
         # compute the observation space: arm joint state + ee-position + goal-position + actions
-        num_obs = self._observation_manager.group_obs_dim["policy"][0]
+        num_obs = self._observation_manager.group_obs_dim["policy"]
         # print("num_obs")
         # print(num_obs)
-        self.observation_space = gym.spaces.Box(low=-math.inf, high=math.inf, shape=(num_obs,))
+        self.observation_space = gym.spaces.Box(low=0, high=1, shape=num_obs,dtype=int)
         # compute the action space
         self.action_space = gym.spaces.Box(low=-1.0, high=1.0, shape=(self.num_actions,))
         print("[INFO]: Completed setting up the environment...")
@@ -305,6 +305,7 @@ class PushEnv(IsaacEnv):
     def _reset_idx(self, env_ids: VecEnvIndices):
         # randomize the MDP
         # -- robot DOF state
+        # self.step_num = 0
         dof_pos, dof_vel = self.robot.get_default_dof_state(env_ids=env_ids)
         self.robot.set_dof_state(dof_pos, dof_vel, env_ids=env_ids)
         self.reset_objs(env_ids=env_ids)
@@ -348,6 +349,7 @@ class PushEnv(IsaacEnv):
         self.place_success[env_ids] = 0
         self.reset_buf[env_ids] = 0
         self.episode_length_buf[env_ids] = 0
+        self.step_count[env_ids] = 0
         # controller reset
         if self.cfg.control.control_type == "inverse_kinematics":
             self._ik_controller.reset_idx(env_ids)
@@ -368,20 +370,24 @@ class PushEnv(IsaacEnv):
             self.obj_masks[int(env_ids.cpu().numpy()[j])] = torch.from_numpy(mask).to(self.device)
         # plt.imshow(self.new_obj_mask)
         # plt.draw()
-        plt.imshow(mask)
-        plt.show() 
+        # plt.imshow(mask)
+        # plt.show() 
     def _step_impl(self, actions: torch.Tensor):
         # pre-step: set actions into buffer
+        self.table_og_pre = self.table_og.clone()
         self.step_num +=1
-        print(self.step_num)
+        self.step_count[:] +=1
+        # print(self.step_num)
         # print(self.obj1[0].data.root_pos_w)
         self.actions = actions.clone().to(device=self.device)
-        self.actions[:,-1] = 1
-        print(self.actions)
+        # self.actions[:,-1] = 1
+        # print(self.actions)
         # transform actions based on controller
         if self.cfg.control.control_type == "inverse_kinematics":
             # set the controller commands
-            self._ik_controller.set_command(self.actions[:, :-1])
+            self.actions[:,2] = 0.3
+            self._ik_controller.set_command(self.actions[:, :])
+            # self.actions[:, -1] = -0.1
             # use IK to convert to joint-space commands
             self.robot_actions[:, : self.robot.arm_num_dof] = self._ik_controller.compute(
                 self.robot.data.ee_state_w[:, 0:3] - self.envs_positions,
@@ -393,7 +399,37 @@ class PushEnv(IsaacEnv):
             dof_pos_offset = self.robot.data.actuator_pos_offset
             self.robot_actions[:, : self.robot.arm_num_dof] -= dof_pos_offset[:, : self.robot.arm_num_dof]
             # we assume last command is tool action so don't change that
-            self.robot_actions[:, -1] = self.actions[:, -1]
+            self.robot_actions[:, -1] = -1 # self.actions[:, -1]
+        elif self.cfg.control.control_type == "default":
+            self.robot_actions[:] = self.actions
+        # perform physics stepping
+        for _ in range(self.cfg.control.decimation):
+            # set actions into buffers
+            self.robot.apply_action(self.robot_actions)
+            # simulate
+            self.sim.step(render=self.enable_render)
+            # check that simulation is playing
+            if self.sim.is_stopped():
+                return
+        for _ in range(200):
+            self.sim.step()
+        if self.cfg.control.control_type == "inverse_kinematics":
+            # set the controller commands
+            self.actions[:,2] = 0.02
+            self._ik_controller.set_command(self.actions[:, :])
+            # self.actions[:, -1] = -0.1
+            # use IK to convert to joint-space commands
+            self.robot_actions[:, : self.robot.arm_num_dof] = self._ik_controller.compute(
+                self.robot.data.ee_state_w[:, 0:3] - self.envs_positions,
+                self.robot.data.ee_state_w[:, 3:7],
+                self.robot.data.ee_jacobian,
+                self.robot.data.arm_dof_pos,
+            )
+            # offset actuator command with position offsets
+            dof_pos_offset = self.robot.data.actuator_pos_offset
+            self.robot_actions[:, : self.robot.arm_num_dof] -= dof_pos_offset[:, : self.robot.arm_num_dof]
+            # we assume last command is tool action so don't change that
+            self.robot_actions[:, -1] = -1 # self.actions[:, -1]
         elif self.cfg.control.control_type == "default":
             self.robot_actions[:] = self.actions
         # perform physics stepping
@@ -407,14 +443,20 @@ class PushEnv(IsaacEnv):
                 return
         # post-step:
         # -- compute common buffers
-        for _ in range(50):
+        for _ in range(200):
             self.sim.step()
+        self.robot.update_buffers(self.dt)
+        # print("robot dof pos")
+        # print(self.robot.data.ee_state_w[:, 0:3])
         env_ids=torch.from_numpy(np.arange(self.num_envs)).to(self.device)
         dof_pos, dof_vel = self.robot.get_default_dof_state(env_ids=env_ids)
         self.robot.set_dof_state(dof_pos, dof_vel, env_ids=env_ids)
-        print("robot dof pos")
-        print(self.robot.data.ee_state_w[:, 0:3])
+        for _ in range(200):
+            self.sim.step()
         self.robot.update_buffers(self.dt)
+        # print("robot dof pos")
+        # print(self.robot.data.ee_state_w[:, 0:3])
+        # print(self.envs_positions)
         for i,obj_t in enumerate(self.obj1):
             obj_t.update_buffers(self.dt)
         for i,obj_t in enumerate(self.obj2):
@@ -558,7 +600,7 @@ class PushEnv(IsaacEnv):
             self._ik_controller = DifferentialInverseKinematics(
                 self.cfg.control.inverse_kinematics, self.robot.count, self.device
             )
-            self.num_actions = self._ik_controller.num_actions + 1
+            self.num_actions = self._ik_controller.num_actions
         elif self.cfg.control.control_type == "default":
             self.num_actions = self.robot.num_actions
 
@@ -582,6 +624,7 @@ class PushEnv(IsaacEnv):
         self.place_success = torch.zeros((self.num_envs,),device=self.device)
         self.falling_obj = torch.zeros((self.num_envs,),device=self.device)
         self.falling_obj_all = torch.zeros((self.num_envs,),device=self.device)
+        self.step_count = torch.zeros((self.num_envs,),device=self.device)
     def get_pcd(self,camera):
         camera.update(dt=self.dt)
         rgb=camera.data.output["rgb"]
@@ -669,11 +712,11 @@ class PushEnv(IsaacEnv):
         v = v[v_ind]
         occupancy[v,u] = 1
         occupancy = np.fliplr(occupancy)
-        if self.reset_f and self.show_first_og:
-            plt.imshow(occupancy)
-            plt.show()
-            # self.reset_f = False
-            self.show_first_og = False
+        # if self.reset_f and self.show_first_og:
+        #     # plt.imshow(occupancy)
+        #     # plt.show()
+        #     # self.reset_f = False
+        #     self.show_first_og = False
         return occupancy
 
     def _debug_vis(self):
@@ -709,7 +752,7 @@ class PushEnv(IsaacEnv):
                 torch_fallen[k] += torch.where(obj.data.root_pos_w[k, 2] < -0.05, 1, 0)
         self.falling_obj = torch_fallen - self.falling_obj_all
         self.falling_obj_all = torch_fallen
-        print(self.falling_obj_all)
+        # print(self.falling_obj_all)
         # dc=_dynamic_control.acquire_dynamic_control_interface()
         # for _ in range(self.num_envs):
         #     for j in self.obj_on_table:
@@ -1145,6 +1188,15 @@ class PushRewardManager(RewardManager):
     def check_placing(self,env:PushEnv):
         """try to place new object"""
         return env.place_success
+    def penalizing_steps(self,env:PushEnv):
+        return -env.step_count
+    def reward_og_change(self,env:PushEnv):
+        delta_og = torch.zeros((env.num_envs,),device=self.device)
+        for i in range(env.num_envs):
+            delta_tmp = env.table_og[i] - env.table_og_pre[i]
+            if torch.sum(torch.abs(delta_tmp))>0:
+                delta_og[i] = 1
+        return delta_og
     # def penalizing_tool_action_l2(self, env: PushEnv):
     #     """Penalize large values in action commands for the tool."""
     #     return -torch.square(env.actions[:, -1])
