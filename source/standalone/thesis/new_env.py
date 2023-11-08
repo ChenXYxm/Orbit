@@ -70,11 +70,11 @@ class sim_cfg:
             substeps=4,
             physx=PhysxCfg(
                 # num_position_iterations=8,
-                gpu_max_rigid_contact_count=1024, #1024**2*2,
-                gpu_max_rigid_patch_count=200, #160*2048*10, #160*2048*10,
-                gpu_found_lost_pairs_capacity = 200,#1024 * 1024 * 2 * 1, #1024 * 1024 * 2 * 8,
-                gpu_found_lost_aggregate_pairs_capacity=100,#1024 * 1024 * 32 * 1, #1024 * 1024 * 32,
-                gpu_total_aggregate_pairs_capacity=100, #1024 * 1024 * 2 *1, #1024 * 1024 * 2 * 8
+                gpu_max_rigid_contact_count=1024**2, #1024**2*2,
+                gpu_max_rigid_patch_count=160*2048*10, #160*2048*10, #160*2048*10,
+                gpu_found_lost_pairs_capacity = 1024 * 1024 * 2 * 2,#1024 * 1024 * 2 * 1, #1024 * 1024 * 2 * 8,
+                gpu_found_lost_aggregate_pairs_capacity=1024 * 1024 * 32 * 1,#1024 * 1024 * 32 * 1, #1024 * 1024 * 32,
+                gpu_total_aggregate_pairs_capacity=1024 * 1024 * 2 *1, #1024 * 1024 * 2 *1, #1024 * 1024 * 2 * 8
                 friction_correlation_distance=0.0025,
                 friction_offset_threshold=0.04,
                 bounce_threshold_velocity=0.5,
@@ -173,22 +173,29 @@ def main():
     prim_utils.create_prim("/World/Robotbase", usd_path=table_path,position=(0,-0.45,-0.2),scale=(0.3,0.26,0.4))
     #################### ycb path
     ######################################### load ycb objects
+    # ycb_usd_paths = {
+    #     "crackerBox": f"{ISAAC_NUCLEUS_DIR}/Props/YCB/Axis_Aligned_Physics/003_cracker_box.usd",
+    #     "sugarBox": f"{ISAAC_NUCLEUS_DIR}/Props/YCB/Axis_Aligned_Physics/004_sugar_box.usd",
+    #     "tomatoSoupCan": f"{ISAAC_NUCLEUS_DIR}/Props/YCB/Axis_Aligned_Physics/005_tomato_soup_can.usd",
+    #     "mustardBottle": f"{ISAAC_NUCLEUS_DIR}/Props/YCB/Axis_Aligned_Physics/006_mustard_bottle.usd",
+    #     "mug":f"{ISAAC_NUCLEUS_DIR}/Props/YCB/Axis_Aligned/025_mug.usd",
+    #     "largeMarker":f"{ISAAC_NUCLEUS_DIR}/Props/YCB/Axis_Aligned/040_large_marker.usd",
+    #     "tunaFishCan":f"{ISAAC_NUCLEUS_DIR}/Props/YCB/Axis_Aligned/007_tuna_fish_can.usd",
+    #     "banana":f"{ISAAC_NUCLEUS_DIR}/Props/YCB/Axis_Aligned/011_banana.usd",
+    #     # "pitcherBase":f"{ISAAC_NUCLEUS_DIR}/Props/YCB/Axis_Aligned/019_pitcher_base.usd",
+    #     "bowl":f"{ISAAC_NUCLEUS_DIR}/Props/YCB/Axis_Aligned/024_bowl.usd",
+    #     "largeClamp":f"{ISAAC_NUCLEUS_DIR}/Props/YCB/Axis_Aligned/051_large_clamp.usd",
+    #     "scissors":f"{ISAAC_NUCLEUS_DIR}/Props/YCB/Axis_Aligned/037_scissors.usd",
+    # }
+    # ycb_name = ['crackerBox','sugarBox','tomatoSoupCan','mustardBottle','mug','largeMarker','tunaFishCan',
+    #             'banana','bowl','largeClamp','scissors']
     ycb_usd_paths = {
         "crackerBox": f"{ISAAC_NUCLEUS_DIR}/Props/YCB/Axis_Aligned_Physics/003_cracker_box.usd",
         "sugarBox": f"{ISAAC_NUCLEUS_DIR}/Props/YCB/Axis_Aligned_Physics/004_sugar_box.usd",
         "tomatoSoupCan": f"{ISAAC_NUCLEUS_DIR}/Props/YCB/Axis_Aligned_Physics/005_tomato_soup_can.usd",
         "mustardBottle": f"{ISAAC_NUCLEUS_DIR}/Props/YCB/Axis_Aligned_Physics/006_mustard_bottle.usd",
-        "mug":f"{ISAAC_NUCLEUS_DIR}/Props/YCB/Axis_Aligned/025_mug.usd",
-        "largeMarker":f"{ISAAC_NUCLEUS_DIR}/Props/YCB/Axis_Aligned/040_large_marker.usd",
-        "tunaFishCan":f"{ISAAC_NUCLEUS_DIR}/Props/YCB/Axis_Aligned/007_tuna_fish_can.usd",
-        "banana":f"{ISAAC_NUCLEUS_DIR}/Props/YCB/Axis_Aligned/011_banana.usd",
-        # "pitcherBase":f"{ISAAC_NUCLEUS_DIR}/Props/YCB/Axis_Aligned/019_pitcher_base.usd",
-        "bowl":f"{ISAAC_NUCLEUS_DIR}/Props/YCB/Axis_Aligned/024_bowl.usd",
-        "largeClamp":f"{ISAAC_NUCLEUS_DIR}/Props/YCB/Axis_Aligned/051_large_clamp.usd",
-        "scissors":f"{ISAAC_NUCLEUS_DIR}/Props/YCB/Axis_Aligned/037_scissors.usd",
     }
-    ycb_name = ['crackerBox','sugarBox','tomatoSoupCan','mustardBottle','mug','largeMarker','tunaFishCan',
-                'banana','bowl','largeClamp','scissors']
+    ycb_name = ['crackerBox','sugarBox','tomatoSoupCan','mustardBottle']
     ################################ robot setting
     robot_cfg = FRANKA_PANDA_ARM_WITH_PANDA_HAND_CFG
     robot_cfg.data_info.enable_jacobian = True
@@ -247,6 +254,8 @@ def main():
     ##################################################################### load ycb
     
     obj_dict = dict()
+    for _ in ycb_name:
+        obj_dict[_] = 0
     for _ in range(1):
         randi = np.random.randint(0,len(ycb_name))
         angle = np.random.randint(0,180)
@@ -254,11 +263,12 @@ def main():
         key_ori = ycb_name[randi]
         # key_ori = "mug"
         usd_path = ycb_usd_paths[key_ori]
-        if key_ori not in obj_dict:
-            obj_dict[key_ori] = 1
-        else:
-            obj_dict[key_ori] +=1
-        key = key_ori+str(obj_dict[key_ori])
+        # if key_ori not in obj_dict:
+        #     obj_dict[key_ori] = 1
+        # else:
+        #     obj_dict[key_ori] +=1
+        # key = key_ori+str(obj_dict[key_ori])
+        key = key_ori
         translation = torch.rand(3).tolist()
         translation = [-translation[0]*0.3+0.2,-0.45*translation[1]-0.3,-0.2]
         # translation = [0,0,0.2]
@@ -271,7 +281,7 @@ def main():
         RigidPrim(f"/World/Objects/{key}",mass=0.3)
         for _ in range(30):
             sim.step()
-    num_obj = np.random.randint(0,3)
+    num_obj = np.random.randint(1,2)
     table_obj_pos_rot = dict()
     if num_obj >=1:
         for _ in range(num_obj):
@@ -353,6 +363,7 @@ def main():
             print('pause')
             sim.play()
             continue
+        
         ########################################## ik control
         # # perform step
         # # set the controller commands
@@ -387,6 +398,8 @@ def main():
             count +=1
             # update marker positions
         if count >=10:
+            print("ori obj dict")
+            print(obj_dict)
             count = 0
             camera.update(dt=0.0)
             hand_camera.update(dt=0.0)
@@ -438,9 +451,18 @@ def main():
             v = v[v_ind]
             occupancy[v,u] = 1
             occupancy = np.fliplr(occupancy)
+            print(table_obj_pos_rot)
             if len(table_obj_pos_rot)>=2:
                 if np.sum(occupancy)==0:
                     Table.set_collision_approximation("convexDecomposition")
+                    table_obj_pos_rot = dict()
+                    # obj_dict = dict()
+                    for _ in ycb_name:
+                        
+                        for k in range(obj_dict[_]):
+                            key = _ +str(k+1)
+                            prim_utils.delete_prim(f"/World/Objects/{key}")
+                        obj_dict[_] = 0
                     # break
             # plt.imshow(occupancy)
             # plt.show()
@@ -457,6 +479,7 @@ def main():
             # hand_rgb = hand_rgb[:, :, :3].cpu().data.numpy()
             
             obj_dict, new_obj,obj_type,new_obj_path = place_new_object(occupancy,ycb_name,ycb_usd_paths,num_new,obj_dict)
+            
             num_new +=1
             for _ in range(50):
                 sim.step()
@@ -501,7 +524,7 @@ def main():
                 file_name_ori = "dict_"
                 file_list = os.listdir("generated_table/")
                 
-                num_file = 73
+                num_file = 1
                 while True:
                     file_name = file_name_ori+str(num_file)+".pkl"
                     if file_name in file_list:
@@ -694,15 +717,20 @@ def get_new_obj_pcd(camera,size,hand_plane_model):
     o3d.visualization.draw_geometries([objects_pcd, aabb])
     return aabb_points
 def place_new_object(occu,ycb_list,ycb_path,num_new,obj_dict):
-    randi = np.random.randint(0,len(ycb_list))
-    # angle = np.random.randint(0,180)
     angle = 0
-    key_ori = ycb_list[randi]
-    usd_path = ycb_path[key_ori]
-    if key_ori not in obj_dict:
-        obj_dict[key_ori] = 1
-    else:
-        obj_dict[key_ori] +=1
+    while True:
+        randi = np.random.randint(0,len(ycb_list))
+        # angle = np.random.randint(0,180)
+        key_ori = ycb_list[randi]
+        usd_path = ycb_path[key_ori]
+        if key_ori not in obj_dict:
+            obj_dict[key_ori] = 1
+        else:
+            if obj_dict[key_ori]<5:
+                obj_dict[key_ori] +=1
+                break
+            
+    print(obj_dict)
     key = key_ori+str(obj_dict[key_ori])
     translation = 0
     translation = [0.35,-0.9,0.1]

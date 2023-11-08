@@ -10,6 +10,7 @@ from omni.isaac.orbit.robots.config.franka import FRANKA_PANDA_ARM_WITH_PANDA_HA
 from omni.isaac.orbit.robots.single_arm import SingleArmManipulatorCfg
 from omni.isaac.orbit.utils import configclass
 from omni.isaac.orbit.utils.assets import ISAAC_NUCLEUS_DIR
+from omni.isaac.dynamic_control import _dynamic_control
 
 from omni.isaac.orbit_envs.isaac_env_cfg import EnvCfg, IsaacEnvCfg, PhysxCfg, SimCfg, ViewerCfg
 from omni.isaac.orbit.sensors.camera import PinholeCameraCfg
@@ -41,11 +42,12 @@ class ManipulationObjectCfg(RigidObjectCfg):
     """Properties for the object to manipulate in the scene."""
 
     meta_info = RigidObjectCfg.MetaInfoCfg(
-        usd_path=f"{ISAAC_NUCLEUS_DIR}/Props/Blocks/DexCube/dex_cube_instanceable.usd",
+        # usd_path=f"{ISAAC_NUCLEUS_DIR}/Props/Blocks/DexCube/dex_cube_instanceable.usd",
+        usd_path=f"{ISAAC_NUCLEUS_DIR}/Props/YCB/Axis_Aligned_Physics/003_cracker_box.usd",
         scale=(0.8, 0.8, 0.8),
     )
     init_state = RigidObjectCfg.InitialStateCfg(
-        pos=(0.4, 0.0, 0.075), rot=(1.0, 0.0, 0.0, 0.0), lin_vel=(0.0, 0.0, 0.0), ang_vel=(0.0, 0.0, 0.0)
+        pos=(0.9, 0.0, -0.1), rot=(1.0, 0.0, 0.0, 0.0), lin_vel=(0.0, 0.0, 0.0), ang_vel=(0.0, 0.0, 0.0)
     )
     rigid_props = RigidObjectCfg.RigidBodyPropertiesCfg(
         solver_position_iteration_count=16,
@@ -163,22 +165,29 @@ class ObservationsCfg:
 @configclass
 class YCBobjectsCfg:
     ######################################### load ycb objects
+    # ycb_usd_paths = {
+    #     "crackerBox": f"{ISAAC_NUCLEUS_DIR}/Props/YCB/Axis_Aligned_Physics/003_cracker_box.usd",
+    #     "sugarBox": f"{ISAAC_NUCLEUS_DIR}/Props/YCB/Axis_Aligned_Physics/004_sugar_box.usd",
+    #     "tomatoSoupCan": f"{ISAAC_NUCLEUS_DIR}/Props/YCB/Axis_Aligned_Physics/005_tomato_soup_can.usd",
+    #     "mustardBottle": f"{ISAAC_NUCLEUS_DIR}/Props/YCB/Axis_Aligned_Physics/006_mustard_bottle.usd",
+    #     "mug":f"{ISAAC_NUCLEUS_DIR}/Props/YCB/Axis_Aligned/025_mug.usd",
+    #     "largeMarker":f"{ISAAC_NUCLEUS_DIR}/Props/YCB/Axis_Aligned/040_large_marker.usd",
+    #     "tunaFishCan":f"{ISAAC_NUCLEUS_DIR}/Props/YCB/Axis_Aligned/007_tuna_fish_can.usd",
+    #     "banana":f"{ISAAC_NUCLEUS_DIR}/Props/YCB/Axis_Aligned/011_banana.usd",
+    #     # "pitcherBase":f"{ISAAC_NUCLEUS_DIR}/Props/YCB/Axis_Aligned/019_pitcher_base.usd",
+    #     "bowl":f"{ISAAC_NUCLEUS_DIR}/Props/YCB/Axis_Aligned/024_bowl.usd",
+    #     "largeClamp":f"{ISAAC_NUCLEUS_DIR}/Props/YCB/Axis_Aligned/051_large_clamp.usd",
+    #     "scissors":f"{ISAAC_NUCLEUS_DIR}/Props/YCB/Axis_Aligned/037_scissors.usd",
+    # }
+    # ycb_name = ['crackerBox','sugarBox','tomatoSoupCan','mustardBottle','mug','largeMarker','tunaFishCan',
+    #             'banana','bowl','largeClamp','scissors']
     ycb_usd_paths = {
         "crackerBox": f"{ISAAC_NUCLEUS_DIR}/Props/YCB/Axis_Aligned_Physics/003_cracker_box.usd",
         "sugarBox": f"{ISAAC_NUCLEUS_DIR}/Props/YCB/Axis_Aligned_Physics/004_sugar_box.usd",
         "tomatoSoupCan": f"{ISAAC_NUCLEUS_DIR}/Props/YCB/Axis_Aligned_Physics/005_tomato_soup_can.usd",
         "mustardBottle": f"{ISAAC_NUCLEUS_DIR}/Props/YCB/Axis_Aligned_Physics/006_mustard_bottle.usd",
-        "mug":f"{ISAAC_NUCLEUS_DIR}/Props/YCB/Axis_Aligned/025_mug.usd",
-        "largeMarker":f"{ISAAC_NUCLEUS_DIR}/Props/YCB/Axis_Aligned/040_large_marker.usd",
-        "tunaFishCan":f"{ISAAC_NUCLEUS_DIR}/Props/YCB/Axis_Aligned/007_tuna_fish_can.usd",
-        "banana":f"{ISAAC_NUCLEUS_DIR}/Props/YCB/Axis_Aligned/011_banana.usd",
-        # "pitcherBase":f"{ISAAC_NUCLEUS_DIR}/Props/YCB/Axis_Aligned/019_pitcher_base.usd",
-        "bowl":f"{ISAAC_NUCLEUS_DIR}/Props/YCB/Axis_Aligned/024_bowl.usd",
-        "largeClamp":f"{ISAAC_NUCLEUS_DIR}/Props/YCB/Axis_Aligned/051_large_clamp.usd",
-        "scissors":f"{ISAAC_NUCLEUS_DIR}/Props/YCB/Axis_Aligned/037_scissors.usd",
     }
-    ycb_name = ['crackerBox','sugarBox','tomatoSoupCan','mustardBottle','mug','largeMarker','tunaFishCan',
-                'banana','bowl','largeClamp','scissors']
+    ycb_name = ['crackerBox','sugarBox','tomatoSoupCan','mustardBottle']
 
 @configclass
 class RewardsCfg:
@@ -187,12 +196,14 @@ class RewardsCfg:
     # -- robot-centric
     # reaching_object_position_l2 = {"weight": 0.0}
     # reaching_object_position_exp = {"weight": 2.5, "sigma": 0.25}
-    reaching_object_position_tanh = {"weight": 2.5, "sigma": 0.1}
+    # reaching_object_position_tanh = {"weight": 2.5, "sigma": 0.1}
     # penalizing_arm_dof_velocity_l2 = {"weight": 1e-5}
     # penalizing_tool_dof_velocity_l2 = {"weight": 1e-5}
     # penalizing_robot_dof_acceleration_l2 = {"weight": 1e-7}
     # -- action-centric
-    penalizing_arm_action_rate_l2 = {"weight": 1e-2}
+    # penalizing_arm_action_rate_l2 = {"weight": 1e-2}
+    check_placing = {"weight": 2}
+    penalizing_falling = {"weight": 1}
     # penalizing_tool_action_l2 = {"weight": 1e-2}
     # -- object-centric
     # tracking_object_position_exp = {"weight": 5.0, "sigma": 0.25, "threshold": 0.08}
@@ -206,7 +217,7 @@ class TerminationsCfg:
 
     episode_timeout = True  # reset when episode length ended
     # object_falling = True  # reset when object falls off the table
-    # is_success = False  # reset when object is placed
+    is_success = True  # reset when object is placed
 
 @configclass
 class occupancy_grid_resolution:
@@ -260,18 +271,28 @@ class PushEnvCfg(IsaacEnvCfg):
     """Configuration for the push environment."""
 
     # General Settings
-    env: EnvCfg = EnvCfg(num_envs=4096, env_spacing=2.5, episode_length_s=5.0)
+    env: EnvCfg = EnvCfg(num_envs=4096, env_spacing=3, episode_length_s=0.5)
     viewer: ViewerCfg = ViewerCfg(debug_vis=False, eye=(7.5, 7.5, 7.5), lookat=(0.0, 0.0, 0.0))
     # Physics settings
     sim: SimCfg = SimCfg(
         dt=0.01,
         substeps=1,
         physx=PhysxCfg(
-            gpu_found_lost_aggregate_pairs_capacity=1024 * 1024 * 4,
-            gpu_total_aggregate_pairs_capacity=16 * 1024,
+            gpu_found_lost_aggregate_pairs_capacity=1024 * 1024 * 2, # 1024 * 1024 * 2
+            gpu_total_aggregate_pairs_capacity= 1024 * 1024 * 2 *1,#16 * 1024,
             friction_correlation_distance=0.00625,
             friction_offset_threshold=0.01,
             bounce_threshold_velocity=0.2,
+
+            # gpu_max_rigid_contact_count=1024**2*2, #1024**2*2,
+            # gpu_max_rigid_patch_count=160*2048*10, #160*2048*10, #160*2048*10,
+            # gpu_found_lost_pairs_capacity = 1024 * 1024 * 2 * 1,#1024 * 1024 * 2 * 1, #1024 * 1024 * 2 * 8,
+            # gpu_found_lost_aggregate_pairs_capacity=100,#1024 * 1024 * 32 * 1, #1024 * 1024 * 32,
+            # gpu_total_aggregate_pairs_capacity=100, #1024 * 1024 * 2 *1, #1024 * 1024 * 2 * 8
+            # friction_correlation_distance=0.0025,
+            # friction_offset_threshold=0.04,
+            # bounce_threshold_velocity=0.5,
+            # gpu_max_num_partitions=8,
         ),
     )
 

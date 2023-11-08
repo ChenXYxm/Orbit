@@ -2,7 +2,51 @@ import numpy as np
 import matplotlib.pyplot as plt
 import cv2
 from shapely import Polygon, STRtree, area, contains, buffer
-
+def get_new_obj_contour_bbox(occu:np.array):
+    mask = occu.copy()
+    shape_occu = occu.shape
+    Nx = shape_occu[1]
+    Ny = shape_occu[0]
+    mask = np.array((mask-np.min(mask))*255/(np.max(mask)-np.min(mask)),dtype=np.uint8)
+    ret,mask = cv2.threshold(mask,50,255,0)
+    contours,hierarchy = cv2.findContours(mask,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
+    max_area = 0
+    cnt = []
+    for i in contours:
+        area_tmp = cv2.contourArea(i)
+        if area_tmp>max_area:
+            max_area = area_tmp
+            cnt = i
+    # approx = cv2.minAreaRect(cnt)
+    x,y,w,h = cv2.boundingRect(cnt)
+    # print(approx)
+    # box = cv2.boxPoints(approx)
+    # approx = np.int0(box)
+    if x+w >=occu.shape[1]:
+        w = occu.shape[1]-x-1
+    if y+h >=occu.shape[0]:
+        h = occu.shape[0]-1-y
+    approx = np.array([[x,y],[x+w,y],[x+w,y+h],[x,y+h]])
+    vertices_new_obj = []
+    mask_tmp = mask.copy()
+    if len(approx) >=2:
+        approx = approx.reshape((-1,2))
+        for i in range(len(approx)):
+            mask_tmp[approx[i][1],approx[i][0]] = 130
+        vertices_new_obj = approx 
+        print(vertices_new_obj)
+        vertices_new_obj = vertices_new_obj - np.array([Nx/2,Ny/2])
+        print(vertices_new_obj)
+        # plt.imshow(mask_tmp)
+        # plt.show()
+        
+        l = []
+        for i in range(2):
+            l.append(np.linalg.norm(vertices_new_obj[i]-vertices_new_obj[i+1]))
+        print(l)
+        return vertices_new_obj
+    else:
+        return None
 def place_new_obj_fun(occu_ori,new_obj):
     ######################## input format
     # occu_ori: numpy 2d array: binary 0,1
