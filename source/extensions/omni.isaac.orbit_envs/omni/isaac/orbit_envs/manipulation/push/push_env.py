@@ -169,7 +169,9 @@ class PushEnv(IsaacEnv):
         print(num_obs)
         self.observation_space = gym.spaces.Box(low=0, high=255, shape=num_obs,dtype=np.uint8)
         # compute the action space
-        self.action_space = gym.spaces.Box(low=-1.0, high=1.0, shape=(self.num_actions,))
+        # self.action_space = gym.spaces.Box(low=-1.0, high=1.0, shape=(self.num_actions,))
+        self.action_space = gym.spaces.MultiDiscrete([self.cfg.og_resolution.tabletop[0],
+                                                      self.cfg.og_resolution.tabletop[1]+1,8])
         print("[INFO]: Completed setting up the environment...")
         # flag to check whether the new object is placed or not
         # self.success_place = False
@@ -345,6 +347,7 @@ class PushEnv(IsaacEnv):
         self.previous_actions[env_ids] = 0
         # -- MDP reset
         self.falling_obj[env_ids] = 0
+        self.stop_pushing[env_ids] = 0
         # self.falling_obj_all[env_ids] = 0
         self.place_success[env_ids] = 0
         self.reset_buf[env_ids] = 0
@@ -377,73 +380,170 @@ class PushEnv(IsaacEnv):
         self.table_og_pre = self.table_og.clone()
         self.step_num +=1
         self.step_count[:] +=1
-        # print(self.step_num)
+        # print(self.step_count)
         # print(self.obj1[0].data.root_pos_w)
         self.actions = actions.clone().to(device=self.device)
         # self.actions[:,-1] = 1
         # print(self.actions)
         # transform actions based on controller
-        if self.cfg.control.control_type == "inverse_kinematics":
-            # set the controller commands
-            self.actions[:,2] = 0.3
-            self._ik_controller.set_command(self.actions[:, :])
-            # self.actions[:, -1] = -0.1
-            # use IK to convert to joint-space commands
-            self.robot_actions[:, : self.robot.arm_num_dof] = self._ik_controller.compute(
-                self.robot.data.ee_state_w[:, 0:3] - self.envs_positions,
-                self.robot.data.ee_state_w[:, 3:7],
-                self.robot.data.ee_jacobian,
-                self.robot.data.arm_dof_pos,
-            )
-            # offset actuator command with position offsets
-            dof_pos_offset = self.robot.data.actuator_pos_offset
-            self.robot_actions[:, : self.robot.arm_num_dof] -= dof_pos_offset[:, : self.robot.arm_num_dof]
-            # we assume last command is tool action so don't change that
-            self.robot_actions[:, -1] = -1 # self.actions[:, -1]
-        elif self.cfg.control.control_type == "default":
-            self.robot_actions[:] = self.actions
-        # perform physics stepping
-        for _ in range(self.cfg.control.decimation):
-            # set actions into buffers
-            self.robot.apply_action(self.robot_actions)
-            # simulate
-            self.sim.step(render=self.enable_render)
-            # check that simulation is playing
-            if self.sim.is_stopped():
-                return
-        for _ in range(200):
-            self.sim.step()
-        if self.cfg.control.control_type == "inverse_kinematics":
-            # set the controller commands
-            self.actions[:,2] = 0.02
-            self._ik_controller.set_command(self.actions[:, :])
-            # self.actions[:, -1] = -0.1
-            # use IK to convert to joint-space commands
-            self.robot_actions[:, : self.robot.arm_num_dof] = self._ik_controller.compute(
-                self.robot.data.ee_state_w[:, 0:3] - self.envs_positions,
-                self.robot.data.ee_state_w[:, 3:7],
-                self.robot.data.ee_jacobian,
-                self.robot.data.arm_dof_pos,
-            )
-            # offset actuator command with position offsets
-            dof_pos_offset = self.robot.data.actuator_pos_offset
-            self.robot_actions[:, : self.robot.arm_num_dof] -= dof_pos_offset[:, : self.robot.arm_num_dof]
-            # we assume last command is tool action so don't change that
-            self.robot_actions[:, -1] = -1 # self.actions[:, -1]
-        elif self.cfg.control.control_type == "default":
-            self.robot_actions[:] = self.actions
-        # perform physics stepping
-        for _ in range(self.cfg.control.decimation):
-            # set actions into buffers
-            self.robot.apply_action(self.robot_actions)
-            # simulate
-            self.sim.step(render=self.enable_render)
-            # check that simulation is playing
-            if self.sim.is_stopped():
-                return
+                 
+        self.actions[:,2] = self.actions[:,2]/8.0
+        self.actions[:,1] = 0.3*(self.actions[:,1]-float(self.cfg.og_resolution.tabletop[1]/2))/float(self.cfg.og_resolution.tabletop[1]/2)
+        self.actions[:,0] = 0.5*(self.actions[:,0]-float(self.cfg.og_resolution.tabletop[0]/2))/float(self.cfg.og_resolution.tabletop[0]/2)
+        for i in range(self.num_envs):
+            if self.actions[i,1] >=0.25:
+                self.stop_pushing[i] = 1  
+                self.actions[i,1] = -0.5
+        actions_tmp = torch.zeros((self.num_envs,self._ik_controller.num_actions),device=self.device)
+        actions_tmp[:,:3] = self.actions.clone()
+        # actions_tmp[:,1] +=0.1
+        for i in range(25):
+            self.robot.update_buffers(self.dt)
+            # print("robot dof pos")
+            # print(self.robot.data.ee_state_w[:, 0:7])
+            # print(self.envs_positions)
+            if self.cfg.control.control_type == "inverse_kinematics":
+                # set the controller commands
+                actions_tmp[:,4] = 1
+                actions_tmp[:,2] = 0.3
+                
+                # self.robot.data.ee_state_w[:, 0:7]
+                self._ik_controller.set_command(actions_tmp[:, :])
+                # self.actions[:, -1] = -0.1
+                # use IK to convert to joint-space commands
+                self.robot_actions[:, : self.robot.arm_num_dof] = self._ik_controller.compute(
+                    self.robot.data.ee_state_w[:, 0:3] - self.envs_positions,
+                    self.robot.data.ee_state_w[:, 3:7],
+                    self.robot.data.ee_jacobian,
+                    self.robot.data.arm_dof_pos,
+                )
+                # offset actuator command with position offsets
+                dof_pos_offset = self.robot.data.actuator_pos_offset
+                self.robot_actions[:, : self.robot.arm_num_dof] -= dof_pos_offset[:, : self.robot.arm_num_dof]
+                # we assume last command is tool action so don't change that
+                self.robot_actions[:, -1] = -1 # self.actions[:, -1]
+            elif self.cfg.control.control_type == "default":
+                self.robot_actions[:] = actions_tmp
+            # perform physics stepping
+            for _ in range(self.cfg.control.decimation):
+                # set actions into buffers
+                self.robot.apply_action(self.robot_actions)
+                # simulate
+                self.sim.step(render=self.enable_render)
+                # check that simulation is playing
+                if self.sim.is_stopped():
+                    return
+        for i in range(20):
+            self.robot.update_buffers(self.dt)
+            # print("robot dof pos")
+            # print(self.robot.data.ee_state_w[:, 0:7])
+            # print(self.envs_positions)
+            if self.cfg.control.control_type == "inverse_kinematics":
+                # set the controller commands
+                actions_tmp[:,4] = 1
+                actions_tmp[:,2] = 0.015
+                # self.robot.data.ee_state_w[:, 0:7]
+                self._ik_controller.set_command(actions_tmp[:, :])
+                # self.actions[:, -1] = -0.1
+                # use IK to convert to joint-space commands
+                self.robot_actions[:, : self.robot.arm_num_dof] = self._ik_controller.compute(
+                    self.robot.data.ee_state_w[:, 0:3] - self.envs_positions,
+                    self.robot.data.ee_state_w[:, 3:7],
+                    self.robot.data.ee_jacobian,
+                    self.robot.data.arm_dof_pos,
+                )
+                # offset actuator command with position offsets
+                dof_pos_offset = self.robot.data.actuator_pos_offset
+                self.robot_actions[:, : self.robot.arm_num_dof] -= dof_pos_offset[:, : self.robot.arm_num_dof]
+                # we assume last command is tool action so don't change that
+                self.robot_actions[:, -1] = -1 # self.actions[:, -1]
+            elif self.cfg.control.control_type == "default":
+                self.robot_actions[:] = actions_tmp
+            # perform physics stepping
+            for _ in range(self.cfg.control.decimation):
+                # set actions into buffers
+                self.robot.apply_action(self.robot_actions)
+                # simulate
+                self.sim.step(render=self.enable_render)
+                # check that simulation is playing
+                if self.sim.is_stopped():
+                    return
+        for i in range(self.num_envs):
+            vec_tmp = np.zeros(2)
+            vec_tmp[0] = 0.1*np.cos(2*np.pi*self.actions[i,2].cpu().numpy())
+            vec_tmp[1] = 0.1*np.sin(2*np.pi*self.actions[i,2].cpu().numpy())
+            actions_tmp[i,:2] = actions_tmp[i,:2] + torch.from_numpy(vec_tmp).to(self.device)
+        for i in range(10):
+            self.robot.update_buffers(self.dt)
+            # print("robot dof pos")
+            # print(self.robot.data.ee_state_w[:, 0:7])
+            # print(self.envs_positions)
+            if self.cfg.control.control_type == "inverse_kinematics":
+                # set the controller commands
+                
+                # self.robot.data.ee_state_w[:, 0:7]
+                self._ik_controller.set_command(actions_tmp[:, :])
+                # self.actions[:, -1] = -0.1
+                # use IK to convert to joint-space commands
+                self.robot_actions[:, : self.robot.arm_num_dof] = self._ik_controller.compute(
+                    self.robot.data.ee_state_w[:, 0:3] - self.envs_positions,
+                    self.robot.data.ee_state_w[:, 3:7],
+                    self.robot.data.ee_jacobian,
+                    self.robot.data.arm_dof_pos,
+                )
+                # offset actuator command with position offsets
+                dof_pos_offset = self.robot.data.actuator_pos_offset
+                self.robot_actions[:, : self.robot.arm_num_dof] -= dof_pos_offset[:, : self.robot.arm_num_dof]
+                # we assume last command is tool action so don't change that
+                self.robot_actions[:, -1] = -1 # self.actions[:, -1]
+            elif self.cfg.control.control_type == "default":
+                self.robot_actions[:] = actions_tmp
+            # perform physics stepping
+            for _ in range(self.cfg.control.decimation):
+                # set actions into buffers
+                self.robot.apply_action(self.robot_actions)
+                # simulate
+                self.sim.step(render=self.enable_render)
+                # check that simulation is playing
+                if self.sim.is_stopped():
+                    return
+        for i in range(10):
+            self.robot.update_buffers(self.dt)
+            # print("robot dof pos")
+            # print(self.robot.data.ee_state_w[:, 0:7])
+            # print(self.envs_positions)
+            if self.cfg.control.control_type == "inverse_kinematics":
+                # set the controller commands
+                actions_tmp[:,2] = 0.3
+                # self.robot.data.ee_state_w[:, 0:7]
+                self._ik_controller.set_command(actions_tmp[:, :])
+                # self.actions[:, -1] = -0.1
+                # use IK to convert to joint-space commands
+                self.robot_actions[:, : self.robot.arm_num_dof] = self._ik_controller.compute(
+                    self.robot.data.ee_state_w[:, 0:3] - self.envs_positions,
+                    self.robot.data.ee_state_w[:, 3:7],
+                    self.robot.data.ee_jacobian,
+                    self.robot.data.arm_dof_pos,
+                )
+                # offset actuator command with position offsets
+                dof_pos_offset = self.robot.data.actuator_pos_offset
+                self.robot_actions[:, : self.robot.arm_num_dof] -= dof_pos_offset[:, : self.robot.arm_num_dof]
+                # we assume last command is tool action so don't change that
+                self.robot_actions[:, -1] = -1 # self.actions[:, -1]
+            elif self.cfg.control.control_type == "default":
+                self.robot_actions[:] = actions_tmp
+            # perform physics stepping
+            for _ in range(self.cfg.control.decimation):
+                # set actions into buffers
+                self.robot.apply_action(self.robot_actions)
+                # simulate
+                self.sim.step(render=self.enable_render)
+                # check that simulation is playing
+                if self.sim.is_stopped():
+                    return
         # post-step:
         # -- compute common buffers
-        for _ in range(200):
+        for _ in range(10):
             self.sim.step()
         self.robot.update_buffers(self.dt)
         # print("robot dof pos")
@@ -451,9 +551,9 @@ class PushEnv(IsaacEnv):
         env_ids=torch.from_numpy(np.arange(self.num_envs)).to(self.device)
         dof_pos, dof_vel = self.robot.get_default_dof_state(env_ids=env_ids)
         self.robot.set_dof_state(dof_pos, dof_vel, env_ids=env_ids)
-        for _ in range(200):
+        for _ in range(25):
             self.sim.step()
-        self.robot.update_buffers(self.dt)
+        # self.robot.update_buffers(self.dt)
         # print("robot dof pos")
         # print(self.robot.data.ee_state_w[:, 0:3])
         # print(self.envs_positions)
@@ -600,9 +700,11 @@ class PushEnv(IsaacEnv):
             self._ik_controller = DifferentialInverseKinematics(
                 self.cfg.control.inverse_kinematics, self.robot.count, self.device
             )
-            self.num_actions = self._ik_controller.num_actions
+            # self.num_actions = self._ik_controller.num_actions
+            self.num_actions = 3
         elif self.cfg.control.control_type == "default":
-            self.num_actions = self.robot.num_actions
+            # self.num_actions = self.robot.num_actions
+            self.num_actions = 3
 
         # history
         self.actions = torch.zeros((self.num_envs, self.num_actions), device=self.device)
@@ -625,6 +727,7 @@ class PushEnv(IsaacEnv):
         self.falling_obj = torch.zeros((self.num_envs,),device=self.device)
         self.falling_obj_all = torch.zeros((self.num_envs,),device=self.device)
         self.step_count = torch.zeros((self.num_envs,),device=self.device)
+        self.stop_pushing = torch.zeros((self.num_envs,),device=self.device)
     def get_pcd(self,camera):
         camera.update(dt=self.dt)
         rgb=camera.data.output["rgb"]
@@ -793,6 +896,8 @@ class PushEnv(IsaacEnv):
         self.reset_buf[:] = 0
         # compute resets
         # -- when task is successful
+        if self.cfg.terminations.stop_pushing:
+            self.reset_buf = torch.where(self.stop_pushing >= 0.5, 1, self.reset_buf)
         if self.cfg.terminations.is_success:
         #     object_position_error = torch.norm(self.object.data.root_pos_w - self.object_des_pose_w[:, 0:3], dim=1)
         #     self.reset_buf = torch.where(object_position_error < 0.02, 1, self.reset_buf)

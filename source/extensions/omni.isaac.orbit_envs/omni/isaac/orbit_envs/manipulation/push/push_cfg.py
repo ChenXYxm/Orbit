@@ -219,7 +219,7 @@ class RewardsCfg:
 @configclass
 class TerminationsCfg:
     """Termination terms for the MDP."""
-
+    stop_pushing = True
     episode_timeout = True  # reset when episode length ended
     # object_falling = True  # reset when object falls off the table
     is_success = True  # reset when object is placed
@@ -277,7 +277,7 @@ class PushEnvCfg(IsaacEnvCfg):
     """Configuration for the push environment."""
 
     # General Settings
-    env: EnvCfg = EnvCfg(num_envs=4096, env_spacing=3, episode_length_s=0.5)
+    env: EnvCfg = EnvCfg(num_envs=4096, env_spacing=3, episode_length_s=0.3)
     viewer: ViewerCfg = ViewerCfg(debug_vis=False, eye=(7.5, 7.5, 7.5), lookat=(0.0, 0.0, 0.0))
     # Physics settings
     sim: SimCfg = SimCfg(

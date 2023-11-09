@@ -197,7 +197,7 @@ def place_new_obj_fun(occu_ori,new_obj):
                         # print(p_s,p_e)
                         line = np.array(p_e) - np.array(p_s)
                         length = np.linalg.norm(line)
-                        if length == 0:
+                        if length < 1:
                             length = 1
                         
                         delta_l = length_ori-length
@@ -304,6 +304,14 @@ def get_pos(new_obj,new_poly_vetices):
     for i in range(2):
         l1.append(np.linalg.norm(new_obj[i]-new_obj[i+1]))
         l2.append(np.linalg.norm(new_poly_vetices[i]-new_poly_vetices[i+1]))
+    if l2[0] <1:
+        l2[0] = 1
+    if l2[1] < 1:
+        l2[1] = 1
+    if l1[1] < 1:
+        l1[1] = 1
+    if l1[0] < 1:
+        l1[0] = 1
     # print(l1,l2)
     if l1[0] >=l1[1]:
         if l2[0]>=l2[1]:
@@ -369,6 +377,7 @@ def get_pos(new_obj,new_poly_vetices):
                 pos[0] = pos_tmp[1]
                 pos[1] = pos_tmp[0]
             else:
+                
                 angle = np.arctan2(l_tmp[1],l_tmp[0])
                 pos_tmp = new_poly_vetices[0] + abs(new_obj[3][0])*l_tmp/l2[1] + abs(new_obj[3][1])*l_tmp_2/l2[0]
                 pos[2] = angle
