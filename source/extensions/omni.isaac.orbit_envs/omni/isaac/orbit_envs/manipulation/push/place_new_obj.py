@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import cv2
-from shapely import Polygon, STRtree, area, contains, buffer
+from shapely import Polygon, STRtree, area, contains, buffer, intersection
 def get_new_obj_contour_bbox(occu:np.array):
     mask = occu.copy()
     shape_occu = occu.shape
@@ -161,7 +161,7 @@ def place_new_obj_fun(occu_ori,new_obj):
         flag_found = False
         dila_polygons = []
         for i in polygons:
-            dila_polygons.append(i.buffer(5))
+            dila_polygons.append(i.buffer(4))
         tree = STRtree(dila_polygons)
         for length_ori in [num_grid_l,num_grid_s]:
             if length_ori == num_grid_l:
@@ -198,7 +198,9 @@ def place_new_obj_fun(occu_ori,new_obj):
                         line = np.array(p_e) - np.array(p_s)
                         length = np.linalg.norm(line)
                         if length < 1:
-                            length = 1
+                            if m == int(len(length_dict[length_list[ind_tmp]])/2):
+                                length_arr[ind_tmp] = 1000
+                            continue
                         
                         delta_l = length_ori-length
                         p_s_ori = np.array(p_s).copy() + p*line/length
@@ -239,8 +241,9 @@ def place_new_obj_fun(occu_ori,new_obj):
                                         poly = Polygon([p_s_new,p_e_new,p_e_next,p_s_next])
                                         indices = tree.nearest(poly)
                                         nearest_poly = tree.geometries.take(indices)
+                                        indices_2 = tree.query(poly)
                                         # print(poly,nearest_poly)
-                                        if poly.disjoint(nearest_poly):
+                                        if poly.disjoint(nearest_poly) and area(intersection(poly,nearest_poly))==0 and len(indices_2)==0:
                                             # print("find the position")
                                             # print(poly)
                                             # for j in range(len(new_poly_vetices)):
@@ -266,9 +269,12 @@ def place_new_obj_fun(occu_ori,new_obj):
                                                         tmp_delta_1[1] = Nx-1 - p_s_1[1]
                                                     occu_tmp[int(np.round(p_s_1[0]+tmp_delta_1[0])),int(np.round(p_s_1[1]+tmp_delta_1[1]))] = 3
                                             flag_found = True
+                                            new_obj_pos = get_pos(new_obj,new_poly_vetices)
+                                            # print(points_tmp)
+                                            # print(new_obj_pos)
                                             # plt.imshow(occu_tmp)
                                             # plt.show()
-                                            new_obj_pos = get_pos(new_obj,new_poly_vetices)
+                                            
                                             return flag_found,new_poly_vetices,occu_tmp,new_obj_pos
                                             break
                                     if flag_found:
@@ -281,8 +287,7 @@ def place_new_obj_fun(occu_ori,new_obj):
                             break
                     if flag_found:
                         break
-                else:
-                    length_arr[ind_tmp] = 1000
+                length_arr[ind_tmp] = 1000
         return False,None, None,None
     else:
         occu_tmp = np.array(occu)

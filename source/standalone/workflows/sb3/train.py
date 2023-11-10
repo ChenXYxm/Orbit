@@ -108,19 +108,23 @@ def main():
             clip_reward=np.inf,
         )
 
-    # create agent from stable baselines
-    agent = PPO(policy_arch, env, verbose=1, **agent_cfg)
-    print(agent.policy)
-    # configure the logger
-    new_logger = configure(log_dir, ["stdout", "tensorboard"])
-    agent.set_logger(new_logger)
-
+    # # create agent from stable baselines
+    # agent = PPO(policy_arch, env, verbose=1, **agent_cfg)
+    # # print(agent.policy)
+    # # configure the logger
+    # new_logger = configure(log_dir, ["stdout", "tensorboard"])
+    # agent.set_logger(new_logger)
+    # # continue_training
+    log_path = f"/home/cxy/Thesis/orbit/Orbit/logs/sb3/Isaac-Push-Franka-v0/Nov09_03-36-32/"
+    model_path = f"/home/cxy/Thesis/orbit/Orbit/logs/sb3/Isaac-Push-Franka-v0/Nov09_03-36-32/model_4800_steps"
+    agent = PPO.load(model_path,tensorboard_log=log_path)
+    agent.set_env(env)
     # callbacks for agent
-    # checkpoint_callback = CheckpointCallback(save_freq=100, save_path=log_dir, name_prefix="model", verbose=2)
+    checkpoint_callback = CheckpointCallback(save_freq=100, save_path=log_dir, name_prefix="model", verbose=2)
     # train the agent
-    # agent.learn(total_timesteps=n_timesteps, callback=checkpoint_callback)
+    agent.learn(total_timesteps=n_timesteps, callback=checkpoint_callback)
     # save the final model
-    # agent.save(os.path.join(log_dir, "model"))
+    agent.save(os.path.join(log_dir, "model"))
 
     # close the simulator
     env.close()

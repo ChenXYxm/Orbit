@@ -308,23 +308,26 @@ class PushEnv(IsaacEnv):
         # randomize the MDP
         # -- robot DOF state
         # self.step_num = 0
+        self.reset_f = True
         dof_pos, dof_vel = self.robot.get_default_dof_state(env_ids=env_ids)
         self.robot.set_dof_state(dof_pos, dof_vel, env_ids=env_ids)
         self.reset_objs(env_ids=env_ids)
         self._randomize_table_scene(env_ids=env_ids)
-        for _ in range(10):
+        for _ in range(30):
             self.sim.step()
         self._update_table_og()
-        self.table_og_pre = self.table_og.clone()
+        self.table_og_pre[env_ids] = self.table_og[env_ids].clone()
         self.falling_obj[env_ids] = 0
         self.falling_obj_all[env_ids] = 0
-        self._check_fallen_objs()
+        self._check_fallen_objs(env_ids)
+        # self.falling_obj_all[env_ids] = self.falling_obj[env_ids].clone()
         # -- object pose
         # self.env_obj = dict()
-        self.table_og = torch.zeros((self.num_envs,self.cfg.og_resolution.tabletop[1],
-                                     self.cfg.og_resolution.tabletop[0]),device=self.device)
-        self.obj_masks = torch.zeros((self.num_envs,self.cfg.og_resolution.tabletop[1],
-                                     self.cfg.og_resolution.tabletop[0]),device=self.device)
+        # self.table_og = torch.zeros((self.num_envs,self.cfg.og_resolution.tabletop[1],
+        #                              self.cfg.og_resolution.tabletop[0]),device=self.device)
+        # self.obj_masks = torch.zeros((self.num_envs,self.cfg.og_resolution.tabletop[1],
+        #                              self.cfg.og_resolution.tabletop[0]),device=self.device)
+        # self.obj_masks[env_ids] = 0
         # self._del_objs()
         # self._set_table_scene()  
         self.show_first_og = True
@@ -346,7 +349,7 @@ class PushEnv(IsaacEnv):
         # -- reset history
         self.previous_actions[env_ids] = 0
         # -- MDP reset
-        self.falling_obj[env_ids] = 0
+        # self.falling_obj[env_ids] = 0
         self.stop_pushing[env_ids] = 0
         # self.falling_obj_all[env_ids] = 0
         self.place_success[env_ids] = 0
@@ -358,7 +361,7 @@ class PushEnv(IsaacEnv):
             self._ik_controller.reset_idx(env_ids)
         self._get_obj_mask(env_ids=env_ids)
         self._get_obj_info(env_ids=env_ids)
-        self.reset_f = True
+        
 
     def _get_obj_mask(self,env_ids: VecEnvIndices):
         mask = np.zeros((self.cfg.og_resolution.tabletop[1],self.cfg.og_resolution.tabletop[0]))
@@ -367,20 +370,26 @@ class PushEnv(IsaacEnv):
         s_y_ind = int(self.cfg.og_resolution.tabletop[0]/2-self.new_obj_mask.shape[0]/2)
         e_y_ind = int(self.cfg.og_resolution.tabletop[0]/2+self.new_obj_mask.shape[0]/2)
         mask[s_x_ind:e_x_ind,s_y_ind:e_y_ind] = self.new_obj_mask
-        for j in range(len(env_ids.cpu().numpy())):
+        for j in env_ids.tolist():
             # print("mask j")
             # print(env_ids[j])
-            self.obj_masks[int(env_ids.cpu().numpy()[j])] = torch.from_numpy(mask).to(self.device)
+            self.obj_masks[j] = torch.from_numpy(mask).to(self.device)
         # plt.imshow(self.new_obj_mask)
         # plt.draw()
         # plt.imshow(mask)
         # plt.show() 
     def _step_impl(self, actions: torch.Tensor):
         # pre-step: set actions into buffer
-        self.table_og_pre = self.table_og.clone()
+        # self.table_og_pre = self.table_og.clone()
+
+        # self._get_observations()
+        if 0 in self.step_count.tolist():
+            self._get_observations()
         self.step_num +=1
         self.step_count[:] +=1
+        # print("step num")
         # print(self.step_count)
+        # print(self.new_obj_vertices)
         # print(self.obj1[0].data.root_pos_w)
         self.actions = actions.clone().to(device=self.device)
         # self.actions[:,-1] = 1
@@ -394,6 +403,7 @@ class PushEnv(IsaacEnv):
             if self.actions[i,1] >=0.25:
                 self.stop_pushing[i] = 1  
                 self.actions[i,1] = -0.5
+                self.actions[i,0] = 0.5
         actions_tmp = torch.zeros((self.num_envs,self._ik_controller.num_actions),device=self.device)
         actions_tmp[:,:3] = self.actions.clone()
         # actions_tmp[:,1] +=0.1
@@ -473,7 +483,7 @@ class PushEnv(IsaacEnv):
             vec_tmp[0] = 0.1*np.cos(2*np.pi*self.actions[i,2].cpu().numpy())
             vec_tmp[1] = 0.1*np.sin(2*np.pi*self.actions[i,2].cpu().numpy())
             actions_tmp[i,:2] = actions_tmp[i,:2] + torch.from_numpy(vec_tmp).to(self.device)
-        for i in range(10):
+        for i in range(9):
             self.robot.update_buffers(self.dt)
             # print("robot dof pos")
             # print(self.robot.data.ee_state_w[:, 0:7])
@@ -507,7 +517,7 @@ class PushEnv(IsaacEnv):
                 # check that simulation is playing
                 if self.sim.is_stopped():
                     return
-        for i in range(10):
+        for i in range(6):
             self.robot.update_buffers(self.dt)
             # print("robot dof pos")
             # print(self.robot.data.ee_state_w[:, 0:7])
@@ -545,13 +555,18 @@ class PushEnv(IsaacEnv):
         # -- compute common buffers
         for _ in range(10):
             self.sim.step()
-        self.robot.update_buffers(self.dt)
+        # for _ in range(self.num_envs):
+        #     plt.imshow(self.obj_masks[_].cpu().numpy())
+        #     plt.show()
+
+        # self.robot.update_buffers(self.dt)
         # print("robot dof pos")
         # print(self.robot.data.ee_state_w[:, 0:3])
         env_ids=torch.from_numpy(np.arange(self.num_envs)).to(self.device)
         dof_pos, dof_vel = self.robot.get_default_dof_state(env_ids=env_ids)
         self.robot.set_dof_state(dof_pos, dof_vel, env_ids=env_ids)
-        for _ in range(25):
+        # self.robot.update_buffers(self.dt)
+        for _ in range(50):
             self.sim.step()
         # self.robot.update_buffers(self.dt)
         # print("robot dof pos")
@@ -568,11 +583,11 @@ class PushEnv(IsaacEnv):
         # self.object.update_buffers(self.dt)
         # -- compute MDP signals
         # fallen objects
-        self._check_fallen_objs()
-        # reward
-        self.reward_buf = self._reward_manager.compute()
+        self._check_fallen_objs(env_ids)
         # check_placing
         self._check_placing()
+        # reward
+        self.reward_buf = self._reward_manager.compute()
         # terminations
         self._check_termination()
         
@@ -728,6 +743,10 @@ class PushEnv(IsaacEnv):
         self.falling_obj_all = torch.zeros((self.num_envs,),device=self.device)
         self.step_count = torch.zeros((self.num_envs,),device=self.device)
         self.stop_pushing = torch.zeros((self.num_envs,),device=self.device)
+        # self.table_og = torch.zeros((self.num_envs,self.cfg.og_resolution.tabletop[1],
+        #                              self.cfg.og_resolution.tabletop[0]),device=self.device)
+        # self.obj_masks = torch.zeros((self.num_envs,self.cfg.og_resolution.tabletop[1],
+        #                              self.cfg.og_resolution.tabletop[0]),device=self.device)
     def get_pcd(self,camera):
         camera.update(dt=self.dt)
         rgb=camera.data.output["rgb"]
@@ -842,19 +861,24 @@ class PushEnv(IsaacEnv):
     """
     def _get_obj_info(self,env_ids: VecEnvIndices):
         if len(self.new_obj_vertices)==0:
-            self.new_obj_vertices = [i for i in range(self.num_envs)]
-        for i in range(len(env_ids.cpu().numpy())):
-            mask_obj = self.obj_masks[env_ids[i]].cpu().numpy()
+            self.new_obj_vertices = [i for i in env_ids.tolist()]
+        for i in env_ids.tolist():
+            mask_obj = self.obj_masks[i].cpu().numpy()
             obj_vertices = get_new_obj_contour_bbox(mask_obj) 
-            self.new_obj_vertices[int(env_ids[i])] = obj_vertices
-    def _check_fallen_objs(self):
+            self.new_obj_vertices[i] = obj_vertices
+    def _check_fallen_objs(self,env_ids:VecEnvIndices):
         torch_fallen = torch.zeros((self.num_envs,),device=self.device)
-        for k in self.obj_on_table:
+        for k in env_ids.tolist():
             for _,obj in enumerate(self.obj_on_table[k]):
                 # print(obj.data.root_pos_w[1, :3])
                 torch_fallen[k] += torch.where(obj.data.root_pos_w[k, 2] < -0.05, 1, 0)
-        self.falling_obj = torch_fallen - self.falling_obj_all
-        self.falling_obj_all = torch_fallen
+        # print(torch_fallen)
+        # print(self.falling_obj_all)
+        self.falling_obj[env_ids] = torch_fallen[env_ids] - self.falling_obj_all[env_ids]
+        self.falling_obj_all[env_ids] = torch_fallen[env_ids]
+        # print("fallen objs")
+        # print(self.falling_obj)
+        # print(self.falling_obj_all)
         # print(self.falling_obj_all)
         # dc=_dynamic_control.acquire_dynamic_control_interface()
         # for _ in range(self.num_envs):
@@ -876,11 +900,18 @@ class PushEnv(IsaacEnv):
                 # plt.imshow(rgb)
                 # plt.show()
                 og = self.get_og(self.cams[i])
+                # print("update og")
                 # plt.imshow(og)
                 # plt.show()
+                # plt.imshow(self.table_og_pre[i].cpu().numpy())
+                # plt.show()
                 self.table_og[i] = torch.from_numpy(og.copy()).to(self.device)
+
     def _check_placing(self):
+        env_ids=torch.from_numpy(np.arange(self.num_envs)).to(self.device)
         self._update_table_og()
+        # for i in range(self.num_envs):
+        #     plt.imshow()
         for i in range(self.num_envs):
             occupancy = self.table_og[i].cpu().numpy()
             vertices_new_obj = self.new_obj_vertices[i]
@@ -889,6 +920,53 @@ class PushEnv(IsaacEnv):
             # plt.show()
             if flag_found:
                 self.place_success[i] = 1
+                # plt.imshow(self.obj_masks[i].cpu().numpy())
+                # plt.show()
+                # env_id = torch.zeros((self.num_envs,),device=self.device)
+                
+                # if self.new_obj_type in ["mug","tomatoSoupCan","pitcherBase","tunaFishCan","bowl","banana"]:
+                #     rot = convert_quat(tf.Rotation.from_euler("XYZ", (-90,np.rad2deg(new_obj_pos[2]),0), degrees=True).as_quat(), to="wxyz")
+                # else:
+                #     rot = convert_quat(tf.Rotation.from_euler("XYZ", (0,0,-np.rad2deg(new_obj_pos[2])), degrees=True).as_quat(), to="wxyz")
+                
+                # print(new_obj_pos)
+                # translation = np.array([(self.table_og.size(dim=1)/2-new_obj_pos[1])*1./self.table_og.size(dim=1),
+                #                (new_obj_pos[0]-self.table_og.size(dim=2)/2)*1./self.table_og.size(dim=2),0.06])
+                # if self.new_obj_type == self.cfg.YCBdata.ycb_name[0]:
+                #     root_state = self.obj1[-1].get_default_root_state()
+                #     # transform command from local env to world
+                #     root_state[i,0:3] = self.envs_positions[i]+torch.from_numpy(translation).to(self.device)
+                #     # set the root state
+                #     root_state[i,3:7] = torch.from_numpy(np.array(rot)).to(self.device)
+                    
+                #     self.obj1[-1].set_root_state(torch.reshape(root_state[i,:],(1,-1)), env_ids=env_ids[i])
+                # elif self.new_obj_type == self.cfg.YCBdata.ycb_name[1]:
+                #     root_state = self.obj2[-1].get_default_root_state()
+                #     # transform command from local env to world
+                #     root_state[i,0:3] = self.envs_positions[i]+torch.from_numpy(translation).to(self.device)
+                #     # set the root state
+                    
+                #     root_state[i,3:7] = torch.from_numpy(np.array(rot)).to(self.device)
+                    
+                #     self.obj2[-1].set_root_state(torch.reshape(root_state[i,:],(1,-1)), env_ids=env_ids[i])
+                # elif self.new_obj_type == self.cfg.YCBdata.ycb_name[2]:
+                #     root_state = self.obj3[-1].get_default_root_state()
+                #     # transform command from local env to world
+                #     root_state[i,0:3] = self.envs_positions[i]+torch.from_numpy(translation).to(self.device)
+                #     # set the root state
+                #     root_state[i,3:7] = torch.from_numpy(np.array(rot)).to(self.device)
+                    
+                #     self.obj3[-1].set_root_state(torch.reshape(root_state[i,:],(1,-1)), env_ids=env_ids[i])
+                # elif self.new_obj_type == self.cfg.YCBdata.ycb_name[3]:
+                #     root_state = self.obj4[-1].get_default_root_state()
+                #     # transform command from local env to world
+                #     root_state[i,0:3] = self.envs_positions[i]+torch.from_numpy(translation).to(self.device)
+                #     # set the root state
+                #     root_state[i,3:7] = torch.from_numpy(np.array(rot)).to(self.device)
+                #     # env_id[i] = 1
+                #     self.obj4[-1].set_root_state(torch.reshape(root_state[i,:],(1,-1)), env_ids=env_ids[i])
+                # for _ in range(20):
+                #     self.sim.step()
     def _check_termination(self) -> None:
         # access buffers from simulator
         # object_pos = self.object.data.root_pos_w - self.envs_positions
@@ -976,7 +1054,7 @@ class PushEnv(IsaacEnv):
         # ycb_usd_paths = self.cfg.YCBdata.ycb_usd_paths
         ycb_name = self.cfg.YCBdata.ycb_name
         # self.obj_dict = dict()
-        for i in range(self.num_envs):
+        for i in env_ids.tolist():
             self.obj_on_table[i] = []
         # self.obj_on_table = []
         num_env = len(file_name)
@@ -1003,8 +1081,8 @@ class PushEnv(IsaacEnv):
                         root_state[j, 3:7] = torch.from_numpy(np.array(pos_rot[1])).to(self.device)
                     root_state[:, 0:3] += self.envs_positions[env_ids]
                     self.obj1[_].set_root_state(root_state, env_ids=env_ids)
-                    for j in range(len(env_ids.cpu().numpy())):
-                        self.obj_on_table[int(env_ids[j])].append(self.obj1[_])
+                    for j in env_ids.tolist():
+                        self.obj_on_table[j].append(self.obj1[_])
             elif i == ycb_name[1]:
                 for _,pos_rot in enumerate(obj_pos_rot[i]):
                     if _ > 4:
@@ -1015,8 +1093,8 @@ class PushEnv(IsaacEnv):
                         root_state[j, 3:7] = torch.from_numpy(np.array(pos_rot[1])).to(self.device)
                     root_state[:, 0:3] += self.envs_positions[env_ids]
                     self.obj2[_].set_root_state(root_state, env_ids=env_ids)
-                    for j in range(len(env_ids.cpu().numpy())):
-                        self.obj_on_table[int(env_ids[j])].append(self.obj2[_])
+                    for j in env_ids.tolist():
+                        self.obj_on_table[j].append(self.obj2[_])
             elif i == ycb_name[2]:
                 for _,pos_rot in enumerate(obj_pos_rot[i]):
                     if _ > 4:
@@ -1027,8 +1105,8 @@ class PushEnv(IsaacEnv):
                         root_state[j, 3:7] = torch.from_numpy(np.array(pos_rot[1])).to(self.device)
                     root_state[:, 0:3] += self.envs_positions[env_ids]
                     self.obj3[_].set_root_state(root_state, env_ids=env_ids)
-                    for j in range(len(env_ids.cpu().numpy())):
-                        self.obj_on_table[int(env_ids[j])].append(self.obj3[_])
+                    for j in env_ids.tolist():
+                        self.obj_on_table[j].append(self.obj3[_])
             elif i == ycb_name[3]:
                 for _,pos_rot in enumerate(obj_pos_rot[i]):
                     if _ > 4:
@@ -1039,8 +1117,9 @@ class PushEnv(IsaacEnv):
                         root_state[j, 3:7] = torch.from_numpy(np.array(pos_rot[1])).to(self.device)
                     root_state[:, 0:3] += self.envs_positions[env_ids]
                     self.obj4[_].set_root_state(root_state, env_ids=env_ids)   
-                    for j in range(len(env_ids.cpu().numpy())):
-                        self.obj_on_table[int(env_ids[j])].append(self.obj4[_])     
+                    for j in env_ids.tolist():
+                        self.obj_on_table[j].append(self.obj4[_]) 
+                    
     def _randomize_object_initial_pose(self, env_ids: torch.Tensor, cfg: RandomizationCfg.ObjectInitialPoseCfg):
         """Randomize the initial pose of the object."""
         
@@ -1163,6 +1242,7 @@ class PushEnv(IsaacEnv):
 class PushObservationManager(ObservationManager):
     """Reward manager for single-arm reaching environment."""
     def table_scene(self,env:PushEnv):
+        # print("get observs")
         obs_ta = torch.zeros((env.num_envs,env.cfg.og_resolution.tabletop[1],
                                      env.cfg.og_resolution.tabletop[0],2),device=env.device)
         for i in range(env.num_envs):
@@ -1307,18 +1387,27 @@ class PushRewardManager(RewardManager):
         """Penalize large variations in action commands besides tool."""
         return -torch.sum(torch.square(env.actions[:, :-1] - env.previous_actions[:, :-1]), dim=1)
     def penalizing_falling(self,env:PushEnv):
+        # print("penalty fallen")
+        # print(-env.falling_obj)
         return -env.falling_obj
     def check_placing(self,env:PushEnv):
         """try to place new object"""
+        # print("reawrd success")
+        # print(env.place_success)
         return env.place_success
     def penalizing_steps(self,env:PushEnv):
-        return -env.step_count
+        # print("pernalize steps")
+        # print(-torch.where(env.step_count!=0,1,0).to(env.device))
+        return -torch.where(env.step_count!=0,1,0).to(env.device)
     def reward_og_change(self,env:PushEnv):
         delta_og = torch.zeros((env.num_envs,),device=self.device)
         for i in range(env.num_envs):
             delta_tmp = env.table_og[i] - env.table_og_pre[i]
-            if torch.sum(torch.abs(delta_tmp))>0:
+            if torch.sum(torch.abs(delta_tmp))>100:
                 delta_og[i] = 1
+        env.table_og_pre = env.table_og.clone()
+        # print("reward og")
+        # print(delta_og)
         return delta_og
     # def penalizing_tool_action_l2(self, env: PushEnv):
     #     """Penalize large values in action commands for the tool."""
