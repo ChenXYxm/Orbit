@@ -173,9 +173,9 @@ class PushEnv(IsaacEnv):
         self.observation_space = gym.spaces.Box(low=0, high=255, shape=num_obs,dtype=np.uint8)
         # compute the action space
         # self.action_space = gym.spaces.Box(low=-1.0, high=1.0, shape=(self.num_actions,))
-        # self.action_space = gym.spaces.Box(low=np.array([-0.5,-0.3,0]), high=np.array([0.5,0.3,1]), dtype=np.float64)
-        self.action_space = gym.spaces.MultiDiscrete([self.cfg.og_resolution.tabletop[0],
-                                                      self.cfg.og_resolution.tabletop[1]+1,8])
+        self.action_space = gym.spaces.Box(low=np.array([-0.5,-0.3,0]), high=np.array([0.5,0.3,1]), dtype=np.float64)
+        # self.action_space = gym.spaces.MultiDiscrete([self.cfg.og_resolution.tabletop[0],
+        #                                               self.cfg.og_resolution.tabletop[1]+1,8])
         print("[INFO]: Completed setting up the environment...")
         # flag to check whether the new object is placed or not
         # self.success_place = False
@@ -415,9 +415,9 @@ class PushEnv(IsaacEnv):
         # print(self.actions)
         # transform actions based on controller
                  
-        self.actions[:,2] = self.actions[:,2]/8.0
-        self.actions[:,1] = 0.3*(self.actions[:,1]-float(self.cfg.og_resolution.tabletop[1]/2))/float(self.cfg.og_resolution.tabletop[1]/2)-0.01
-        self.actions[:,0] = 0.5*(self.actions[:,0]-float(self.cfg.og_resolution.tabletop[0]/2))/float(self.cfg.og_resolution.tabletop[0]/2)
+        # self.actions[:,2] = self.actions[:,2]/8.0
+        # self.actions[:,1] = 0.3*(self.actions[:,1]-float(self.cfg.og_resolution.tabletop[1]/2))/float(self.cfg.og_resolution.tabletop[1]/2)-0.01
+        # self.actions[:,0] = 0.5*(self.actions[:,0]-float(self.cfg.og_resolution.tabletop[0]/2))/float(self.cfg.og_resolution.tabletop[0]/2)
         # print("actions")
         # print(self.actions)
         for i in range(self.num_envs):

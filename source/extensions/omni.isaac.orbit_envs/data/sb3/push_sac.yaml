@@ -4,23 +4,23 @@ seed: 42
 # epoch * n_steps * nenvs: 500×512*8*8
 n_timesteps: 1024000
 policy: 'CnnPolicy'
-n_steps: 64
-# mini batch size: num_envs * nsteps / nminibatches 2048×512÷2048
-
-batch_size: 32 ##ppo
-gae_lambda: 0.95
+train_freq: 16
+batch_size: 64
 gamma: 0.99
-n_epochs: 8
-ent_coef: 0.00
-vf_coef: 0.0001
-learning_rate: !!float 1e-4
-clip_range: 0.2
+gradient_steps: 8
+ent_coef: 0.0
+learning_rate: !!float 3e-4
+
+# Uses VecNormalize class to normalize obs
+normalize_input: True
+# Uses VecNormalize class to normalize rew
+normalize_value: True
+
 policy_kwargs: "dict(
                   activation_fn=nn.ELU,
                   net_arch=[32, 32, dict(pi=[256, 128, 64], vf=[256, 128, 64])]
                 )"
-target_kl: 0.01
-max_grad_norm: 1.0
+
 
 # # Uses VecNormalize class to normalize obs
 # normalize_input: True

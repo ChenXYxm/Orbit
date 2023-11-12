@@ -43,7 +43,7 @@ import gym
 import os
 from datetime import datetime
 
-from stable_baselines3 import PPO,A2C
+from stable_baselines3 import PPO,SAC
 from stable_baselines3.common.callbacks import CheckpointCallback
 from stable_baselines3.common.logger import configure
 from stable_baselines3.common.vec_env import VecNormalize
@@ -109,7 +109,7 @@ def main():
         )
 
     # create agent from stable baselines
-    agent = PPO(policy_arch, env, verbose=1, **agent_cfg)
+    agent = SAC(policy_arch, env, verbose=1, **agent_cfg)
     # print(agent.policy)
     # configure the logger
     new_logger = configure(log_dir, ["stdout", "tensorboard"])
