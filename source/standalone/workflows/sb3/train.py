@@ -43,7 +43,7 @@ import gym
 import os
 from datetime import datetime
 
-from stable_baselines3 import PPO
+from stable_baselines3 import PPO,A2C
 from stable_baselines3.common.callbacks import CheckpointCallback
 from stable_baselines3.common.logger import configure
 from stable_baselines3.common.vec_env import VecNormalize
@@ -108,17 +108,17 @@ def main():
             clip_reward=np.inf,
         )
 
-    # # create agent from stable baselines
-    # agent = PPO(policy_arch, env, verbose=1, **agent_cfg)
-    # # print(agent.policy)
-    # # configure the logger
-    # new_logger = configure(log_dir, ["stdout", "tensorboard"])
-    # agent.set_logger(new_logger)
+    # create agent from stable baselines
+    agent = PPO(policy_arch, env, verbose=1, **agent_cfg)
+    # print(agent.policy)
+    # configure the logger
+    new_logger = configure(log_dir, ["stdout", "tensorboard"])
+    agent.set_logger(new_logger)
     # # continue_training
-    log_path = f"/home/cxy/Thesis/orbit/Orbit/logs/sb3/Isaac-Push-Franka-v0/Nov09_03-36-32/"
-    model_path = f"/home/cxy/Thesis/orbit/Orbit/logs/sb3/Isaac-Push-Franka-v0/Nov09_03-36-32/model_4800_steps"
-    agent = PPO.load(model_path,tensorboard_log=log_path)
-    agent.set_env(env)
+    # log_path = f"/home/cxy/Thesis/orbit/Orbit/logs/sb3/Isaac-Push-Franka-v0/Nov09_03-36-32/"
+    # model_path = f"/home/cxy/Thesis/orbit/Orbit/logs/sb3/Isaac-Push-Franka-v0/Nov09_03-36-32/model_4800_steps"
+    # agent = PPO.load(model_path,tensorboard_log=log_path)
+    # agent.set_env(env)
     # callbacks for agent
     checkpoint_callback = CheckpointCallback(save_freq=100, save_path=log_dir, name_prefix="model", verbose=2)
     # train the agent

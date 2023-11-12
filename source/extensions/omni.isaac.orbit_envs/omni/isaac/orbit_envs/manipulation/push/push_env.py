@@ -6,6 +6,7 @@ import os
 import gym.spaces
 import math
 import torch
+import cv2
 from typing import List
 import numpy as np
 import open3d as o3d
@@ -13,6 +14,7 @@ import omni.isaac.core.utils.prims as prim_utils
 import matplotlib.pyplot as plt
 from omni.isaac.orbit.sensors.camera.utils import create_pointcloud_from_rgbd
 import pickle as pkl
+from omni.isaac.core.materials import PhysicsMaterial
 import omni.isaac.orbit.utils.kit as kit_utils
 from omni.isaac.orbit.controllers.differential_inverse_kinematics import DifferentialInverseKinematics
 from omni.isaac.orbit.markers import StaticMarker
@@ -21,6 +23,7 @@ from omni.isaac.orbit.robots.single_arm import SingleArmManipulator
 from omni.isaac.orbit.utils.dict import class_to_dict
 from omni.isaac.orbit.utils.math import quat_inv, quat_mul, convert_quat,random_orientation, sample_uniform, scale_transform
 from omni.isaac.orbit.utils.mdp import ObservationManager, RewardManager
+
 from omni.isaac.orbit.sensors.camera import Camera
 from omni.isaac.orbit_envs.isaac_env import IsaacEnv, VecEnvIndices, VecEnvObs
 from omni.isaac.core.objects import FixedCuboid
@@ -170,13 +173,14 @@ class PushEnv(IsaacEnv):
         self.observation_space = gym.spaces.Box(low=0, high=255, shape=num_obs,dtype=np.uint8)
         # compute the action space
         # self.action_space = gym.spaces.Box(low=-1.0, high=1.0, shape=(self.num_actions,))
+        # self.action_space = gym.spaces.Box(low=np.array([-0.5,-0.3,0]), high=np.array([0.5,0.3,1]), dtype=np.float64)
         self.action_space = gym.spaces.MultiDiscrete([self.cfg.og_resolution.tabletop[0],
                                                       self.cfg.og_resolution.tabletop[1]+1,8])
         print("[INFO]: Completed setting up the environment...")
         # flag to check whether the new object is placed or not
         # self.success_place = False
         # Take an initial step to initialize the scene.
-        # This is required to compute quantities like Jacobians used in step().
+        # This is required to compute quantities like Jacobians used in step()
         self.new_obj_vertices = []
         self.sim.step()
         # -- fill up buffers
@@ -235,6 +239,21 @@ class PushEnv(IsaacEnv):
         self.Table = FixedCuboid(self.template_env_ns + "/Table",position=(0,0,-0.25),scale=(1,0.6,0.5))
         self.Table.set_collision_enabled(True)
         self.Table.set_collision_approximation("convexDecomposition")
+        prim_path = self.template_env_ns + "/Table"
+        if self.cfg.object.physics_material is not None:
+            # -- resolve material path
+            material_path = self.cfg.object.physics_material.prim_path
+            if not material_path.startswith("/"):
+                material_path = prim_path + "/" + prim_path
+            # -- create physics material
+            material = PhysicsMaterial(
+                prim_path=material_path,
+                static_friction=self.cfg.object.physics_material.static_friction,
+                dynamic_friction=self.cfg.object.physics_material.dynamic_friction,
+                restitution=self.cfg.object.physics_material.restitution,
+            )
+            # -- apply physics material
+            kit_utils.apply_nested_physics_material(prim_path, material.prim_path)
         # prim_utils.create_prim(self.template_env_ns + "/sideTable", usd_path=self.cfg.table.table_path,position=(0.35,-0.9,-0.3),scale=(0.4,0.4,0.4))
         # sideTable = GeometryPrim(self.template_env_ns + "/sideTable",collision=True)
         # sideTable = RigidPrim(self.template_env_ns + "/sideTable",mass=10000)
@@ -397,15 +416,26 @@ class PushEnv(IsaacEnv):
         # transform actions based on controller
                  
         self.actions[:,2] = self.actions[:,2]/8.0
-        self.actions[:,1] = 0.3*(self.actions[:,1]-float(self.cfg.og_resolution.tabletop[1]/2))/float(self.cfg.og_resolution.tabletop[1]/2)
+        self.actions[:,1] = 0.3*(self.actions[:,1]-float(self.cfg.og_resolution.tabletop[1]/2))/float(self.cfg.og_resolution.tabletop[1]/2)-0.01
         self.actions[:,0] = 0.5*(self.actions[:,0]-float(self.cfg.og_resolution.tabletop[0]/2))/float(self.cfg.og_resolution.tabletop[0]/2)
+        # print("actions")
+        # print(self.actions)
         for i in range(self.num_envs):
             if self.actions[i,1] >=0.25:
                 self.stop_pushing[i] = 1  
                 self.actions[i,1] = -0.5
                 self.actions[i,0] = 0.5
         actions_tmp = torch.zeros((self.num_envs,self._ik_controller.num_actions),device=self.device)
-        actions_tmp[:,:3] = self.actions.clone()
+        actions_tmp[:,:3] = self.actions[:,:3].clone()
+        
+        for i in range(self.num_envs):
+            if actions_tmp[i,2]<0.5:
+                rot = convert_quat(tf.Rotation.from_euler("XYZ", (180,0,-360*float(self.actions[i,2].cpu())), degrees=True).as_quat(), to="wxyz")
+            else:
+                rot = convert_quat(tf.Rotation.from_euler("XYZ", (180,0,-360*float(self.actions[i,2].cpu()-0.5)), degrees=True).as_quat(), to="wxyz")
+            
+            actions_tmp[i,3:7] = torch.from_numpy(rot).to(self.device)
+        # actions_tmp[:,:3] = self.actions.clone()
         # actions_tmp[:,1] +=0.1
         for i in range(25):
             self.robot.update_buffers(self.dt)
@@ -414,7 +444,7 @@ class PushEnv(IsaacEnv):
             # print(self.envs_positions)
             if self.cfg.control.control_type == "inverse_kinematics":
                 # set the controller commands
-                actions_tmp[:,4] = 1
+                # actions_tmp[:,4] = 1
                 actions_tmp[:,2] = 0.3
                 
                 # self.robot.data.ee_state_w[:, 0:7]
@@ -443,15 +473,15 @@ class PushEnv(IsaacEnv):
                 # check that simulation is playing
                 if self.sim.is_stopped():
                     return
-        for i in range(20):
+        for i in range(18):
             self.robot.update_buffers(self.dt)
             # print("robot dof pos")
             # print(self.robot.data.ee_state_w[:, 0:7])
             # print(self.envs_positions)
             if self.cfg.control.control_type == "inverse_kinematics":
                 # set the controller commands
-                actions_tmp[:,4] = 1
-                actions_tmp[:,2] = 0.015
+                # actions_tmp[:,4] = 1
+                actions_tmp[:,2] = 0.02
                 # self.robot.data.ee_state_w[:, 0:7]
                 self._ik_controller.set_command(actions_tmp[:, :])
                 # self.actions[:, -1] = -0.1
@@ -480,10 +510,12 @@ class PushEnv(IsaacEnv):
                     return
         for i in range(self.num_envs):
             vec_tmp = np.zeros(2)
-            vec_tmp[0] = 0.1*np.cos(2*np.pi*self.actions[i,2].cpu().numpy())
-            vec_tmp[1] = 0.1*np.sin(2*np.pi*self.actions[i,2].cpu().numpy())
+            vec_tmp[0] = 0.03*np.cos(2*np.pi*self.actions[i,2].cpu().numpy())
+            vec_tmp[1] = 0.03*np.sin(2*np.pi*self.actions[i,2].cpu().numpy())
+            # vec_tmp[0] = 0.1*np.cos(2*np.pi*self.actions[i,2].cpu().numpy())
+            # vec_tmp[1] = 0.1*np.sin(2*np.pi*self.actions[i,2].cpu().numpy())
             actions_tmp[i,:2] = actions_tmp[i,:2] + torch.from_numpy(vec_tmp).to(self.device)
-        for i in range(9):
+        for i in range(5):
             self.robot.update_buffers(self.dt)
             # print("robot dof pos")
             # print(self.robot.data.ee_state_w[:, 0:7])
@@ -517,6 +549,54 @@ class PushEnv(IsaacEnv):
                 # check that simulation is playing
                 if self.sim.is_stopped():
                     return
+        for i in range(self.num_envs):
+            vec_tmp = np.zeros(2)
+            vec_tmp[0] = 0.03*np.cos(2*np.pi*self.actions[i,2].cpu().numpy())
+            vec_tmp[1] = 0.03*np.sin(2*np.pi*self.actions[i,2].cpu().numpy())
+            # vec_tmp[0] = 0.1*np.cos(2*np.pi*self.actions[i,2].cpu().numpy())
+            # vec_tmp[1] = 0.1*np.sin(2*np.pi*self.actions[i,2].cpu().numpy())
+            actions_tmp[i,:2] = actions_tmp[i,:2] + torch.from_numpy(vec_tmp).to(self.device)
+        for i in range(5):
+            self.robot.update_buffers(self.dt)
+            # print("robot dof pos")
+            # print(self.robot.data.ee_state_w[:, 0:7])
+            # print(self.envs_positions)
+            if self.cfg.control.control_type == "inverse_kinematics":
+                # set the controller commands
+                
+                # self.robot.data.ee_state_w[:, 0:7]
+                self._ik_controller.set_command(actions_tmp[:, :])
+                # self.actions[:, -1] = -0.1
+                # use IK to convert to joint-space commands
+                self.robot_actions[:, : self.robot.arm_num_dof] = self._ik_controller.compute(
+                    self.robot.data.ee_state_w[:, 0:3] - self.envs_positions,
+                    self.robot.data.ee_state_w[:, 3:7],
+                    self.robot.data.ee_jacobian,
+                    self.robot.data.arm_dof_pos,
+                )
+                # offset actuator command with position offsets
+                dof_pos_offset = self.robot.data.actuator_pos_offset
+                self.robot_actions[:, : self.robot.arm_num_dof] -= dof_pos_offset[:, : self.robot.arm_num_dof]
+                # we assume last command is tool action so don't change that
+                self.robot_actions[:, -1] = -1 # self.actions[:, -1]
+            elif self.cfg.control.control_type == "default":
+                self.robot_actions[:] = actions_tmp
+            # perform physics stepping
+            for _ in range(self.cfg.control.decimation):
+                # set actions into buffers
+                self.robot.apply_action(self.robot_actions)
+                # simulate
+                self.sim.step(render=self.enable_render)
+                # check that simulation is playing
+                if self.sim.is_stopped():
+                    return
+        for i in range(self.num_envs):
+            vec_tmp = np.zeros(2)
+            vec_tmp[0] = 0.03*np.cos(2*np.pi*self.actions[i,2].cpu().numpy())
+            vec_tmp[1] = 0.03*np.sin(2*np.pi*self.actions[i,2].cpu().numpy())
+            # vec_tmp[0] = 0.1*np.cos(2*np.pi*self.actions[i,2].cpu().numpy())
+            # vec_tmp[1] = 0.1*np.sin(2*np.pi*self.actions[i,2].cpu().numpy())
+            actions_tmp[i,:2] = actions_tmp[i,:2] - torch.from_numpy(vec_tmp).to(self.device)
         for i in range(6):
             self.robot.update_buffers(self.dt)
             # print("robot dof pos")
@@ -553,7 +633,7 @@ class PushEnv(IsaacEnv):
                     return
         # post-step:
         # -- compute common buffers
-        for _ in range(10):
+        for _ in range(20):
             self.sim.step()
         # for _ in range(self.num_envs):
         #     plt.imshow(self.obj_masks[_].cpu().numpy())
@@ -588,6 +668,9 @@ class PushEnv(IsaacEnv):
         self._check_placing()
         # reward
         self.reward_buf = self._reward_manager.compute()
+        # print("reward")
+        # print(self._reward_manager.compute())
+        # print(self.reward_buf)
         # terminations
         self._check_termination()
         
@@ -607,6 +690,11 @@ class PushEnv(IsaacEnv):
 
     def _get_observations(self) -> VecEnvObs:
         # compute observations
+        # print("obser")
+        # obser_tmp = self._observation_manager.compute()['policy']
+        # plt.imshow(obser_tmp[0,:,:,0].cpu().numpy())
+        # plt.show()
+        # print(self._observation_manager.compute()['policy'])
         return self._observation_manager.compute()
 
     """
@@ -716,7 +804,8 @@ class PushEnv(IsaacEnv):
                 self.cfg.control.inverse_kinematics, self.robot.count, self.device
             )
             # self.num_actions = self._ik_controller.num_actions
-            self.num_actions = 3
+            # self.num_actions = 3
+            self.num_actions = 4
         elif self.cfg.control.control_type == "default":
             # self.num_actions = self.robot.num_actions
             self.num_actions = 3
@@ -1244,21 +1333,34 @@ class PushObservationManager(ObservationManager):
     def table_scene(self,env:PushEnv):
         # print("get observs")
         obs_ta = torch.zeros((env.num_envs,env.cfg.og_resolution.tabletop[1],
-                                     env.cfg.og_resolution.tabletop[0],2),device=env.device)
+                                     2*env.cfg.og_resolution.tabletop[0],8),device=env.device)
         for i in range(env.num_envs):
-            im = env.table_og[i].cpu().numpy()*255
-            observation = np.array(im,dtype=np.uint8)
-            observation = observation[:,np.newaxis].reshape([env.cfg.og_resolution.tabletop[1],
-                                     env.cfg.og_resolution.tabletop[0]])
-            obs_ta[i,:,:,0] = torch.from_numpy(observation).to(env.device)
-        # obs_mask = torch.zeros((env.num_envs,env.cfg.og_resolution.tabletop[1],
-                                    #  env.cfg.og_resolution.tabletop[0],1),device=env.device)
-        for i in range(env.num_envs):
-            im = env.obj_masks[i].cpu().numpy()*255
-            observation = np.array(im,dtype=np.uint8)
-            observation = observation[:,np.newaxis].reshape([env.cfg.og_resolution.tabletop[1],
-                                     env.cfg.og_resolution.tabletop[0]])
-            obs_ta[i,:,:,1]  = torch.from_numpy(observation).to(env.device)
+            for j in range(8):
+                im = env.table_og[i].cpu().numpy()*255
+                observation = np.array(im,dtype=np.uint8)
+                observation = observation[:,np.newaxis].reshape([env.cfg.og_resolution.tabletop[1],
+                                        env.cfg.og_resolution.tabletop[0]])
+                obs_ta[i,:,:env.cfg.og_resolution.tabletop[0],
+                    j] = torch.from_numpy(observation).to(env.device)
+                # print("observ")
+                # plt.imshow(observation)
+                # plt.show()
+            # obs_mask = torch.zeros((env.num_envs,env.cfg.og_resolution.tabletop[1],
+                                        #  env.cfg.og_resolution.tabletop[0],1),device=env.device)
+            # for i in range(env.num_envs):
+                
+                im = env.obj_masks[i].cpu().numpy()*255
+                h,w = im.shape[:2]
+                center = (w//2,h//2)
+                observation = np.array(im,dtype=np.uint8)
+                rot_M = cv2.getRotationMatrix2D(center,45*j,1)
+                observation = cv2.warpAffine(observation,rot_M,(w,h))
+                # plt.imshow(observation)
+                # plt.show()
+                observation = observation[:,np.newaxis].reshape([env.cfg.og_resolution.tabletop[1],
+                                        env.cfg.og_resolution.tabletop[0]])
+                obs_ta[i,:,env.cfg.og_resolution.tabletop[0]:,
+                    j]  = torch.from_numpy(observation).to(env.device)
         return obs_ta
         # return env.table_og
         
@@ -1361,19 +1463,19 @@ class PushRewardManager(RewardManager):
     #     error = torch.sum(torch.square(env.robot.data.ee_state_w[:, 0:3]), dim=1)
     #     return torch.exp(-error / sigma)
 
-    def reaching_object_position_tanh(self, env: PushEnv, sigma: float):
-        """Penalize tool sites tracking position error using tanh-kernel."""
-        # distance of end-effector to the object: (num_envs,)
-        ee_distance = torch.norm(env.robot.data.ee_state_w[:, 0:3], dim=1)
-        # distance of the tool sites to the object: (num_envs, num_tool_sites)
-        # object_root_pos = env.object.data.root_pos_w.unsqueeze(1)  # (num_envs, 1, 3)
-        tool_sites_distance = torch.norm(env.robot.data.tool_sites_state_w[:, :, :3], dim=-1)
-        # average distance of the tool sites to the object: (num_envs,)
-        # note: we add the ee distance to the average to make sure that the ee is always closer to the object
-        num_tool_sites = tool_sites_distance.shape[1]
-        average_distance = (ee_distance + torch.sum(tool_sites_distance, dim=1)) / (num_tool_sites + 1)
+    # def reaching_object_position_tanh(self, env: PushEnv, sigma: float):
+    #     """Penalize tool sites tracking position error using tanh-kernel."""
+    #     # distance of end-effector to the object: (num_envs,)
+    #     ee_distance = torch.norm(env.robot.data.ee_state_w[:, 0:3], dim=1)
+    #     # distance of the tool sites to the object: (num_envs, num_tool_sites)
+    #     # object_root_pos = env.object.data.root_pos_w.unsqueeze(1)  # (num_envs, 1, 3)
+    #     tool_sites_distance = torch.norm(env.robot.data.tool_sites_state_w[:, :, :3], dim=-1)
+    #     # average distance of the tool sites to the object: (num_envs,)
+    #     # note: we add the ee distance to the average to make sure that the ee is always closer to the object
+    #     num_tool_sites = tool_sites_distance.shape[1]
+    #     average_distance = (ee_distance + torch.sum(tool_sites_distance, dim=1)) / (num_tool_sites + 1)
 
-        return 1 - torch.tanh(average_distance / sigma)
+    #     return 1 - torch.tanh(average_distance / sigma)
 
     # def penalizing_arm_dof_velocity_l2(self, env: PushEnv):
     #     """Penalize large movements of the robot arm."""
@@ -1383,9 +1485,9 @@ class PushRewardManager(RewardManager):
     #     """Penalize large movements of the robot tool."""
     #     return -torch.sum(torch.square(env.robot.data.tool_dof_vel), dim=1)
 
-    def penalizing_arm_action_rate_l2(self, env: PushEnv):
-        """Penalize large variations in action commands besides tool."""
-        return -torch.sum(torch.square(env.actions[:, :-1] - env.previous_actions[:, :-1]), dim=1)
+    # def penalizing_arm_action_rate_l2(self, env: PushEnv):
+    #     """Penalize large variations in action commands besides tool."""
+    #     return -torch.sum(torch.square(env.actions[:, :-1] - env.previous_actions[:, :-1]), dim=1)
     def penalizing_falling(self,env:PushEnv):
         # print("penalty fallen")
         # print(-env.falling_obj)
@@ -1403,7 +1505,7 @@ class PushRewardManager(RewardManager):
         delta_og = torch.zeros((env.num_envs,),device=self.device)
         for i in range(env.num_envs):
             delta_tmp = env.table_og[i] - env.table_og_pre[i]
-            if torch.sum(torch.abs(delta_tmp))>100:
+            if torch.sum(torch.abs(delta_tmp))>60:
                 delta_og[i] = 1
         env.table_og_pre = env.table_og.clone()
         # print("reward og")

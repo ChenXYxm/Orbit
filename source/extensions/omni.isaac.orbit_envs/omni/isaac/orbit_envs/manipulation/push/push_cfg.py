@@ -61,7 +61,7 @@ class ManipulationObjectCfg(RigidObjectCfg):
         disable_gravity=False,
     )
     physics_material = RigidObjectCfg.PhysicsMaterialCfg(
-        static_friction=0.5, dynamic_friction=0.5, restitution=0.0, prim_path="/World/Materials/cubeMaterial"
+        static_friction=0.8, dynamic_friction=0.8, restitution=0.0, prim_path="/World/Materials/cubeMaterial"
     )
 
 @configclass
@@ -207,7 +207,7 @@ class RewardsCfg:
     # penalizing_arm_action_rate_l2 = {"weight": 1e-2}
     reward_og_change = {"weight":0.05}
     check_placing = {"weight": 2}
-    penalizing_falling = {"weight": 1}
+    penalizing_falling = {"weight": 2}
     penalizing_steps = {"weight": 0.03}
     # penalizing_tool_action_l2 = {"weight": 1e-2}
     # -- object-centric
@@ -227,8 +227,8 @@ class TerminationsCfg:
 @configclass
 class occupancy_grid_resolution:
     """resolution of the occupancy grid"""
-    tabletop = [200,120]
-    new_obj = [80,80]
+    tabletop = [100,60]
+    new_obj = [40,40]
 @configclass
 class ControlCfg:
     """Processing of MDP actions."""
@@ -245,8 +245,10 @@ class ControlCfg:
         # command_type = "pose_rel",
         command_type = "pose_abs",
         ik_method="dls",
-        position_command_scale=(0.1, 0.1, 0.1),
-        rotation_command_scale=(0.1, 0.1, 0.1),
+        # position_command_scale=(0.1, 0.1, 0.1),
+        # rotation_command_scale=(0.1, 0.1, 0.1),
+        position_command_scale=(0.05, 0.05, 0.05),
+        rotation_command_scale=(0.05, 0.05, 0.05),
     )
 
 
@@ -277,7 +279,7 @@ class PushEnvCfg(IsaacEnvCfg):
     """Configuration for the push environment."""
 
     # General Settings
-    env: EnvCfg = EnvCfg(num_envs=4096, env_spacing=3, episode_length_s=0.3)
+    env: EnvCfg = EnvCfg(num_envs=4096, env_spacing=3, episode_length_s=0.5)
     viewer: ViewerCfg = ViewerCfg(debug_vis=False, eye=(7.5, 7.5, 7.5), lookat=(0.0, 0.0, 0.0))
     # Physics settings
     sim: SimCfg = SimCfg(

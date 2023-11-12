@@ -173,29 +173,29 @@ def main():
     prim_utils.create_prim("/World/Robotbase", usd_path=table_path,position=(0,-0.45,-0.2),scale=(0.3,0.26,0.4))
     #################### ycb path
     ######################################### load ycb objects
-    # ycb_usd_paths = {
-    #     "crackerBox": f"{ISAAC_NUCLEUS_DIR}/Props/YCB/Axis_Aligned_Physics/003_cracker_box.usd",
-    #     "sugarBox": f"{ISAAC_NUCLEUS_DIR}/Props/YCB/Axis_Aligned_Physics/004_sugar_box.usd",
-    #     "tomatoSoupCan": f"{ISAAC_NUCLEUS_DIR}/Props/YCB/Axis_Aligned_Physics/005_tomato_soup_can.usd",
-    #     "mustardBottle": f"{ISAAC_NUCLEUS_DIR}/Props/YCB/Axis_Aligned_Physics/006_mustard_bottle.usd",
-    #     "mug":f"{ISAAC_NUCLEUS_DIR}/Props/YCB/Axis_Aligned/025_mug.usd",
-    #     "largeMarker":f"{ISAAC_NUCLEUS_DIR}/Props/YCB/Axis_Aligned/040_large_marker.usd",
-    #     "tunaFishCan":f"{ISAAC_NUCLEUS_DIR}/Props/YCB/Axis_Aligned/007_tuna_fish_can.usd",
-    #     "banana":f"{ISAAC_NUCLEUS_DIR}/Props/YCB/Axis_Aligned/011_banana.usd",
-    #     # "pitcherBase":f"{ISAAC_NUCLEUS_DIR}/Props/YCB/Axis_Aligned/019_pitcher_base.usd",
-    #     "bowl":f"{ISAAC_NUCLEUS_DIR}/Props/YCB/Axis_Aligned/024_bowl.usd",
-    #     "largeClamp":f"{ISAAC_NUCLEUS_DIR}/Props/YCB/Axis_Aligned/051_large_clamp.usd",
-    #     "scissors":f"{ISAAC_NUCLEUS_DIR}/Props/YCB/Axis_Aligned/037_scissors.usd",
-    # }
-    # ycb_name = ['crackerBox','sugarBox','tomatoSoupCan','mustardBottle','mug','largeMarker','tunaFishCan',
-    #             'banana','bowl','largeClamp','scissors']
     ycb_usd_paths = {
         "crackerBox": f"{ISAAC_NUCLEUS_DIR}/Props/YCB/Axis_Aligned_Physics/003_cracker_box.usd",
         "sugarBox": f"{ISAAC_NUCLEUS_DIR}/Props/YCB/Axis_Aligned_Physics/004_sugar_box.usd",
         "tomatoSoupCan": f"{ISAAC_NUCLEUS_DIR}/Props/YCB/Axis_Aligned_Physics/005_tomato_soup_can.usd",
         "mustardBottle": f"{ISAAC_NUCLEUS_DIR}/Props/YCB/Axis_Aligned_Physics/006_mustard_bottle.usd",
+        "mug":f"{ISAAC_NUCLEUS_DIR}/Props/YCB/Axis_Aligned/025_mug.usd",
+        "largeMarker":f"{ISAAC_NUCLEUS_DIR}/Props/YCB/Axis_Aligned/040_large_marker.usd",
+        "tunaFishCan":f"{ISAAC_NUCLEUS_DIR}/Props/YCB/Axis_Aligned/007_tuna_fish_can.usd",
+        "banana":f"{ISAAC_NUCLEUS_DIR}/Props/YCB/Axis_Aligned/011_banana.usd",
+        # "pitcherBase":f"{ISAAC_NUCLEUS_DIR}/Props/YCB/Axis_Aligned/019_pitcher_base.usd",
+        "bowl":f"{ISAAC_NUCLEUS_DIR}/Props/YCB/Axis_Aligned/024_bowl.usd",
+        "largeClamp":f"{ISAAC_NUCLEUS_DIR}/Props/YCB/Axis_Aligned/051_large_clamp.usd",
+        "scissors":f"{ISAAC_NUCLEUS_DIR}/Props/YCB/Axis_Aligned/037_scissors.usd",
     }
-    ycb_name = ['crackerBox','sugarBox','tomatoSoupCan','mustardBottle']
+    ycb_name = ['crackerBox','sugarBox','tomatoSoupCan','mustardBottle','mug','largeMarker','tunaFishCan',
+                'banana','bowl','largeClamp','scissors']
+    # ycb_usd_paths = {
+    #     "crackerBox": f"{ISAAC_NUCLEUS_DIR}/Props/YCB/Axis_Aligned_Physics/003_cracker_box.usd",
+    #     "sugarBox": f"{ISAAC_NUCLEUS_DIR}/Props/YCB/Axis_Aligned_Physics/004_sugar_box.usd",
+    #     "tomatoSoupCan": f"{ISAAC_NUCLEUS_DIR}/Props/YCB/Axis_Aligned_Physics/005_tomato_soup_can.usd",
+    #     "mustardBottle": f"{ISAAC_NUCLEUS_DIR}/Props/YCB/Axis_Aligned_Physics/006_mustard_bottle.usd",
+    # }
+    # ycb_name = ['crackerBox','sugarBox','tomatoSoupCan','mustardBottle']
     ################################ robot setting
     robot_cfg = FRANKA_PANDA_ARM_WITH_PANDA_HAND_CFG
     robot_cfg.data_info.enable_jacobian = True
@@ -425,7 +425,7 @@ def main():
             pcd.points = o3d.utility.Vector3dVector(inliers)
             # o3d.visualization.draw_geometries([pcd])
             pts_tab = np.array(pcd.points)
-            Nx,Ny = 200,120
+            Nx,Ny = 100,60
             x = np.linspace(np.min(pts_tab[:,0]), np.max(pts_tab[:,0]), Nx)
             y = np.linspace(np.min(pts_tab[:,1]), np.max(pts_tab[:,1]), Ny)
             xv, yv = np.meshgrid(x, y)
@@ -490,7 +490,7 @@ def main():
             # plt.show()
             # if num_new>=1:
                 # aabb_points = get_new_obj_pcd(hand_camera,(40,40),hand_plane_model)
-            aabb_points,_,vertices_new_obj = get_new_obj_info(hand_camera,(80,80),hand_plane_model,obj_type)
+            aabb_points,_,vertices_new_obj = get_new_obj_info(hand_camera,(40,40),hand_plane_model,obj_type)
             print(occupancy.shape)
             flag_found, new_poly_vetices,occu_tmp,new_obj_pos = place_new_obj_fun(occupancy,vertices_new_obj)
             if flag_found:
@@ -726,7 +726,7 @@ def place_new_object(occu,ycb_list,ycb_path,num_new,obj_dict):
         if key_ori not in obj_dict:
             obj_dict[key_ori] = 1
         else:
-            if obj_dict[key_ori]<5:
+            if obj_dict[key_ori]<2:
                 obj_dict[key_ori] +=1
                 break
             

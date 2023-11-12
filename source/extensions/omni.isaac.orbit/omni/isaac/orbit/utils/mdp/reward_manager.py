@@ -232,7 +232,8 @@ class RewardManager:
             self._reward_buf += value
             # update episodic sum
             self._episode_sums["termination"] += value
-
+            # print('from mdp')
+            # print(self._reward_buf)
         return self._reward_buf
 
     """
