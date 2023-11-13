@@ -184,13 +184,20 @@ class YCBobjectsCfg:
     # }
     # ycb_name = ['crackerBox','sugarBox','tomatoSoupCan','mustardBottle','mug','largeMarker','tunaFishCan',
     #             'banana','bowl','largeClamp','scissors']
+    # ycb_usd_paths = {
+    #     "crackerBox": f"{ISAAC_NUCLEUS_DIR}/Props/YCB/Axis_Aligned_Physics/003_cracker_box.usd",
+    #     "sugarBox": f"{ISAAC_NUCLEUS_DIR}/Props/YCB/Axis_Aligned_Physics/004_sugar_box.usd",
+    #     "tomatoSoupCan": f"{ISAAC_NUCLEUS_DIR}/Props/YCB/Axis_Aligned_Physics/005_tomato_soup_can.usd",
+    #     "mustardBottle": f"{ISAAC_NUCLEUS_DIR}/Props/YCB/Axis_Aligned_Physics/006_mustard_bottle.usd",
+    # }
+    # ycb_name = ['crackerBox','sugarBox','tomatoSoupCan','mustardBottle']
     ycb_usd_paths = {
         "crackerBox": f"{ISAAC_NUCLEUS_DIR}/Props/YCB/Axis_Aligned_Physics/003_cracker_box.usd",
         "sugarBox": f"{ISAAC_NUCLEUS_DIR}/Props/YCB/Axis_Aligned_Physics/004_sugar_box.usd",
-        "tomatoSoupCan": f"{ISAAC_NUCLEUS_DIR}/Props/YCB/Axis_Aligned_Physics/005_tomato_soup_can.usd",
+        # "tomatoSoupCan": f"{ISAAC_NUCLEUS_DIR}/Props/YCB/Axis_Aligned_Physics/005_tomato_soup_can.usd",
         "mustardBottle": f"{ISAAC_NUCLEUS_DIR}/Props/YCB/Axis_Aligned_Physics/006_mustard_bottle.usd",
     }
-    ycb_name = ['crackerBox','sugarBox','tomatoSoupCan','mustardBottle']
+    ycb_name = ['crackerBox','sugarBox','mustardBottle']
 
 @configclass
 class RewardsCfg:
@@ -207,7 +214,7 @@ class RewardsCfg:
     # penalizing_arm_action_rate_l2 = {"weight": 1e-2}
     reward_og_change = {"weight":0.05}
     check_placing = {"weight": 2}
-    penalizing_falling = {"weight": 2}
+    penalizing_falling = {"weight": 3}
     penalizing_steps = {"weight": 0.03}
     # penalizing_tool_action_l2 = {"weight": 1e-2}
     # -- object-centric

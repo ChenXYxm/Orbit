@@ -156,12 +156,21 @@ def place_new_obj_fun(occu_ori,new_obj):
                             tmp_delta[_] = np.floor(l)
                     occu_tmp[int(np.round(p_s[0]+tmp_delta[0])),int(np.round(p_s[1]+tmp_delta[1]))] = 3
                     # occu_tmp[int(np.round(p_s[0]+k*line[0]/length)),int(np.round(p_s[1]+k*line[1]/length))] = 2
-        plt.imshow(occu_tmp)
-        plt.show()
+        length_list.append(Ny)
+        length_dict[Ny] = [np.array([0,0]),np.array([Ny-1,0])]
+        length_dict[Ny].append(np.array([0,Nx-1]))
+        length_dict[Ny].append(np.array([Ny-1,Nx-1]))
+        length_list.append(Nx)
+        length_dict[Nx] = [np.array([0,0]),np.array([0,Nx-1])]
+        length_dict[Nx].append(np.array([Ny-1,0]))
+        length_dict[Nx].append(np.array([Ny-1,Nx-1]))
+        occu_tmp[Ny-1,Nx-1] = 3
+        # plt.imshow(occu_tmp)
+        # plt.show()
         flag_found = False
         dila_polygons = []
         for i in polygons:
-            dila_polygons.append(i.buffer(2))
+            dila_polygons.append(i.buffer(1.5))
         tree = STRtree(dila_polygons)
         for length_ori in [num_grid_l,num_grid_s]:
             if length_ori == num_grid_l:
@@ -263,8 +272,8 @@ def place_new_obj_fun(occu_ori,new_obj):
                                                         tmp_delta_1[1] = Nx-1 - p_s_1[1]
                                                     occu_tmp[int(np.round(p_s_1[0]+tmp_delta_1[0])),int(np.round(p_s_1[1]+tmp_delta_1[1]))] = 3
                                             flag_found = True
-                                            plt.imshow(occu_tmp)
-                                            plt.show()
+                                            # plt.imshow(occu_tmp)
+                                            # plt.show()
                                             new_obj_pos = get_pos(new_obj,new_poly_vetices)
                                             return flag_found,new_poly_vetices,occu_tmp,new_obj_pos
                                             break

@@ -17,11 +17,14 @@ import gym
 
 import omni.isaac.orbit_envs  # noqa: F401
 from omni.isaac.orbit_envs.utils import load_default_env_cfg
-from omni.isaac.orbit_envs.utils.parse_cfg import parse_env_cfg
+
 # create base environment
-# cfg = load_default_env_cfg("Isaac-Lift-Franka-v0")
-cfg = parse_env_cfg("Isaac-Lift-Franka-v0",num_envs=10)
-# cfg["env"]["num_envs"] = 10
+# cfg = load_default_env_cfg("Isaac-Cartpole-v0")
+cfg = load_default_env_cfg("Isaac-Lift-Franka-v0")
+print(cfg)
+print(cfg.env)
+cfg.env.num_envs = 12
+# env = gym.make("Isaac-Cartpole-v0", cfg=cfg, headless=True)
 env = gym.make("Isaac-Lift-Franka-v0", cfg=cfg, headless=True)
 
 from omni.isaac.orbit_envs.utils.wrappers.sb3 import Sb3VecEnvWrapper

@@ -156,12 +156,21 @@ def place_new_obj_fun(occu_ori,new_obj):
                             tmp_delta[_] = np.floor(l)
                     occu_tmp[int(np.round(p_s[0]+tmp_delta[0])),int(np.round(p_s[1]+tmp_delta[1]))] = 3
                     # occu_tmp[int(np.round(p_s[0]+k*line[0]/length)),int(np.round(p_s[1]+k*line[1]/length))] = 2
+        length_list.append(Ny)
+        length_dict[Ny] = [np.array([0,0]),np.array([Ny-1,0])]
+        length_dict[Ny].append(np.array([0,Nx-1]))
+        length_dict[Ny].append(np.array([Ny-1,Nx-1]))
+        length_list.append(Nx)
+        length_dict[Nx] = [np.array([0,0]),np.array([0,Nx-1])]
+        length_dict[Nx].append(np.array([Ny-1,0]))
+        length_dict[Nx].append(np.array([Ny-1,Nx-1]))
+        occu_tmp[Ny-1,Nx-1] = 3
         # plt.imshow(occu_tmp)
         # plt.show()
         flag_found = False
         dila_polygons = []
         for i in polygons:
-            dila_polygons.append(i.buffer(4))
+            dila_polygons.append(i.buffer(1.5))
         tree = STRtree(dila_polygons)
         for length_ori in [num_grid_l,num_grid_s]:
             if length_ori == num_grid_l:

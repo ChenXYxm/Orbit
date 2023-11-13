@@ -109,7 +109,7 @@ def main():
         )
 
     # create agent from stable baselines
-    agent = SAC(policy_arch, env, verbose=1, **agent_cfg)
+    agent = PPO(policy_arch, env, verbose=1, **agent_cfg)
     # print(agent.policy)
     # configure the logger
     new_logger = configure(log_dir, ["stdout", "tensorboard"])
