@@ -165,7 +165,7 @@ def main():
     )
     #################### create table 
     table_path = f"{ISAAC_NUCLEUS_DIR}/Props/Shapes/cube.usd"
-    Table = FixedCuboid(prim_path="/World/Table",position=(0,0,-0.25),scale=(1,0.6,0.5))
+    Table = FixedCuboid(prim_path="/World/Table",position=(0,0,-0.25),scale=(0.5,0.5,0.5))
     # Table.set_mass(10000000) 
     sideTable = FixedCuboid(prim_path="/World/sideTable",position=(0.35,-0.9,-0.3),scale=(0.4,0.4,0.4))
     # sideTable.set_mass(10)
@@ -189,13 +189,20 @@ def main():
     # }
     # ycb_name = ['crackerBox','sugarBox','tomatoSoupCan','mustardBottle','mug','largeMarker','tunaFishCan',
     #             'banana','bowl','largeClamp','scissors']
+    # ycb_usd_paths = {
+    #     "crackerBox": f"{ISAAC_NUCLEUS_DIR}/Props/YCB/Axis_Aligned_Physics/003_cracker_box.usd",
+    #     "sugarBox": f"{ISAAC_NUCLEUS_DIR}/Props/YCB/Axis_Aligned_Physics/004_sugar_box.usd",
+    #     # "tomatoSoupCan": f"{ISAAC_NUCLEUS_DIR}/Props/YCB/Axis_Aligned_Physics/005_tomato_soup_can.usd",
+    #     "mustardBottle": f"{ISAAC_NUCLEUS_DIR}/Props/YCB/Axis_Aligned_Physics/006_mustard_bottle.usd",
+    # }
+    # ycb_name = ['crackerBox','sugarBox','mustardBottle']
     ycb_usd_paths = {
-        "crackerBox": f"{ISAAC_NUCLEUS_DIR}/Props/YCB/Axis_Aligned_Physics/003_cracker_box.usd",
+        # "crackerBox": f"{ISAAC_NUCLEUS_DIR}/Props/YCB/Axis_Aligned_Physics/003_cracker_box.usd",
         "sugarBox": f"{ISAAC_NUCLEUS_DIR}/Props/YCB/Axis_Aligned_Physics/004_sugar_box.usd",
         # "tomatoSoupCan": f"{ISAAC_NUCLEUS_DIR}/Props/YCB/Axis_Aligned_Physics/005_tomato_soup_can.usd",
-        "mustardBottle": f"{ISAAC_NUCLEUS_DIR}/Props/YCB/Axis_Aligned_Physics/006_mustard_bottle.usd",
+        # "mustardBottle": f"{ISAAC_NUCLEUS_DIR}/Props/YCB/Axis_Aligned_Physics/006_mustard_bottle.usd",
     }
-    ycb_name = ['crackerBox','sugarBox','mustardBottle']
+    ycb_name = ['sugarBox']
     ################################ robot setting
     robot_cfg = FRANKA_PANDA_ARM_WITH_PANDA_HAND_CFG
     robot_cfg.data_info.enable_jacobian = True
@@ -215,8 +222,8 @@ def main():
     
     camera_cfg = PinholeCameraCfg(
         sensor_tick=0,
-        height=480,
-        width=640,
+        height=240,
+        width=240,
         data_types=["rgb", "distance_to_image_plane", "normals", "motion_vectors"],
         usd_params=PinholeCameraCfg.UsdCameraCfg(
             focal_length=24.0, focus_distance=400.0, horizontal_aperture=20.955, clipping_range=(0.1, 1.0e5)
@@ -240,10 +247,10 @@ def main():
     # Reset states
     robot.reset_buffers()
     ik_controller.reset_idx()
-    position = [0, 0, 2.]
+    position = [0, 0, 1.2]
     orientation = [0, 0, -1, 0]
     camera.set_world_pose_ros(position, orientation)
-    hand_camera.set_world_pose_ros([0.35,-0.9,0.8], orientation)
+    hand_camera.set_world_pose_ros([0.35,-0.9,0.55], orientation)
     Table.initialize()
     sideTable.initialize()
     sideTable.set_collision_enabled(True)
@@ -270,7 +277,7 @@ def main():
         # key = key_ori+str(obj_dict[key_ori])
         key = key_ori
         translation = torch.rand(3).tolist()
-        translation = [-translation[0]*0.3+0.2,-0.45*translation[1]-0.3,-0.2]
+        translation = [-0,-0.45*translation[1]-0.5,-0.2]
         # translation = [0,0,0.2]
         print(translation,angle,key_ori)
         rot = convert_quat(tf.Rotation.from_euler("XYZ", (0,0,angle), degrees=True).as_quat(), to="wxyz")
@@ -279,8 +286,6 @@ def main():
         prim_utils.create_prim(f"/World/Objects/{key}", usd_path=usd_path, translation=translation,orientation=rot)
         GeometryPrim(f"/World/Objects/{key}",collision=True)
         RigidPrim(f"/World/Objects/{key}",mass=0.3)
-        for _ in range(30):
-            sim.step()
     num_obj = np.random.randint(1,2)
     table_obj_pos_rot = dict()
     if num_obj >=1:
@@ -297,7 +302,7 @@ def main():
                 obj_dict[key_ori] +=1
             key = key_ori+str(obj_dict[key_ori])
             translation = torch.rand(3).tolist()
-            translation = [translation[0]*0.8-0.4,0.45*translation[1]-0.225,0.1]
+            translation = [translation[0]*0.4-0.2,0.2*translation[1]-0.2,0.05]
             # translation = [0,0,0.2]
             print(translation,angle,key_ori)
             rot = convert_quat(tf.Rotation.from_euler("XYZ", (0,0,angle), degrees=True).as_quat(), to="wxyz")
@@ -355,11 +360,7 @@ def main():
         # If simulation is stopped, then exit.
         if simulation_app.is_running():
             print('running')
-        if sim.is_stopped():
-            break
-        # If simulation is paused, then skip.
-        if not sim.is_playing():
-            sim.step(render=not args_cli.headless)
+        if sim.step(render=not args_cli.headless):
             print('pause')
             sim.play()
             continue
@@ -411,12 +412,18 @@ def main():
             select_m = np.dot(inliers,plane_model) + float(plane_model_ori[3])
             index_inliers = np.argwhere((select_m <=0.3)).reshape(-1).astype(int)
             inliers = inliers[index_inliers]
-            index_inliers = np.argwhere((inliers[:,1]>=-0.3)).reshape(-1).astype(int)
+            index_inliers = np.argwhere((inliers[:,1]>=-0.25)).reshape(-1).astype(int)
+            inliers = inliers[index_inliers]
+            index_inliers = np.argwhere((inliers[:,1]<=0.25)).reshape(-1).astype(int)
+            inliers = inliers[index_inliers]
+            index_inliers = np.argwhere((inliers[:,0]>=-0.25)).reshape(-1).astype(int)
+            inliers = inliers[index_inliers]
+            index_inliers = np.argwhere((inliers[:,0]<=0.25)).reshape(-1).astype(int)
             inliers = inliers[index_inliers]
             # print(camera.data.output["distance_to_image_plane"].shape)
             # print(pointcloud_w.shape)
             select_m = np.dot(inliers,plane_model) + float(plane_model_ori[3])
-            index_objects = np.argwhere((select_m>=0.005)).reshape(-1).astype(int)
+            index_objects = np.argwhere((select_m>=0.001)).reshape(-1).astype(int)
             objects_point = inliers[index_objects].copy()
             objects_pcd = o3d.geometry.PointCloud()
             objects_pcd.points = o3d.utility.Vector3dVector(objects_point)
@@ -425,7 +432,7 @@ def main():
             pcd.points = o3d.utility.Vector3dVector(inliers)
             # o3d.visualization.draw_geometries([pcd])
             pts_tab = np.array(pcd.points)
-            Nx,Ny = 100,60
+            Nx,Ny = 50,50
             x = np.linspace(np.min(pts_tab[:,0]), np.max(pts_tab[:,0]), Nx)
             y = np.linspace(np.min(pts_tab[:,1]), np.max(pts_tab[:,1]), Ny)
             xv, yv = np.meshgrid(x, y)
@@ -451,7 +458,7 @@ def main():
             v = v[v_ind]
             occupancy[v,u] = 1
             occupancy = np.fliplr(occupancy)
-            print(table_obj_pos_rot)
+            # print(table_obj_pos_rot)
             if len(table_obj_pos_rot)>=2:
                 if np.sum(occupancy)==0:
                     Table.set_collision_approximation("convexDecomposition")
@@ -464,30 +471,30 @@ def main():
                             prim_utils.delete_prim(f"/World/Objects/{key}")
                         obj_dict[_] = 0
                     # break
-            # plt.imshow(occupancy)
-            # plt.show()
+            plt.imshow(occupancy)
+            plt.show()
             #
             # bound_detect(occupancy)
             # rgb=camera.data.output["rgb"]
             # rgb = convert_to_torch(rgb, device=sim.device, dtype=torch.float32)
             # rgb = rgb[:, :, :3].cpu().data.numpy()
-            # plt.imshow(grad)
-            # plt.show()
+            # # plt.imshow(grad)
+            # # plt.show()
             # img = Image.fromarray((rgb).astype(np.uint8))
             # hand_rgb=hand_camera.data.output["rgb"]
             # hand_rgb = convert_to_torch(hand_rgb, device=sim.device, dtype=torch.float32)
             # hand_rgb = hand_rgb[:, :, :3].cpu().data.numpy()
-            
-            obj_dict, new_obj,obj_type,new_obj_path = place_new_object(occupancy,ycb_name,ycb_usd_paths,num_new,obj_dict)
-            
-            num_new +=1
-            for _ in range(50):
-                sim.step()
             # hand_img = Image.fromarray((hand_rgb).astype(np.uint8))   
             # plt.imshow(img)
             # plt.show()
             # plt.imshow(hand_img)
             # plt.show()
+            obj_dict, new_obj,obj_type,new_obj_path = place_new_object(occupancy,ycb_name,ycb_usd_paths,num_new,obj_dict)
+            
+            num_new +=1
+            for _ in range(50):
+                sim.step()
+            
             # if num_new>=1:
                 # aabb_points = get_new_obj_pcd(hand_camera,(40,40),hand_plane_model)
             aabb_points,_,vertices_new_obj = get_new_obj_info(hand_camera,(40,40),hand_plane_model,obj_type)
@@ -508,7 +515,7 @@ def main():
                 # new_obj.set_world_pose(position=[(50-new_obj_pos[1])*0.01,(new_obj_pos[0]-30)*0.01,0.2],orientation=rot)
                 # new_obj.initialize()
                 print(new_obj_pos)
-                translation = [(Nx/2-new_obj_pos[1])*1./Nx,(new_obj_pos[0]-Ny/2)*1./Nx,0.1]
+                translation = [(Nx/2-new_obj_pos[1])*1./100.,(new_obj_pos[0]-Ny/2)*1./100.,0.05]
                 print(translation)
                 usd_path = ycb_usd_paths[obj_type]
                 prim_utils.create_prim(new_obj_path, usd_path=usd_path, position=translation,orientation=rot)
@@ -631,8 +638,8 @@ def get_new_obj_info(camera,size,hand_plane_model,obj_type):
         f_save = open(file_path,'wb')
         pickle.dump(occupancy,f_save)
         f_save.close()
-    # plt.imshow(occupancy)
-    # plt.show()
+    plt.imshow(occupancy)
+    plt.show()
     vertices_new_obj = get_new_obj_contour_bbox(occupancy)
     return aabb_points,occupancy, vertices_new_obj
 def get_new_obj_contour_bbox(occu:np.array):
@@ -726,7 +733,7 @@ def place_new_object(occu,ycb_list,ycb_path,num_new,obj_dict):
         if key_ori not in obj_dict:
             obj_dict[key_ori] = 1
         else:
-            if obj_dict[key_ori]<7:
+            if obj_dict[key_ori]<8:
                 obj_dict[key_ori] +=1
                 break
             

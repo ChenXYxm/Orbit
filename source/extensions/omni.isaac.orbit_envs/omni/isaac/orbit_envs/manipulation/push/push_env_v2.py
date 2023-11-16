@@ -59,11 +59,11 @@ class PushEnv(IsaacEnv):
         # create classes (these are called by the function :meth:`_design_scene`)
         self.robot = SingleArmManipulator(cfg=self.cfg.robot)
         self.obj1 = []
-        for i in range(7):
+        for i in range(8):
             obj_cfg1 = RigidObjectCfg()
             obj_cfg1.meta_info = RigidObjectCfg.MetaInfoCfg(usd_path=ycb_usd_paths[ycb_name[0]],scale=(1.0, 1.0, 1.0),)
             obj_cfg1.init_state = RigidObjectCfg.InitialStateCfg(
-            pos=(2-0.25*i, 1, -0.4), rot=(1.0, 0.0, 0.0, 0.0), lin_vel=(0.0, 0.0, 0.0), ang_vel=(0.0, 0.0, 0.0)
+            pos=(2-0.25*i, 0.8, -0.4), rot=(1.0, 0.0, 0.0, 0.0), lin_vel=(0.0, 0.0, 0.0), ang_vel=(0.0, 0.0, 0.0)
             )
             obj_cfg1.rigid_props = RigidObjectCfg.RigidBodyPropertiesCfg(
                 solver_position_iteration_count=16,
@@ -78,46 +78,46 @@ class PushEnv(IsaacEnv):
             )
             self.obj1.append(RigidObject(obj_cfg1))
             self.obj_name_list.append(ycb_name[0]+str(i))
-        self.obj2 = []
-        for i in range(7):
-            obj_cfg2 = RigidObjectCfg()
-            obj_cfg2.meta_info = RigidObjectCfg.MetaInfoCfg(usd_path=ycb_usd_paths[ycb_name[1]],scale=(1.0, 1.0, 1.0),)
-            obj_cfg2.init_state = RigidObjectCfg.InitialStateCfg(
-            pos=(2-0.25*i, 0.7, -0.4), rot=(1.0, 0.0, 0.0, 0.0), lin_vel=(0.0, 0.0, 0.0), ang_vel=(0.0, 0.0, 0.0)
-            )
-            obj_cfg2.rigid_props = RigidObjectCfg.RigidBodyPropertiesCfg(
-                solver_position_iteration_count=16,
-                solver_velocity_iteration_count=1,
-                max_angular_velocity=1000.0,
-                max_linear_velocity=1000.0,
-                max_depenetration_velocity=5.0,
-                disable_gravity=False,
-            )
-            obj_cfg2.physics_material = RigidObjectCfg.PhysicsMaterialCfg(
-                static_friction=0.5, dynamic_friction=0.5, restitution=0.0, prim_path="/World/Materials/cubeMaterial"
-            )
-            self.obj2.append(RigidObject(obj_cfg2))
-            self.obj_name_list.append(ycb_name[1]+str(i))
-        self.obj3 = []
-        for i in range(7):
-            obj_cfg3 = RigidObjectCfg()
-            obj_cfg3.meta_info = RigidObjectCfg.MetaInfoCfg(usd_path=ycb_usd_paths[ycb_name[2]],scale=(1.0, 1.0, 1.0),)
-            obj_cfg3.init_state = RigidObjectCfg.InitialStateCfg(
-            pos=(2-0.25*i, 0.5, -0.4), rot=(1.0, 0.0, 0.0, 0.0), lin_vel=(0.0, 0.0, 0.0), ang_vel=(0.0, 0.0, 0.0)
-            )
-            obj_cfg3.rigid_props = RigidObjectCfg.RigidBodyPropertiesCfg(
-                solver_position_iteration_count=16,
-                solver_velocity_iteration_count=1,
-                max_angular_velocity=1000.0,
-                max_linear_velocity=1000.0,
-                max_depenetration_velocity=5.0,
-                disable_gravity=False,
-            )
-            obj_cfg3.physics_material = RigidObjectCfg.PhysicsMaterialCfg(
-                static_friction=0.5, dynamic_friction=0.5, restitution=0.0, prim_path="/World/Materials/cubeMaterial"
-            )
-            self.obj3.append(RigidObject(obj_cfg3))
-            self.obj_name_list.append(ycb_name[2]+str(i))
+        # self.obj2 = []
+        # for i in range(7):
+        #     obj_cfg2 = RigidObjectCfg()
+        #     obj_cfg2.meta_info = RigidObjectCfg.MetaInfoCfg(usd_path=ycb_usd_paths[ycb_name[1]],scale=(1.0, 1.0, 1.0),)
+        #     obj_cfg2.init_state = RigidObjectCfg.InitialStateCfg(
+        #     pos=(2-0.25*i, 0.7, -0.4), rot=(1.0, 0.0, 0.0, 0.0), lin_vel=(0.0, 0.0, 0.0), ang_vel=(0.0, 0.0, 0.0)
+        #     )
+        #     obj_cfg2.rigid_props = RigidObjectCfg.RigidBodyPropertiesCfg(
+        #         solver_position_iteration_count=16,
+        #         solver_velocity_iteration_count=1,
+        #         max_angular_velocity=1000.0,
+        #         max_linear_velocity=1000.0,
+        #         max_depenetration_velocity=5.0,
+        #         disable_gravity=False,
+        #     )
+        #     obj_cfg2.physics_material = RigidObjectCfg.PhysicsMaterialCfg(
+        #         static_friction=0.5, dynamic_friction=0.5, restitution=0.0, prim_path="/World/Materials/cubeMaterial"
+        #     )
+        #     self.obj2.append(RigidObject(obj_cfg2))
+        #     self.obj_name_list.append(ycb_name[1]+str(i))
+        # self.obj3 = []
+        # for i in range(7):
+        #     obj_cfg3 = RigidObjectCfg()
+        #     obj_cfg3.meta_info = RigidObjectCfg.MetaInfoCfg(usd_path=ycb_usd_paths[ycb_name[2]],scale=(1.0, 1.0, 1.0),)
+        #     obj_cfg3.init_state = RigidObjectCfg.InitialStateCfg(
+        #     pos=(2-0.25*i, 0.5, -0.4), rot=(1.0, 0.0, 0.0, 0.0), lin_vel=(0.0, 0.0, 0.0), ang_vel=(0.0, 0.0, 0.0)
+        #     )
+        #     obj_cfg3.rigid_props = RigidObjectCfg.RigidBodyPropertiesCfg(
+        #         solver_position_iteration_count=16,
+        #         solver_velocity_iteration_count=1,
+        #         max_angular_velocity=1000.0,
+        #         max_linear_velocity=1000.0,
+        #         max_depenetration_velocity=5.0,
+        #         disable_gravity=False,
+        #     )
+        #     obj_cfg3.physics_material = RigidObjectCfg.PhysicsMaterialCfg(
+        #         static_friction=0.5, dynamic_friction=0.5, restitution=0.0, prim_path="/World/Materials/cubeMaterial"
+        #     )
+        #     self.obj3.append(RigidObject(obj_cfg3))
+        #     self.obj_name_list.append(ycb_name[2]+str(i))
         # self.obj4 = []
         # for i in range(5):
         #     obj_cfg4 = RigidObjectCfg()
@@ -191,10 +191,10 @@ class PushEnv(IsaacEnv):
         self.robot.update_buffers(self.dt)
         for i,obj_t in enumerate(self.obj1):
             obj_t.update_buffers(self.dt)
-        for i,obj_t in enumerate(self.obj2):
-            obj_t.update_buffers(self.dt)
-        for i,obj_t in enumerate(self.obj3):
-            obj_t.update_buffers(self.dt)
+        # for i,obj_t in enumerate(self.obj2):
+        #     obj_t.update_buffers(self.dt)
+        # for i,obj_t in enumerate(self.obj3):
+        #     obj_t.update_buffers(self.dt)
         # for i,obj_t in enumerate(self.obj4):
         #     obj_t.update_buffers(self.dt)
         # self.obj_list = []
@@ -239,7 +239,8 @@ class PushEnv(IsaacEnv):
         # prim_utils.create_prim(self.template_env_ns + "/Table", usd_path=self.cfg.table.table_path,position=(0,0,-0.25),scale=(1,0.6,0.5))
         # Table = GeometryPrim(self.template_env_ns + "/Table",collision=True)
         # Table = RigidPrim(self.template_env_ns + "/Table",mass=100000)
-        self.Table = FixedCuboid(self.template_env_ns + "/Table",position=(0,0,-0.25),scale=(1,0.6,0.5))
+        table_size = (float(self.cfg.og_resolution.tabletop[0])/100.0,float(self.cfg.og_resolution.tabletop[1])/100.0,0.5)
+        self.Table = FixedCuboid(self.template_env_ns + "/Table",position=(0,0,-0.25),scale=table_size)
         self.Table.set_collision_enabled(True)
         self.Table.set_collision_approximation("convexDecomposition")
         prim_path = self.template_env_ns + "/Table"
@@ -272,10 +273,10 @@ class PushEnv(IsaacEnv):
         # self.object.spawn(self.template_env_ns + "/Object")
         for i,obj_t in enumerate(self.obj1):
             obj_t.spawn(self.template_env_ns + f"/Objs/obj1/obj_{i}")
-        for i,obj_t in enumerate(self.obj2):
-            obj_t.spawn(self.template_env_ns + f"/Objs/obj2/obj_{i}")
-        for i,obj_t in enumerate(self.obj3):
-            obj_t.spawn(self.template_env_ns + f"/Objs/obj3/obj_{i}")
+        # for i,obj_t in enumerate(self.obj2):
+        #     obj_t.spawn(self.template_env_ns + f"/Objs/obj2/obj_{i}")
+        # for i,obj_t in enumerate(self.obj3):
+        #     obj_t.spawn(self.template_env_ns + f"/Objs/obj3/obj_{i}")
         # for i,obj_t in enumerate(self.obj4):
         #     obj_t.spawn(self.template_env_ns + f"/Objs/obj4/obj_{i}")
         # self._spawn_objs()
@@ -405,7 +406,7 @@ class PushEnv(IsaacEnv):
         # plt.show() 
     def _step_impl(self, actions: torch.Tensor):
         # pre-step: set actions into buffer
-        # self.table_og_pre = self.table_og.clone()
+        self.table_og_pre = self.table_og.clone()
 
         # self._get_observations()
         # print(self.new_obj_type)
@@ -429,13 +430,14 @@ class PushEnv(IsaacEnv):
         # transform actions based on controller
         self.actions = self.actions.type(torch.float16)
         self.actions[:,2] = self.actions[:,2]/8.0
-        self.actions[:,1] = 0.3*(self.actions[:,1]-float(self.cfg.og_resolution.tabletop[1]/2))/float(self.cfg.og_resolution.tabletop[1]/2)
-        self.actions[:,0] = 0.5*(self.actions[:,0]-float(self.cfg.og_resolution.tabletop[0]/2))/float(self.cfg.og_resolution.tabletop[0]/2)
+        action_range = (float(self.cfg.og_resolution.tabletop[0])/200.0,float(self.cfg.og_resolution.tabletop[1])/200.0)
+        self.actions[:,1] = action_range[0]*(self.actions[:,1]-float(self.cfg.og_resolution.tabletop[1]/2))/float(self.cfg.og_resolution.tabletop[1]/2)
+        self.actions[:,0] = action_range[1]*(self.actions[:,0]-float(self.cfg.og_resolution.tabletop[0]/2))/float(self.cfg.og_resolution.tabletop[0]/2)
         
         for i in range(self.num_envs):
-            if self.actions[i,1] >=0.288:
-                if self.actions[i,0]>=0.488:
-                    if self.actions[i,2]>=0.240 and self.actions[i,2]<=0.38:
+            if self.actions[i,1] >=0.235:
+                if self.actions[i,0]>=0.235:
+                    if self.actions[i,2]>=0.240 and self.actions[i,2]<=0.36:
                         print("stop actions")
                         print(self.actions)
                         self.stop_pushing[i] = 1  
@@ -454,7 +456,7 @@ class PushEnv(IsaacEnv):
             actions_tmp[i,3:7] = torch.from_numpy(rot).to(self.device)
         # actions_tmp[:,:3] = self.actions.clone()
         # actions_tmp[:,1] +=0.1
-        for i in range(27):
+        for i in range(25):
             self.robot.update_buffers(self.dt)
             # print("robot dof pos")
             # print(self.robot.data.ee_state_w[:, 0:7])
@@ -490,7 +492,7 @@ class PushEnv(IsaacEnv):
                 # check that simulation is playing
                 if self.sim.is_stopped():
                     return
-        for i in range(20):
+        for i in range(18):
             self.robot.update_buffers(self.dt)
             # print("robot dof pos")
             # print(self.robot.data.ee_state_w[:, 0:7])
@@ -671,10 +673,10 @@ class PushEnv(IsaacEnv):
         # print(self.envs_positions)
         for i,obj_t in enumerate(self.obj1):
             obj_t.update_buffers(self.dt)
-        for i,obj_t in enumerate(self.obj2):
-            obj_t.update_buffers(self.dt)
-        for i,obj_t in enumerate(self.obj3):
-            obj_t.update_buffers(self.dt)
+        # for i,obj_t in enumerate(self.obj2):
+        #     obj_t.update_buffers(self.dt)
+        # for i,obj_t in enumerate(self.obj3):
+        #     obj_t.update_buffers(self.dt)
         # for i,obj_t in enumerate(self.obj4):
         #     obj_t.update_buffers(self.dt)
         # self.object.update_buffers(self.dt)
@@ -769,10 +771,10 @@ class PushEnv(IsaacEnv):
         self.robot.initialize(self.env_ns + "/.*/Robot")
         for i,obj_t in enumerate(self.obj1):
             obj_t.initialize(self.env_ns + "/.*"+ f"/Objs/obj1/obj_{i}")
-        for i,obj_t in enumerate(self.obj2):
-            obj_t.initialize(self.env_ns + "/.*" + f"/Objs/obj2/obj_{i}")
-        for i,obj_t in enumerate(self.obj3):
-            obj_t.initialize(self.env_ns + "/.*" + f"/Objs/obj3/obj_{i}")
+        # for i,obj_t in enumerate(self.obj2):
+        #     obj_t.initialize(self.env_ns + "/.*" + f"/Objs/obj2/obj_{i}")
+        # for i,obj_t in enumerate(self.obj3):
+        #     obj_t.initialize(self.env_ns + "/.*" + f"/Objs/obj3/obj_{i}")
         # for i,obj_t in enumerate(self.obj4):
         #     obj_t.initialize(self.env_ns + "/.*" + f"/Objs/obj4/obj_{i}")
         self.new_obj_vertices = [i for i in range(self.num_envs)]
@@ -909,15 +911,16 @@ class PushEnv(IsaacEnv):
         index_inliers = np.argwhere((select_m >=-0.001)).reshape(-1).astype(int)
         inliers = pointcloud_w[index_inliers]
         select_m = np.dot(inliers,plane_model) + float(plane_model_ori[3])
+        og_boundary = (float(self.cfg.og_resolution.tabletop[0])/200.0,float(self.cfg.og_resolution.tabletop[1])/200.0)
         index_inliers = np.argwhere((select_m <=0.3)).reshape(-1).astype(int)
         inliers = inliers[index_inliers]
-        index_inliers = np.argwhere((inliers[:,1]>=-0.3+cam_pos[1])).reshape(-1).astype(int)
+        index_inliers = np.argwhere((inliers[:,1]>=-og_boundary[1]+cam_pos[1])).reshape(-1).astype(int)
         inliers = inliers[index_inliers]
-        index_inliers = np.argwhere((inliers[:,1]<=0.3+cam_pos[1])).reshape(-1).astype(int)
+        index_inliers = np.argwhere((inliers[:,1]<=og_boundary[1]+cam_pos[1])).reshape(-1).astype(int)
         inliers = inliers[index_inliers]
-        index_inliers = np.argwhere((inliers[:,0]>=-0.5+cam_pos[0])).reshape(-1).astype(int)
+        index_inliers = np.argwhere((inliers[:,0]>=-og_boundary[0]+cam_pos[0])).reshape(-1).astype(int)
         inliers = inliers[index_inliers]
-        index_inliers = np.argwhere((inliers[:,0]<=0.5+cam_pos[0])).reshape(-1).astype(int)
+        index_inliers = np.argwhere((inliers[:,0]<=og_boundary[0]+cam_pos[0])).reshape(-1).astype(int)
         inliers = inliers[index_inliers]
         # objects_pcd = o3d.geometry.PointCloud()
         # objects_pcd.points = o3d.utility.Vector3dVector(inliers)
@@ -1153,18 +1156,18 @@ class PushEnv(IsaacEnv):
             root_state[:, 0:3] += self.envs_positions[env_ids]
             # set the root state
             obj_t.set_root_state(root_state, env_ids=env_ids)
-        for i,obj_t in enumerate(self.obj2):
-            root_state = obj_t.get_default_root_state(env_ids)
-            # transform command from local env to world
-            root_state[:, 0:3] += self.envs_positions[env_ids]
-            # set the root state
-            obj_t.set_root_state(root_state, env_ids=env_ids)
-        for i,obj_t in enumerate(self.obj3):
-            root_state = obj_t.get_default_root_state(env_ids)
-            # transform command from local env to world
-            root_state[:, 0:3] += self.envs_positions[env_ids]
-            # set the root state
-            obj_t.set_root_state(root_state, env_ids=env_ids)
+        # for i,obj_t in enumerate(self.obj2):
+        #     root_state = obj_t.get_default_root_state(env_ids)
+        #     # transform command from local env to world
+        #     root_state[:, 0:3] += self.envs_positions[env_ids]
+        #     # set the root state
+        #     obj_t.set_root_state(root_state, env_ids=env_ids)
+        # for i,obj_t in enumerate(self.obj3):
+        #     root_state = obj_t.get_default_root_state(env_ids)
+        #     # transform command from local env to world
+        #     root_state[:, 0:3] += self.envs_positions[env_ids]
+        #     # set the root state
+        #     obj_t.set_root_state(root_state, env_ids=env_ids)
         # for i,obj_t in enumerate(self.obj4):
         #     root_state = obj_t.get_default_root_state(env_ids)
         #     # transform command from local env to world
@@ -1202,7 +1205,7 @@ class PushEnv(IsaacEnv):
         for i in obj_pos_rot:
             if i == ycb_name[0]:
                 for _,pos_rot in enumerate(obj_pos_rot[i]):
-                    if _ > 6:
+                    if _ > 8:
                         break
                     root_state = self.obj1[_].get_default_root_state(env_ids)
                     for j in range(len(root_state)):
@@ -1212,30 +1215,30 @@ class PushEnv(IsaacEnv):
                     self.obj1[_].set_root_state(root_state, env_ids=env_ids)
                     for j in env_ids.tolist():
                         self.obj_on_table[j].append(self.obj1[_])
-            elif i == ycb_name[1]:
-                for _,pos_rot in enumerate(obj_pos_rot[i]):
-                    if _ > 6:
-                        break
-                    root_state = self.obj2[_].get_default_root_state(env_ids)
-                    for j in range(len(root_state)):
-                        root_state[j, 0:3] = torch.from_numpy(np.array(pos_rot[0])).to(self.device)
-                        root_state[j, 3:7] = torch.from_numpy(np.array(pos_rot[1])).to(self.device)
-                    root_state[:, 0:3] += self.envs_positions[env_ids]
-                    self.obj2[_].set_root_state(root_state, env_ids=env_ids)
-                    for j in env_ids.tolist():
-                        self.obj_on_table[j].append(self.obj2[_])
-            elif i == ycb_name[2]:
-                for _,pos_rot in enumerate(obj_pos_rot[i]):
-                    if _ > 6:
-                        break
-                    root_state = self.obj3[_].get_default_root_state(env_ids)
-                    for j in range(len(root_state)):
-                        root_state[j, 0:3] = torch.from_numpy(np.array(pos_rot[0])).to(self.device)
-                        root_state[j, 3:7] = torch.from_numpy(np.array(pos_rot[1])).to(self.device)
-                    root_state[:, 0:3] += self.envs_positions[env_ids]
-                    self.obj3[_].set_root_state(root_state, env_ids=env_ids)
-                    for j in env_ids.tolist():
-                        self.obj_on_table[j].append(self.obj3[_])
+            # elif i == ycb_name[1]:
+            #     for _,pos_rot in enumerate(obj_pos_rot[i]):
+            #         if _ > 6:
+            #             break
+            #         root_state = self.obj2[_].get_default_root_state(env_ids)
+            #         for j in range(len(root_state)):
+            #             root_state[j, 0:3] = torch.from_numpy(np.array(pos_rot[0])).to(self.device)
+            #             root_state[j, 3:7] = torch.from_numpy(np.array(pos_rot[1])).to(self.device)
+            #         root_state[:, 0:3] += self.envs_positions[env_ids]
+            #         self.obj2[_].set_root_state(root_state, env_ids=env_ids)
+            #         for j in env_ids.tolist():
+            #             self.obj_on_table[j].append(self.obj2[_])
+            # elif i == ycb_name[2]:
+            #     for _,pos_rot in enumerate(obj_pos_rot[i]):
+            #         if _ > 6:
+            #             break
+            #         root_state = self.obj3[_].get_default_root_state(env_ids)
+            #         for j in range(len(root_state)):
+            #             root_state[j, 0:3] = torch.from_numpy(np.array(pos_rot[0])).to(self.device)
+            #             root_state[j, 3:7] = torch.from_numpy(np.array(pos_rot[1])).to(self.device)
+            #         root_state[:, 0:3] += self.envs_positions[env_ids]
+            #         self.obj3[_].set_root_state(root_state, env_ids=env_ids)
+            #         for j in env_ids.tolist():
+            #             self.obj_on_table[j].append(self.obj3[_])
             # elif i == ycb_name[3]:
             #     for _,pos_rot in enumerate(obj_pos_rot[i]):
             #         if _ > 4:
@@ -1547,6 +1550,30 @@ class PushRewardManager(RewardManager):
             if torch.sum(torch.abs(delta_tmp))>60:
                 delta_og[i] = 1
         env.table_og_pre = env.table_og.clone()
+        # print("reward og")
+        # print(delta_og)
+        return delta_og
+    def reward_distribution_closer(self,env:PushEnv):
+        delta_og = torch.zeros((env.num_envs,),device=self.device)
+        for i in range(env.num_envs):
+            ind_pre = torch.where(env.table_og_pre[i]>=0.8)
+            ind_cur = torch.where(env.table_og[i]>=0.8)
+            # ind_pre = ind_pre.cpu().numpy().reshape(-1,2)
+            # ind_cur = ind_cur.cpu().numpy().reshape(-1,2)
+            # print(ind_cur)
+            # print(ind_pre)
+            
+            ind_pre_var_x = np.std(ind_pre[0].cpu().numpy())
+            ind_pre_var_y = np.std(ind_pre[1].cpu().numpy())
+            ind_cur_var_x = np.std(ind_cur[0].cpu().numpy())
+            ind_cur_var_y = np.std(ind_cur[1].cpu().numpy())
+            if ind_cur_var_x < ind_pre_var_x-0.1:
+                delta_og[i] +=1.0
+            if ind_cur_var_y < ind_pre_var_y-0.1:
+                delta_og[i] +=1.0
+            # print(ind_cur_var_x,ind_cur_var_y,ind_pre_var_x,ind_pre_var_y)
+        env.table_og_pre = env.table_og.clone()
+        # print(delta_og)
         # print("reward og")
         # print(delta_og)
         return delta_og

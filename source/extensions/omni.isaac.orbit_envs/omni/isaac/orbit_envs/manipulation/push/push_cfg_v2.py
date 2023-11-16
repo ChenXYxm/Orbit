@@ -25,7 +25,7 @@ class CameraCfg:
     camera_cfg = PinholeCameraCfg(
         sensor_tick=0,
         height=240,
-        width=320,
+        width=240,
         data_types=["rgb", "distance_to_image_plane", "normals", "motion_vectors"],
         usd_params=PinholeCameraCfg.UsdCameraCfg(
             focal_length=24.0, focus_distance=400.0, horizontal_aperture=20.955, clipping_range=(0.1, 1.0e5)
@@ -191,13 +191,20 @@ class YCBobjectsCfg:
     #     "mustardBottle": f"{ISAAC_NUCLEUS_DIR}/Props/YCB/Axis_Aligned_Physics/006_mustard_bottle.usd",
     # }
     # ycb_name = ['crackerBox','sugarBox','tomatoSoupCan','mustardBottle']
+    # ycb_usd_paths = {
+    #     "crackerBox": f"{ISAAC_NUCLEUS_DIR}/Props/YCB/Axis_Aligned_Physics/003_cracker_box.usd",
+    #     "sugarBox": f"{ISAAC_NUCLEUS_DIR}/Props/YCB/Axis_Aligned_Physics/004_sugar_box.usd",
+    #     # "tomatoSoupCan": f"{ISAAC_NUCLEUS_DIR}/Props/YCB/Axis_Aligned_Physics/005_tomato_soup_can.usd",
+    #     "mustardBottle": f"{ISAAC_NUCLEUS_DIR}/Props/YCB/Axis_Aligned_Physics/006_mustard_bottle.usd",
+    # }
+    # ycb_name = ['crackerBox','sugarBox','mustardBottle']
     ycb_usd_paths = {
-        "crackerBox": f"{ISAAC_NUCLEUS_DIR}/Props/YCB/Axis_Aligned_Physics/003_cracker_box.usd",
+        # "crackerBox": f"{ISAAC_NUCLEUS_DIR}/Props/YCB/Axis_Aligned_Physics/003_cracker_box.usd",
         "sugarBox": f"{ISAAC_NUCLEUS_DIR}/Props/YCB/Axis_Aligned_Physics/004_sugar_box.usd",
         # "tomatoSoupCan": f"{ISAAC_NUCLEUS_DIR}/Props/YCB/Axis_Aligned_Physics/005_tomato_soup_can.usd",
-        "mustardBottle": f"{ISAAC_NUCLEUS_DIR}/Props/YCB/Axis_Aligned_Physics/006_mustard_bottle.usd",
+        # "mustardBottle": f"{ISAAC_NUCLEUS_DIR}/Props/YCB/Axis_Aligned_Physics/006_mustard_bottle.usd",
     }
-    ycb_name = ['crackerBox','sugarBox','mustardBottle']
+    ycb_name = ['sugarBox']
 
 @configclass
 class RewardsCfg:
@@ -212,7 +219,8 @@ class RewardsCfg:
     # penalizing_robot_dof_acceleration_l2 = {"weight": 1e-7}
     # -- action-centric
     # penalizing_arm_action_rate_l2 = {"weight": 1e-2}
-    reward_og_change = {"weight":0.5}
+    # reward_og_change = {"weight":0.5}
+    reward_distribution_closer = {"weight":0.25}
     check_placing = {"weight": 2}
     penalizing_falling = {"weight": 2}
     penalizing_steps = {"weight": 0.03}
@@ -234,7 +242,7 @@ class TerminationsCfg:
 @configclass
 class occupancy_grid_resolution:
     """resolution of the occupancy grid"""
-    tabletop = [100,60]
+    tabletop = [50,50]
     new_obj = [40,40]
 @configclass
 class ControlCfg:
@@ -286,7 +294,7 @@ class PushEnvCfg(IsaacEnvCfg):
     """Configuration for the push environment."""
 
     # General Settings
-    env: EnvCfg = EnvCfg(num_envs=4096, env_spacing=3, episode_length_s=0.4)
+    env: EnvCfg = EnvCfg(num_envs=4096, env_spacing=3, episode_length_s=0.04)
     viewer: ViewerCfg = ViewerCfg(debug_vis=False, eye=(7.5, 7.5, 7.5), lookat=(0.0, 0.0, 0.0))
     # Physics settings
     sim: SimCfg = SimCfg(

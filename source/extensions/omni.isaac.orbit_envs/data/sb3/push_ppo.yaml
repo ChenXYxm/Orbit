@@ -1,5 +1,5 @@
 # Reference: https://github.com/DLR-RM/rl-baselines3-zoo/blob/master/hyperparams/ppo.yml#L32
-seed: 42
+seed: 41
 
 # epoch * n_steps * nenvs: 500×512*8*8
 n_timesteps: 1024000
