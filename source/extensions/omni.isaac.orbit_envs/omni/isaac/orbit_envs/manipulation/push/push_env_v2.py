@@ -828,7 +828,7 @@ class PushEnv(IsaacEnv):
             )
             # self.num_actions = self._ik_controller.num_actions
             # self.num_actions = 3
-            self.num_actions = 4
+            self.num_actions = 3
         elif self.cfg.control.control_type == "default":
             # self.num_actions = self.robot.num_actions
             self.num_actions = 3
@@ -855,6 +855,7 @@ class PushEnv(IsaacEnv):
         self.falling_obj_all = torch.zeros((self.num_envs,),device=self.device)
         self.step_count = torch.zeros((self.num_envs,),device=self.device)
         self.stop_pushing = torch.zeros((self.num_envs,),device=self.device)
+        self.delta_same_action = torch.zeros((self.num_envs,),device=self.device)
         # self.table_og = torch.zeros((self.num_envs,self.cfg.og_resolution.tabletop[1],
         #                              self.cfg.og_resolution.tabletop[0]),device=self.device)
         # self.obj_masks = torch.zeros((self.num_envs,self.cfg.og_resolution.tabletop[1],
