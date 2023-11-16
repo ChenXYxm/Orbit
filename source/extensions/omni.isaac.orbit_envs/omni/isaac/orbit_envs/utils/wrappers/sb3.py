@@ -182,6 +182,8 @@ class Sb3VecEnvWrapper(gym.Wrapper, VecEnv):
             raise NotImplementedError(f"Unsupported backend for simulation: {self.env.sim.backend}")
         # plt.imshow(obs[0])
         # plt.show()
+        # plt.imshow(obs[1])
+        # plt.show()
         # print(obs[0])
         return obs
 

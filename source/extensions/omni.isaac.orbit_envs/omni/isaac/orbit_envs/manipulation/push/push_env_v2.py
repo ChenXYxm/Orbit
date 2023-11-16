@@ -343,6 +343,7 @@ class PushEnv(IsaacEnv):
             self.sim.step()
         self._update_table_og()
         self.table_og_pre[env_ids] = self.table_og[env_ids].clone()
+        self.table_expand_og_pre[env_ids] = self.table_expand_og[env_ids].clone()
         self.falling_obj[env_ids] = 0
         self.falling_obj_all[env_ids] = 0
         self._check_fallen_objs(env_ids)
@@ -407,7 +408,7 @@ class PushEnv(IsaacEnv):
     def _step_impl(self, actions: torch.Tensor):
         # pre-step: set actions into buffer
         self.table_og_pre = self.table_og.clone()
-
+        self.table_expand_og_pre = self.table_expand_og.clone()
         # self._get_observations()
         # print(self.new_obj_type)
         if 0 in self.step_count.tolist():
@@ -688,7 +689,7 @@ class PushEnv(IsaacEnv):
         # reward
         self.reward_buf = self._reward_manager.compute()
         # print("reward")
-        # # # print(self._reward_manager.compute())
+        # # print(self._reward_manager.compute())
         # print(self.reward_buf)
         # terminations
         self._check_termination()
@@ -848,6 +849,10 @@ class PushEnv(IsaacEnv):
                                      self.cfg.og_resolution.tabletop[0]),device=self.device)
         self.table_og_pre = torch.zeros((self.num_envs,self.cfg.og_resolution.tabletop[1],
                                      self.cfg.og_resolution.tabletop[0]),device=self.device)
+        self.table_expand_og = torch.zeros((self.num_envs,self.cfg.og_resolution.tabletop[1]+12,
+                                     self.cfg.og_resolution.tabletop[0]+12),device=self.device)
+        self.table_expand_og_pre = torch.zeros((self.num_envs,self.cfg.og_resolution.tabletop[1]+12,
+                                     self.cfg.og_resolution.tabletop[0]+12),device=self.device)
         self.obj_masks = torch.zeros((self.num_envs,self.cfg.og_resolution.tabletop[1],
                                      self.cfg.og_resolution.tabletop[0]),device=self.device)
         self.place_success = torch.zeros((self.num_envs,),device=self.device)
@@ -905,10 +910,12 @@ class PushEnv(IsaacEnv):
         pcd = self.get_pcd(camera)
         cam_pos = camera.data.position
         # print(cam_pos)
+        # o3d.visualization.draw_geometries([pcd])
         plane_model = self.point_cloud_process(pcd)
         plane_model_ori = plane_model
         plane_model= np.array([plane_model[0],plane_model[1],plane_model[2]])
         pointcloud_w = np.array(pcd.points)
+        
         select_m = np.dot(pointcloud_w,plane_model) + float(plane_model_ori[3])
         index_inliers = np.argwhere((select_m >=-0.001)).reshape(-1).astype(int)
         inliers = pointcloud_w[index_inliers]
@@ -916,6 +923,10 @@ class PushEnv(IsaacEnv):
         og_boundary = (float(self.cfg.og_resolution.tabletop[0])/200.0,float(self.cfg.og_resolution.tabletop[1])/200.0)
         index_inliers = np.argwhere((select_m <=0.3)).reshape(-1).astype(int)
         inliers = inliers[index_inliers]
+        ############### expanded og
+        
+        ####################
+        whole_point_cloud = inliers.copy()
         index_inliers = np.argwhere((inliers[:,1]>=-og_boundary[1]+cam_pos[1])).reshape(-1).astype(int)
         inliers = inliers[index_inliers]
         index_inliers = np.argwhere((inliers[:,1]<=og_boundary[1]+cam_pos[1])).reshape(-1).astype(int)
@@ -937,16 +948,16 @@ class PushEnv(IsaacEnv):
         Ny = self.cfg.og_resolution.tabletop[1]
         # print("tab size")
         # print(np.min(pts_tab[:,0]),np.min(pts_tab[:,1]),np.max(pts_tab[:,0]),np.max(pts_tab[:,1]))
-        x = np.linspace(np.min(pts_tab[:,0]), np.max(pts_tab[:,0]), Nx)
-        y = np.linspace(np.min(pts_tab[:,1]), np.max(pts_tab[:,1]), Ny)
-        xv, yv = np.meshgrid(x, y)
+        # x = np.linspace(np.min(pts_tab[:,0]), np.max(pts_tab[:,0]), Nx)
+        # y = np.linspace(np.min(pts_tab[:,1]), np.max(pts_tab[:,1]), Ny)
+        # xv, yv = np.meshgrid(x, y)
         u = (pts[:,0] - np.min(pts_tab[:,0]))/ ( np.max(pts_tab[:,0])-np.min(pts_tab[:,0]) )
         v = (pts[:,1] - np.min(pts_tab[:,1]))/ ( np.max(pts_tab[:,1])-np.min(pts_tab[:,1]) )
         u = (Nx-1)*u
         v = (Ny-1)*v
         occupancy = np.zeros( (Ny,Nx) )
-        u = u.astype(int)
-        v = v.astype(int)
+        u = np.round(u).astype(int)
+        v = np.round(v).astype(int)
         u_ind = np.where(u<Nx)
         u = u[u_ind]
         v = v[u_ind]
@@ -966,7 +977,74 @@ class PushEnv(IsaacEnv):
         #     # plt.show()
         #     # self.reset_f = False
         #     self.show_first_og = False
-        return occupancy
+        ################## expanded og
+        
+        index_inliers = np.argwhere((whole_point_cloud[:,1]>=-og_boundary[1]-0.06+cam_pos[1])).reshape(-1).astype(int)
+        whole_point_cloud = whole_point_cloud[index_inliers]
+        index_inliers = np.argwhere((whole_point_cloud[:,1]<=og_boundary[1]+0.06+cam_pos[1])).reshape(-1).astype(int)
+        whole_point_cloud = whole_point_cloud[index_inliers]
+        index_inliers = np.argwhere((whole_point_cloud[:,0]>=-og_boundary[0]-0.06+cam_pos[0])).reshape(-1).astype(int)
+        whole_point_cloud = whole_point_cloud[index_inliers]
+        index_inliers = np.argwhere((whole_point_cloud[:,0]<=og_boundary[0]+0.06+cam_pos[0])).reshape(-1).astype(int)
+        whole_point_cloud = whole_point_cloud[index_inliers]
+        select_m = np.dot(whole_point_cloud,plane_model) + float(plane_model_ori[3])
+        index_objects = np.argwhere((select_m>=0.005)).reshape(-1).astype(int)
+        pts_ex = whole_point_cloud[index_objects].copy()
+        Nx = self.cfg.og_resolution.tabletop[0]+12
+        Ny = self.cfg.og_resolution.tabletop[1]+12
+        # objects_pcd = o3d.geometry.PointCloud()
+        # objects_pcd.points = o3d.utility.Vector3dVector(whole_point_cloud)
+        # o3d.visualization.draw_geometries([objects_pcd])
+        ################ original table
+        occupancy_ex = np.zeros( (Ny,Nx) )
+        occupancy_ex[6:self.cfg.og_resolution.tabletop[1]+6,6:self.cfg.og_resolution.tabletop[0]+6] = 1
+        u = (pts_ex[:,0] - np.min(pts_tab[:,0]))/ ( np.max(pts_tab[:,0])-np.min(pts_tab[:,0]) )
+        v = (pts_ex[:,1] - np.min(pts_tab[:,1]))/ ( np.max(pts_tab[:,1])-np.min(pts_tab[:,1]) )
+        u = (Nx-12-1)*u +6
+        v = (Ny-12-1)*v +6
+        u = np.round(u).astype(int)
+        v = np.round(v).astype(int)
+        u_ind = np.where(u<Nx)
+        u = u[u_ind]
+        v = v[u_ind]
+        v_ind = np.where(v<Ny)
+        u = u[v_ind]
+        v = v[v_ind]
+        u_ind = np.where(u>=0)
+        u = u[u_ind]
+        v = v[u_ind]
+        v_ind = np.where(v>=0)
+        u = u[v_ind]
+        v = v[v_ind]
+        occupancy_ex[v,u] = 2
+        # plt.imshow(occupancy_ex)
+        # plt.show()
+        ################ expand objects
+        # u = (pts_ex[:,0] - np.min(pts_tab_ex[:,0]))/ ( np.max(pts_tab_ex[:,0])-np.min(pts_tab_ex[:,0]) )
+        # v = (pts_ex[:,1] - np.min(pts_tab_ex[:,1]))/ ( np.max(pts_tab_ex[:,1])-np.min(pts_tab_ex[:,1]) )
+        # u = (Nx-1)*u
+        # v = (Ny-1)*v
+        # u = u.astype(int)
+        # v = v.astype(int)
+        # u_ind = np.where(u<Nx)
+        # u = u[u_ind]
+        # v = v[u_ind]
+        # v_ind = np.where(v<Ny)
+        # u = u[v_ind]
+        # v = v[v_ind]
+        # u_ind = np.where(u>=0)
+        # u = u[u_ind]
+        # v = v[u_ind]
+        # v_ind = np.where(v>=0)
+        # u = u[v_ind]
+        # v = v[v_ind]
+        # occupancy_ex[v,u] = 2
+        # occupancy_ex = np.fliplr(occupancy_ex)
+        # plt.imshow(occupancy_ex)
+        # plt.show()
+        ##################
+        
+        return occupancy,occupancy_ex
 
     def _debug_vis(self):
         """Visualize the environment in debug mode."""
@@ -1029,7 +1107,7 @@ class PushEnv(IsaacEnv):
                 # rgb = rgb[:, :, :3].cpu().data.numpy()
                 # plt.imshow(rgb)
                 # plt.show()
-                og = self.get_og(self.cams[i])
+                og,og_ex = self.get_og(self.cams[i])
                 # og = draw_bbox(og)
                 # og = np.array(og,dtype=np.float16)/3.0
                 # print("update og")
@@ -1038,6 +1116,10 @@ class PushEnv(IsaacEnv):
                 # plt.imshow(self.table_og_pre[i].cpu().numpy())
                 # plt.show()
                 self.table_og[i] = torch.from_numpy(og.copy()).to(self.device)
+                self.table_expand_og[i] = torch.from_numpy(og_ex.copy()).to(self.device)
+                # print('show table og')
+                # plt.imshow(self.table_expand_og[i].cpu().numpy())
+                # plt.show()
 
     def _check_placing(self):
         env_ids=torch.from_numpy(np.arange(self.num_envs)).to(self.device)
@@ -1189,7 +1271,7 @@ class PushEnv(IsaacEnv):
         # choosen_env_id = self.env_i_tmp
         # print(file_name[choosen_env_id],env_ids,self.env_i_tmp)
         env_path = "generated_table/"+file_name[choosen_env_id]
-        # env_path = "generated_table/dict_5.pkl"
+        # env_path = "generated_table/dict_20.pkl"
         if self.env_i_tmp <num_env-1:
             self.env_i_tmp +=1
         fileObject2 = open(env_path, 'rb')
@@ -1379,8 +1461,8 @@ class PushObservationManager(ObservationManager):
     """Reward manager for single-arm reaching environment."""
     def table_scene(self,env:PushEnv):
         # print("get observs")
-        obs_ta = torch.zeros((env.num_envs,env.cfg.og_resolution.tabletop[1],
-                                    env.cfg.og_resolution.tabletop[0],1),device=env.device)
+        obs_ta = torch.zeros((env.num_envs,env.cfg.og_resolution.tabletop[1]+12,
+                                    env.cfg.og_resolution.tabletop[0]+12,1),device=env.device)
         for i in range(env.num_envs):
             # im = env.obj_masks[i].cpu().numpy()*255
             # h,w = im.shape[:2]
@@ -1400,10 +1482,13 @@ class PushObservationManager(ObservationManager):
             #     observation = observation[:,np.newaxis].reshape([env.cfg.og_resolution.tabletop[1],
             #                             env.cfg.og_resolution.tabletop[0]])
             #     obs_ta[i,:,:,j]  = torch.from_numpy(observation).to(env.device)
-            im = env.table_og[i].cpu().numpy()*255
+            im = env.table_expand_og[i].cpu().numpy()*255/2.0
+            # print('obs output')
+            # plt.imshow(im)
+            # plt.show()
             observation = np.array(im,dtype=np.uint8)
-            observation = observation[:,np.newaxis].reshape([env.cfg.og_resolution.tabletop[1],
-                                    env.cfg.og_resolution.tabletop[0]])
+            observation = observation[:,np.newaxis].reshape([env.cfg.og_resolution.tabletop[1]+12,
+                                    env.cfg.og_resolution.tabletop[0]+12])
             obs_ta[i,:,:,0] = torch.from_numpy(observation).to(env.device)
         return obs_ta
         # return env.table_og
@@ -1532,29 +1617,41 @@ class PushRewardManager(RewardManager):
     # def penalizing_arm_action_rate_l2(self, env: PushEnv):
     #     """Penalize large variations in action commands besides tool."""
     #     return -torch.sum(torch.square(env.actions[:, :-1] - env.previous_actions[:, :-1]), dim=1)
+    def penalizing_pushing_outside(self,env:PushEnv):
+        pixel_outside_table = torch.zeros((env.num_envs,),device=self.device)
+        env_tab_ex_tmp = env.table_expand_og.clone()
+        env_tab_ex_tmp_pre = env.table_expand_og_pre.clone()
+        for i in range(env.num_envs):
+            env_tab_ex_tmp[i][6:env.cfg.og_resolution.tabletop[1]+6,
+                           6:env.cfg.og_resolution.tabletop[0]+6] = 0
+            env_tab_ex_tmp_pre[i][6:env.cfg.og_resolution.tabletop[1]+6,
+                           6:env.cfg.og_resolution.tabletop[0]+6] = 0
+            pixel_outside_table[i] = torch.sum(env_tab_ex_tmp[i]-env_tab_ex_tmp_pre[i])
+        # print(-pixel_outside_table.type(torch.float16)/float(300.0))
+        return -pixel_outside_table.type(torch.float16)/float(300.0)
     def penalizing_repeat_actions(self,env:PushEnv):
         # print("repeat")
         # print(env.delta_same_action)
-        return -env.delta_same_action 
+        return -env.delta_same_action.type(torch.float16) 
     def penalizing_falling(self,env:PushEnv):
         # print("penalty fallen")
         # print(-env.falling_obj)
         # print("falling")
         # print(env.falling_obj)
-        return -env.falling_obj
+        return -env.falling_obj.type(torch.float16)
     def check_placing(self,env:PushEnv):
         """try to place new object"""
         # print("reawrd success")
         # print(env.place_success)
         # print('placing')
         # print(env.place_success)
-        return env.place_success
+        return env.place_success.type(torch.float16)
     def penalizing_steps(self,env:PushEnv):
         # print("pernalize steps")
         # print(-torch.where(env.step_count!=0,1,0).to(env.device))
         # print('steps')
         # print(torch.where(env.step_count!=0,1,0).to(env.device))
-        return -torch.where(env.step_count!=0,1,0).to(env.device)
+        return -torch.where(env.step_count!=0,1,0).to(env.device).type(torch.float16)
     def reward_og_change(self,env:PushEnv):
         delta_og = torch.zeros((env.num_envs,),device=self.device)
         for i in range(env.num_envs):
@@ -1566,7 +1663,7 @@ class PushRewardManager(RewardManager):
         # print(delta_og)
         # print('og change')
         # print(delta_og)
-        return delta_og
+        return delta_og.type(torch.float16)
     def reward_distribution_closer(self,env:PushEnv):
         delta_og = torch.zeros((env.num_envs,),device=self.device)
         for i in range(env.num_envs):
@@ -1595,7 +1692,7 @@ class PushRewardManager(RewardManager):
         # print(delta_og)
         # print("reward og")
         # print(delta_og)
-        return delta_og
+        return delta_og.type(torch.float16)
     # def penalizing_tool_action_l2(self, env: PushEnv):
     #     """Penalize large values in action commands for the tool."""
     #     return -torch.square(env.actions[:, -1])

@@ -225,6 +225,7 @@ class RewardsCfg:
     penalizing_falling = {"weight": 2}
     penalizing_steps = {"weight": 0.03}
     penalizing_repeat_actions = {"weight": 0.5}
+    penalizing_pushing_outside = {"weight":1.0}
     # penalizing_tool_action_l2 = {"weight": 1e-2}
     # -- object-centric
     # tracking_object_position_exp = {"weight": 5.0, "sigma": 0.25, "threshold": 0.08}

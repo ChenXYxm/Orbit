@@ -272,19 +272,27 @@ class IsaacEnv(gym.Env):
                 carb.log_warn("Simulation is stopped. Please exit the simulator...")
         # if playing, we set the actions into the simulator and step
         else:
+            ######################### TODO: check: changing the position of this part
             # reset environments that terminated
-            reset_env_ids = self.reset_buf.nonzero(as_tuple=False).squeeze(-1)
-            if len(reset_env_ids) > 0:
-                self._reset_idx(reset_env_ids)
+            # reset_env_ids = self.reset_buf.nonzero(as_tuple=False).squeeze(-1)
+            # if len(reset_env_ids) > 0:
+            #     self._reset_idx(reset_env_ids)
+            #########################
             # increment the number of steps
             self.episode_length_buf += 1
             # perform the stepping of simulation
             self._step_impl(actions)
             # check if the simulation timeline is stopped, do not update buffers
+            ######################### change the reset to here
+            reset_env_ids = self.reset_buf.nonzero(as_tuple=False).squeeze(-1)
+            if len(reset_env_ids) > 0:
+                self._reset_idx(reset_env_ids)
+            #########################
             if not self.sim.is_stopped():
                 self._last_obs_buf = self._get_observations()
             else:
                 carb.log_warn("Simulation is stopped. Please exit the simulator...")
+            
         # return observations, rewards, resets and extras
         return self._last_obs_buf, self.reward_buf, self.reset_buf, self.extras
 
