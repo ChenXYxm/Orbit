@@ -55,3 +55,11 @@ print(res)
 
 yy = np.eye(3)
 print(np.where(yy==1)[1])
+
+yy= np.zeros((4,3))
+yy[:3,:] = np.eye(3)
+yy = torch.from_numpy(yy)
+xx = yy.clone()
+xx[1,0] = 1
+print(torch.sum(torch.abs(yy-xx)>=0.1,dim=1))
+print(torch.where(torch.sum(torch.abs(yy-xx),dim=1)>=0.1,1,0))

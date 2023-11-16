@@ -687,12 +687,13 @@ class PushEnv(IsaacEnv):
         self._check_placing()
         # reward
         self.reward_buf = self._reward_manager.compute()
-        # print("reward")
+        print("reward")
         # # print(self._reward_manager.compute())
-        # print(self.reward_buf)
+        print(self.reward_buf)
         # terminations
         self._check_termination()
-        
+        self.delta_same_action = torch.where(torch.sum(torch.abs(self.previous_actions-self.actions),dim=1)<=0.1,1,0)
+
         # -- store history
         self.previous_actions = self.actions.clone()
 
@@ -1530,6 +1531,8 @@ class PushRewardManager(RewardManager):
     # def penalizing_arm_action_rate_l2(self, env: PushEnv):
     #     """Penalize large variations in action commands besides tool."""
     #     return -torch.sum(torch.square(env.actions[:, :-1] - env.previous_actions[:, :-1]), dim=1)
+    def penalizing_repeat_actions(self,env:PushEnv):
+        return -env.delta_same_action 
     def penalizing_falling(self,env:PushEnv):
         # print("penalty fallen")
         # print(-env.falling_obj)
@@ -1571,6 +1574,10 @@ class PushRewardManager(RewardManager):
                 delta_og[i] +=1.0
             if ind_cur_var_y < ind_pre_var_y-0.1:
                 delta_og[i] +=1.0
+            if ind_cur_var_x > ind_pre_var_x+0.1:
+                delta_og[i] -=0.5
+            if ind_cur_var_y > ind_pre_var_y+0.1:
+                delta_og[i] -=0.5
             # print(ind_cur_var_x,ind_cur_var_y,ind_pre_var_x,ind_pre_var_y)
         env.table_og_pre = env.table_og.clone()
         # print(delta_og)
