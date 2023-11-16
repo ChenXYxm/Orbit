@@ -687,9 +687,9 @@ class PushEnv(IsaacEnv):
         self._check_placing()
         # reward
         self.reward_buf = self._reward_manager.compute()
-        print("reward")
-        # # print(self._reward_manager.compute())
-        print(self.reward_buf)
+        # print("reward")
+        # # # print(self._reward_manager.compute())
+        # print(self.reward_buf)
         # terminations
         self._check_termination()
         self.delta_same_action = torch.where(torch.sum(torch.abs(self.previous_actions-self.actions),dim=1)<=0.1,1,0)
@@ -1533,19 +1533,27 @@ class PushRewardManager(RewardManager):
     #     """Penalize large variations in action commands besides tool."""
     #     return -torch.sum(torch.square(env.actions[:, :-1] - env.previous_actions[:, :-1]), dim=1)
     def penalizing_repeat_actions(self,env:PushEnv):
+        # print("repeat")
+        # print(env.delta_same_action)
         return -env.delta_same_action 
     def penalizing_falling(self,env:PushEnv):
         # print("penalty fallen")
         # print(-env.falling_obj)
+        # print("falling")
+        # print(env.falling_obj)
         return -env.falling_obj
     def check_placing(self,env:PushEnv):
         """try to place new object"""
         # print("reawrd success")
         # print(env.place_success)
+        # print('placing')
+        # print(env.place_success)
         return env.place_success
     def penalizing_steps(self,env:PushEnv):
         # print("pernalize steps")
         # print(-torch.where(env.step_count!=0,1,0).to(env.device))
+        # print('steps')
+        # print(torch.where(env.step_count!=0,1,0).to(env.device))
         return -torch.where(env.step_count!=0,1,0).to(env.device)
     def reward_og_change(self,env:PushEnv):
         delta_og = torch.zeros((env.num_envs,),device=self.device)
@@ -1556,6 +1564,8 @@ class PushRewardManager(RewardManager):
         env.table_og_pre = env.table_og.clone()
         # print("reward og")
         # print(delta_og)
+        # print('og change')
+        # print(delta_og)
         return delta_og
     def reward_distribution_closer(self,env:PushEnv):
         delta_og = torch.zeros((env.num_envs,),device=self.device)
@@ -1564,9 +1574,10 @@ class PushRewardManager(RewardManager):
             ind_cur = torch.where(env.table_og[i]>=0.8)
             # ind_pre = ind_pre.cpu().numpy().reshape(-1,2)
             # ind_cur = ind_cur.cpu().numpy().reshape(-1,2)
-            # print(ind_cur)
-            # print(ind_pre)
-            
+            # print(ind_cur[0].shape)
+            # print(ind_cur[1].shape)
+            # plt.imshow(env.table_og_pre[i][ind_pre[0],ind_pre[1]].cpu().numpy())
+            # plt.show()
             ind_pre_var_x = np.std(ind_pre[0].cpu().numpy())
             ind_pre_var_y = np.std(ind_pre[1].cpu().numpy())
             ind_cur_var_x = np.std(ind_cur[0].cpu().numpy())
@@ -1576,9 +1587,9 @@ class PushRewardManager(RewardManager):
             if ind_cur_var_y < ind_pre_var_y-0.1:
                 delta_og[i] +=1.0
             if ind_cur_var_x > ind_pre_var_x+0.1:
-                delta_og[i] -=0.5
+                delta_og[i] -=0.2
             if ind_cur_var_y > ind_pre_var_y+0.1:
-                delta_og[i] -=0.5
+                delta_og[i] -=0.2
             # print(ind_cur_var_x,ind_cur_var_y,ind_pre_var_x,ind_pre_var_y)
         env.table_og_pre = env.table_og.clone()
         # print(delta_og)

@@ -733,7 +733,7 @@ def place_new_object(occu,ycb_list,ycb_path,num_new,obj_dict):
         if key_ori not in obj_dict:
             obj_dict[key_ori] = 1
         else:
-            if obj_dict[key_ori]<8:
+            if obj_dict[key_ori]<9:
                 obj_dict[key_ori] +=1
                 break
             

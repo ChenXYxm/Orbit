@@ -75,17 +75,21 @@ def get_new_obj_contour_bbox(occu:np.array):
     shape_occu = occu.shape
     Nx = shape_occu[1]
     Ny = shape_occu[0]
+    ################## transform occu into cv2 image form
     mask = np.array((mask-np.min(mask))*255/(np.max(mask)-np.min(mask)),dtype=np.uint8)
     ret,mask = cv2.threshold(mask,50,255,0)
+    ################## get the contour
     contours,hierarchy = cv2.findContours(mask,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
     max_area = 0
     cnt = []
+    ################## remove holes in the contour (avoid causing confusion for the object masking)
     for i in contours:
         area_tmp = cv2.contourArea(i)
         if area_tmp>max_area:
             max_area = area_tmp
             cnt = i
     # approx = cv2.minAreaRect(cnt)
+    ################## using axises align bounding box f to approximate the object mask (simplified)
     x,y,w,h = cv2.boundingRect(cnt)
     # print(approx)
     # box = cv2.boxPoints(approx)
@@ -95,6 +99,7 @@ def get_new_obj_contour_bbox(occu:np.array):
     if y+h >=occu.shape[0]:
         h = occu.shape[0]-1-y
     approx = np.array([[x,y],[x+w,y],[x+w,y+h],[x,y+h]])
+    ################## get the vertices for the bbox
     vertices_new_obj = []
     mask_tmp = mask.copy()
     if len(approx) >=2:
@@ -116,6 +121,7 @@ def get_new_obj_contour_bbox(occu:np.array):
     else:
         return None
 def draw_bbox(occu_ori):
+    ################### draw the bbox for the image
     shape_occu = occu_ori.shape
     Nx = shape_occu[1]
     Ny = shape_occu[0]
@@ -223,14 +229,18 @@ def place_new_obj_fun(occu_ori,new_obj):
         bbox.append(np.linalg.norm(new_obj[i]-new_obj[i+1]))
     num_grid_l = int(np.ceil(np.max(np.array(bbox))))
     num_grid_s = int(np.ceil(np.min(np.array(bbox))))
+    ################# change the occu to image form of the cv2
     occu = np.array(occu*255,dtype=np.uint8)
     ret,thresh = cv2.threshold(occu,50,255,0)
+    ################# detect contours
     contours,hierarchy = cv2.findContours(thresh,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
     # print("Number of contours detected:",len(contours))
     shape_dict = dict()
     i = 0
     polygons = []
+    ################# build polygon for the table
     table_polygon = Polygon(np.array([[0,0],[Nx-1,0],[Nx-1,Ny-1],[0,Ny-1]]))
+    ################# use polygons to approximate the contours and store the part that is inside the table
     for cnt in contours:
         i += 1
         # approx = cv2.minAreaRect(cnt)
@@ -250,6 +260,7 @@ def place_new_obj_fun(occu_ori,new_obj):
             polygon_tmp_2 = table_polygon.intersection(polygon_tmp)
             if polygon_tmp_2.area>0:
                 polygons.append(polygon_tmp_2)
+    ################## remove wrongly detected polygons
     if len(polygons)>=1:
         tree_ori = STRtree(polygons)
         del_ind = []

@@ -15,7 +15,7 @@ The following example shows how to wrap an environment for Stable-Baselines3:
 
 """
 
-
+import matplotlib.pyplot as plt
 import gym
 import numpy as np
 import torch
@@ -92,10 +92,12 @@ class Sb3VecEnvWrapper(gym.Wrapper, VecEnv):
 
     def get_episode_rewards(self) -> List[float]:
         """Returns the rewards of all the episodes."""
+        
         return self._ep_rew_buf.cpu().tolist()
 
     def get_episode_lengths(self) -> List[int]:
         """Returns the number of time-steps of all the episodes."""
+        
         return self._ep_len_buf.cpu().tolist()
 
     """
@@ -131,7 +133,7 @@ class Sb3VecEnvWrapper(gym.Wrapper, VecEnv):
         # reset info for terminated environments
         self._ep_rew_buf[reset_ids] = 0
         self._ep_len_buf[reset_ids] = 0
-
+        # print(rew,dones)
         return obs, rew, dones, infos
 
     """
@@ -178,6 +180,9 @@ class Sb3VecEnvWrapper(gym.Wrapper, VecEnv):
             pass
         else:
             raise NotImplementedError(f"Unsupported backend for simulation: {self.env.sim.backend}")
+        # plt.imshow(obs[0])
+        # plt.show()
+        # print(obs[0])
         return obs
 
     def _process_extras(self, obs, dones, extras, reset_ids) -> List[Dict[str, Any]]:

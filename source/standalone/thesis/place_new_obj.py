@@ -308,8 +308,8 @@ def place_new_obj_fun(occu_ori,new_obj):
                     shape_dict[i][j][0] = 0    
                 occu_tmp[shape_dict[i][j][1],shape_dict[i][j][0]] = 3
         # print('shape mask')
-        # # plt.imshow(occu_tmp)
-        # # plt.show()
+        plt.imshow(occu_tmp)
+        plt.show()
         # print(shape_dict)
         length_dict = dict()
         length_list = []

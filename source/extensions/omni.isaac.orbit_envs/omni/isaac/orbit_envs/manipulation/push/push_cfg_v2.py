@@ -263,8 +263,8 @@ class ControlCfg:
         ik_method="dls",
         # position_command_scale=(0.1, 0.1, 0.1),
         # rotation_command_scale=(0.1, 0.1, 0.1),
-        position_command_scale=(0.05, 0.05, 0.05),
-        rotation_command_scale=(0.05, 0.05, 0.05),
+        position_command_scale=(0.03, 0.03, 0.03),
+        rotation_command_scale=(0.03, 0.03, 0.03),
     )
 
 
