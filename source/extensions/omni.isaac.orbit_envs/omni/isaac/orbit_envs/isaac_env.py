@@ -138,6 +138,9 @@ class IsaacEnv(gym.Env):
         self.reward_buf = torch.zeros(self.num_envs, device=self.device, dtype=torch.float)
         self.reset_buf = torch.ones(self.num_envs, device=self.device, dtype=torch.long)
         self.episode_length_buf = torch.zeros(self.num_envs, device=self.device, dtype=torch.long)
+        self.reward_buf_tmp = torch.zeros(self.num_envs, device=self.device, dtype=torch.float)
+        self.extras_tmp = {}
+        self.reset_buf_tmp = torch.ones(self.num_envs, device=self.device, dtype=torch.long)
         # allocate dictionary to store metrics
         self.extras = {}
         # create dictionary for storing last observations
@@ -285,6 +288,9 @@ class IsaacEnv(gym.Env):
             # check if the simulation timeline is stopped, do not update buffers
             ######################### change the reset to here
             reset_env_ids = self.reset_buf.nonzero(as_tuple=False).squeeze(-1)
+            self.reward_buf_tmp = self.reward_buf.clone()
+            self.reset_buf_tmp = self.reset_buf.clone()
+            self.extras_tmp = self.extras
             if len(reset_env_ids) > 0:
                 self._reset_idx(reset_env_ids)
             #########################
@@ -294,7 +300,7 @@ class IsaacEnv(gym.Env):
                 carb.log_warn("Simulation is stopped. Please exit the simulator...")
             
         # return observations, rewards, resets and extras
-        return self._last_obs_buf, self.reward_buf, self.reset_buf, self.extras
+        return self._last_obs_buf, self.reward_buf_tmp, self.reset_buf_tmp, self.extras_tmp
 
     def render(self, mode: str = "human") -> Optional[np.ndarray]:
         """Run rendering without stepping through the physics.
