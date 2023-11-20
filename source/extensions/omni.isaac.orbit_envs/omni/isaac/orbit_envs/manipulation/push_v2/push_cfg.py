@@ -5,16 +5,14 @@
 from omni.isaac.core.utils.extensions import enable_extension
 enable_extension("omni.replicator.isaac")
 enable_extension("omni.kit.window.viewport")
-import os
-import pickle as pkl
 from omni.isaac.orbit.controllers.differential_inverse_kinematics import DifferentialInverseKinematicsCfg
 from omni.isaac.orbit.objects import RigidObjectCfg
 from omni.isaac.orbit.robots.config.franka import FRANKA_PANDA_ARM_WITH_PANDA_HAND_CFG
 from omni.isaac.orbit.robots.single_arm import SingleArmManipulatorCfg
 from omni.isaac.orbit.utils import configclass
 from omni.isaac.orbit.utils.assets import ISAAC_NUCLEUS_DIR
-from omni.isaac.dynamic_control import _dynamic_control
-
+import os
+import pickle as pkl
 from omni.isaac.orbit_envs.isaac_env_cfg import EnvCfg, IsaacEnvCfg, PhysxCfg, SimCfg, ViewerCfg
 from omni.isaac.orbit.sensors.camera import PinholeCameraCfg
 ##
@@ -25,17 +23,18 @@ class CameraCfg:
     camera_cfg = PinholeCameraCfg(
         sensor_tick=0,
         height=240,
-        width=320,
+        width=240,
         data_types=["rgb", "distance_to_image_plane", "normals", "motion_vectors"],
         usd_params=PinholeCameraCfg.UsdCameraCfg(
             focal_length=24.0, focus_distance=400.0, horizontal_aperture=20.955, clipping_range=(0.1, 1.0e5)
         ),
     )
 
+
 @configclass
 class TableCfg:
     """Properties for the table."""
-    table_path = f"{ISAAC_NUCLEUS_DIR}/Props/Shapes/cube.usd"
+
     # note: we use instanceable asset since it consumes less memory
     usd_path = f"{ISAAC_NUCLEUS_DIR}/Props/Mounts/SeattleLabTable/table_instanceable.usd"
 
@@ -45,12 +44,11 @@ class ManipulationObjectCfg(RigidObjectCfg):
     """Properties for the object to manipulate in the scene."""
 
     meta_info = RigidObjectCfg.MetaInfoCfg(
-        # usd_path=f"{ISAAC_NUCLEUS_DIR}/Props/Blocks/DexCube/dex_cube_instanceable.usd",
-        usd_path=f"{ISAAC_NUCLEUS_DIR}/Props/YCB/Axis_Aligned_Physics/003_cracker_box.usd",
+        usd_path=f"{ISAAC_NUCLEUS_DIR}/Props/Blocks/DexCube/dex_cube_instanceable.usd",
         scale=(0.8, 0.8, 0.8),
     )
     init_state = RigidObjectCfg.InitialStateCfg(
-        pos=(0.9, 0.0, -0.1), rot=(1.0, 0.0, 0.0, 0.0), lin_vel=(0.0, 0.0, 0.0), ang_vel=(0.0, 0.0, 0.0)
+        pos=(0.0, 0.0, 0.075), rot=(1.0, 0.0, 0.0, 0.0), lin_vel=(0.0, 0.0, 0.0), ang_vel=(0.0, 0.0, 0.0)
     )
     rigid_props = RigidObjectCfg.RigidBodyPropertiesCfg(
         solver_position_iteration_count=16,
@@ -61,12 +59,10 @@ class ManipulationObjectCfg(RigidObjectCfg):
         disable_gravity=False,
     )
     physics_material = RigidObjectCfg.PhysicsMaterialCfg(
-        static_friction=0.8, dynamic_friction=0.8, restitution=0.0, prim_path="/World/Materials/cubeMaterial"
+        static_friction=0.5, dynamic_friction=0.5, restitution=0.0, prim_path="/World/Materials/cubeMaterial"
     )
 
-@configclass
-class env_name:
-    file_list = os.listdir("generated_table/")
+
 @configclass
 class GoalMarkerCfg:
     """Properties for visualization marker."""
@@ -85,86 +81,6 @@ class FrameMarkerCfg:
     usd_path = f"{ISAAC_NUCLEUS_DIR}/Props/UIElements/frame_prim.usd"
     # scale of the asset at import
     scale = [0.1, 0.1, 0.1]  # x,y,z
-
-
-##
-# MDP settings
-##
-
-
-@configclass
-class RandomizationCfg:
-    """Randomization of scene at reset."""
-
-    @configclass
-    class ObjectInitialPoseCfg:
-        """Randomization of object initial pose."""
-
-        # category
-        position_cat: str = "default"  # randomize position: "default", "uniform"
-        orientation_cat: str = "default"  # randomize position: "default", "uniform"
-        # randomize position
-        position_uniform_min = [0.4, -0.25, 0.075]  # position (x,y,z)
-        position_uniform_max = [0.6, 0.25, 0.075]  # position (x,y,z)
-
-    @configclass
-    class ObjectDesiredPoseCfg:
-        """Randomization of object desired pose."""
-
-        # category
-        position_cat: str = "default"  # randomize position: "default", "uniform"
-        orientation_cat: str = "default"  # randomize position: "default", "uniform"
-        # randomize position
-        position_default = [0.5, 0.0, 0.5]  # position default (x,y,z)
-        position_uniform_min = [0.4, -0.25, 0.25]  # position (x,y,z)
-        position_uniform_max = [0.6, 0.25, 0.5]  # position (x,y,z)
-        # randomize orientation
-        orientation_default = [1.0, 0.0, 0.0, 0.0]  # orientation default
-
-    # initialize
-    object_initial_pose: ObjectInitialPoseCfg = ObjectInitialPoseCfg()
-    object_desired_pose: ObjectDesiredPoseCfg = ObjectDesiredPoseCfg()
-
-
-@configclass
-class ObservationsCfg:
-    """Observation specifications for the MDP."""
-
-    @configclass
-    class PolicyCfg:
-        """Observations for policy group."""
-
-        # global group settings
-        enable_corruption: bool = True
-        # observation terms
-        # -- joint state
-        # table_scene = {"scale": 1.0}
-        table_scene = {"scale": 1.0}
-        # new_obj_mask = {"scale": 1.0}
-        # arm_dof_pos = {"scale": 1.0}
-        # # arm_dof_pos_scaled = {"scale": 1.0}
-        # # arm_dof_vel = {"scale": 0.5, "noise": {"name": "uniform", "min": -0.01, "max": 0.01}}
-        # tool_dof_pos_scaled = {"scale": 1.0}
-        # # -- end effector state
-        # tool_positions = {"scale": 1.0}
-        # tool_orientations = {"scale": 1.0}
-        # # -- object state
-        # # object_positions = {"scale": 1.0}
-        # # object_orientations = {"scale": 1.0}
-        # object_relative_tool_positions = {"scale": 1.0}
-        # # object_relative_tool_orientations = {"scale": 1.0}
-        # # -- object desired state
-        # object_desired_positions = {"scale": 1.0}
-        # # -- previous action
-        # arm_actions = {"scale": 1.0}
-        # tool_actions = {"scale": 1.0}
-
-    # global observation settings
-    return_dict_obs_in_group = False
-    """Whether to return observations as dictionary or flattened vector within groups."""
-    # observation groups
-    policy: PolicyCfg = PolicyCfg()
-
 @configclass
 class YCBobjectsCfg:
     ######################################### load ycb objects
@@ -191,13 +107,100 @@ class YCBobjectsCfg:
     #     "mustardBottle": f"{ISAAC_NUCLEUS_DIR}/Props/YCB/Axis_Aligned_Physics/006_mustard_bottle.usd",
     # }
     # ycb_name = ['crackerBox','sugarBox','tomatoSoupCan','mustardBottle']
+    # ycb_usd_paths = {
+    #     "crackerBox": f"{ISAAC_NUCLEUS_DIR}/Props/YCB/Axis_Aligned_Physics/003_cracker_box.usd",
+    #     "sugarBox": f"{ISAAC_NUCLEUS_DIR}/Props/YCB/Axis_Aligned_Physics/004_sugar_box.usd",
+    #     # "tomatoSoupCan": f"{ISAAC_NUCLEUS_DIR}/Props/YCB/Axis_Aligned_Physics/005_tomato_soup_can.usd",
+    #     "mustardBottle": f"{ISAAC_NUCLEUS_DIR}/Props/YCB/Axis_Aligned_Physics/006_mustard_bottle.usd",
+    # }
+    # ycb_name = ['crackerBox','sugarBox','mustardBottle']
     ycb_usd_paths = {
-        "crackerBox": f"{ISAAC_NUCLEUS_DIR}/Props/YCB/Axis_Aligned_Physics/003_cracker_box.usd",
+        # "crackerBox": f"{ISAAC_NUCLEUS_DIR}/Props/YCB/Axis_Aligned_Physics/003_cracker_box.usd",
         "sugarBox": f"{ISAAC_NUCLEUS_DIR}/Props/YCB/Axis_Aligned_Physics/004_sugar_box.usd",
         # "tomatoSoupCan": f"{ISAAC_NUCLEUS_DIR}/Props/YCB/Axis_Aligned_Physics/005_tomato_soup_can.usd",
-        "mustardBottle": f"{ISAAC_NUCLEUS_DIR}/Props/YCB/Axis_Aligned_Physics/006_mustard_bottle.usd",
+        # "mustardBottle": f"{ISAAC_NUCLEUS_DIR}/Props/YCB/Axis_Aligned_Physics/006_mustard_bottle.usd",
     }
-    ycb_name = ['crackerBox','sugarBox','mustardBottle']
+    ycb_name = ['sugarBox']
+@configclass
+class occupancy_grid_resolution:
+    """resolution of the occupancy grid"""
+    tabletop = [50,50]
+    new_obj = [40,40]
+##
+# MDP settings
+##
+
+
+@configclass
+class RandomizationCfg:
+    """Randomization of scene at reset."""
+
+    @configclass
+    class ObjectInitialPoseCfg:
+        """Randomization of object initial pose."""
+
+        # category
+        position_cat: str = "default"  # randomize position: "default", "uniform"
+        orientation_cat: str = "default"  # randomize position: "default", "uniform"
+        # randomize position
+        position_uniform_min = [-0.1, -0.1, 0.075]  # position (x,y,z)
+        position_uniform_max = [0.1, 0.1, 0.075]  # position (x,y,z)
+
+    @configclass
+    class ObjectDesiredPoseCfg:
+        """Randomization of object desired pose."""
+
+        # category
+        position_cat: str = "uniform" # randomize position: "default", "uniform"
+        orientation_cat: str = "uniform"  # randomize position: "default", "uniform"
+        # randomize position
+        position_default = [0.0, 0.0, 0.5]  # position default (x,y,z)
+        position_uniform_min = [-0.15, -0.15, 0.25]  # position (x,y,z)
+        position_uniform_max = [0.15, 0.15, 0.5]  # position (x,y,z)
+        # randomize orientation
+        orientation_default = [1.0, 0.0, 0.0, 0.0]  # orientation default
+
+    # initialize
+    object_initial_pose: ObjectInitialPoseCfg = ObjectInitialPoseCfg()
+    object_desired_pose: ObjectDesiredPoseCfg = ObjectDesiredPoseCfg()
+
+
+@configclass
+class ObservationsCfg:
+    """Observation specifications for the MDP."""
+
+    @configclass
+    class PolicyCfg:
+        """Observations for policy group."""
+
+        # global group settings
+        enable_corruption: bool = True
+        # observation terms
+        # -- joint state
+        arm_dof_pos = {"scale": 1.0}
+        # arm_dof_pos_scaled = {"scale": 1.0}
+        # arm_dof_vel = {"scale": 0.5, "noise": {"name": "uniform", "min": -0.01, "max": 0.01}}
+        tool_dof_pos_scaled = {"scale": 1.0}
+        # -- end effector state
+        tool_positions = {"scale": 1.0}
+        tool_orientations = {"scale": 1.0}
+        # -- object state
+        # object_positions = {"scale": 1.0}
+        # object_orientations = {"scale": 1.0}
+        object_relative_tool_positions = {"scale": 1.0}
+        # object_relative_tool_orientations = {"scale": 1.0}
+        # -- object desired state
+        object_desired_positions = {"scale": 1.0}
+        # -- previous action
+        arm_actions = {"scale": 1.0}
+        tool_actions = {"scale": 1.0}
+
+    # global observation settings
+    return_dict_obs_in_group = False
+    """Whether to return observations as dictionary or flattened vector within groups."""
+    # observation groups
+    policy: PolicyCfg = PolicyCfg()
+
 
 @configclass
 class RewardsCfg:
@@ -206,62 +209,48 @@ class RewardsCfg:
     # -- robot-centric
     # reaching_object_position_l2 = {"weight": 0.0}
     # reaching_object_position_exp = {"weight": 2.5, "sigma": 0.25}
-    # reaching_object_position_tanh = {"weight": 2.5, "sigma": 0.1}
+    reaching_object_position_tanh = {"weight": 2.5, "sigma": 0.1}
     # penalizing_arm_dof_velocity_l2 = {"weight": 1e-5}
     # penalizing_tool_dof_velocity_l2 = {"weight": 1e-5}
     # penalizing_robot_dof_acceleration_l2 = {"weight": 1e-7}
     # -- action-centric
-    # penalizing_arm_action_rate_l2 = {"weight": 1e-2}
-    reward_og_change = {"weight":0.5}
-    check_placing = {"weight": 2}
-    penalizing_falling = {"weight": 2}
-    penalizing_steps = {"weight": 0.03}
+    penalizing_arm_action_rate_l2 = {"weight": 1e-2}
     # penalizing_tool_action_l2 = {"weight": 1e-2}
     # -- object-centric
     # tracking_object_position_exp = {"weight": 5.0, "sigma": 0.25, "threshold": 0.08}
-    # tracking_object_position_tanh = {"weight": 5.0, "sigma": 0.2, "threshold": 0.08}
-    # lifting_object_success = {"weight": 3.5, "threshold": 0.08}
+    tracking_object_position_tanh = {"weight": 5.0, "sigma": 0.2, "threshold": 0.08}
+    lifting_object_success = {"weight": 3.5, "threshold": 0.08}
 
 
 @configclass
 class TerminationsCfg:
     """Termination terms for the MDP."""
-    stop_pushing = True
-    episode_timeout = True  # reset when episode length ended
-    # object_falling = True  # reset when object falls off the table
-    is_success = True  # reset when object is placed
 
-@configclass
-class occupancy_grid_resolution:
-    """resolution of the occupancy grid"""
-    tabletop = [100,60]
-    new_obj = [40,40]
+    episode_timeout = True  # reset when episode length ended
+    object_falling = True  # reset when object falls off the table
+    is_success = False  # reset when object is lifted
+
+
 @configclass
 class ControlCfg:
     """Processing of MDP actions."""
 
     # action space
-    # control_type = "default"  # "default", "inverse_kinematics"
-    control_type = "inverse_kinematics"
+    control_type = "default"  # "default", "inverse_kinematics"
     # decimation: Number of control action updates @ sim dt per policy dt
-    decimation = 3
+    decimation = 2
 
     # configuration loaded when control_type == "inverse_kinematics"
     inverse_kinematics: DifferentialInverseKinematicsCfg = DifferentialInverseKinematicsCfg(
-        # command_type="pose_rel",
-        # command_type = "pose_rel",
-        command_type = "pose_abs",
+        command_type="pose_rel",
         ik_method="dls",
-        # position_command_scale=(0.1, 0.1, 0.1),
-        # rotation_command_scale=(0.1, 0.1, 0.1),
-        position_command_scale=(0.05, 0.05, 0.05),
-        rotation_command_scale=(0.05, 0.05, 0.05),
+        position_command_scale=(0.1, 0.1, 0.1),
+        rotation_command_scale=(0.1, 0.1, 0.1),
     )
-
-
-##
-# Environment configuration
-##
+@configclass
+class env_name:
+    file_list = os.listdir("generated_table/")
+    test_file_list = os.listdir("test_table/")
 @configclass
 class ObjMask:
     def __init__(self) -> None:
@@ -277,37 +266,28 @@ class ObjMask:
                     self.mask[obj_name[j]]=  pkl.load(fileObject2)
 
                     fileObject2.close()
-                    
-
+##
+# Environment configuration
+##
 
 
 @configclass
 class PushEnvCfg(IsaacEnvCfg):
-    """Configuration for the push environment."""
+    """Configuration for the Lift environment."""
 
     # General Settings
-    env: EnvCfg = EnvCfg(num_envs=4096, env_spacing=3, episode_length_s=0.4)
-    viewer: ViewerCfg = ViewerCfg(debug_vis=False, eye=(7.5, 7.5, 7.5), lookat=(0.0, 0.0, 0.0))
+    env: EnvCfg = EnvCfg(num_envs=4096, env_spacing=2.5, episode_length_s=5.0)
+    viewer: ViewerCfg = ViewerCfg(debug_vis=True, eye=(7.5, 7.5, 7.5), lookat=(0.0, 0.0, 0.0))
     # Physics settings
     sim: SimCfg = SimCfg(
         dt=0.01,
         substeps=1,
         physx=PhysxCfg(
-            gpu_found_lost_aggregate_pairs_capacity=1024 * 1024 * 2, # 1024 * 1024 * 2
-            gpu_total_aggregate_pairs_capacity= 1024 * 1024 * 2 *1,#16 * 1024,
+            gpu_found_lost_aggregate_pairs_capacity=1024 * 1024 * 4,
+            gpu_total_aggregate_pairs_capacity=16 * 1024,
             friction_correlation_distance=0.00625,
             friction_offset_threshold=0.01,
             bounce_threshold_velocity=0.2,
-
-            # gpu_max_rigid_contact_count=1024**2*2, #1024**2*2,
-            # gpu_max_rigid_patch_count=160*2048*10, #160*2048*10, #160*2048*10,
-            # gpu_found_lost_pairs_capacity = 1024 * 1024 * 2 * 1,#1024 * 1024 * 2 * 1, #1024 * 1024 * 2 * 8,
-            # gpu_found_lost_aggregate_pairs_capacity=100,#1024 * 1024 * 32 * 1, #1024 * 1024 * 32,
-            # gpu_total_aggregate_pairs_capacity=100, #1024 * 1024 * 2 *1, #1024 * 1024 * 2 * 8
-            # friction_correlation_distance=0.0025,
-            # friction_offset_threshold=0.04,
-            # bounce_threshold_velocity=0.5,
-            # gpu_max_num_partitions=8,
         ),
     )
 
@@ -318,10 +298,12 @@ class PushEnvCfg(IsaacEnvCfg):
     object: ManipulationObjectCfg = ManipulationObjectCfg()
     # -- table
     table: TableCfg = TableCfg()
+    # -- Camera
     # -- visualization marker
     goal_marker: GoalMarkerCfg = GoalMarkerCfg()
     frame_marker: FrameMarkerCfg = FrameMarkerCfg()
-
+    # Camera settings
+    camera: CameraCfg = CameraCfg()
     # MDP settings
     randomization: RandomizationCfg = RandomizationCfg()
     observations: ObservationsCfg = ObservationsCfg()
@@ -330,11 +312,9 @@ class PushEnvCfg(IsaacEnvCfg):
 
     # Controller settings
     control: ControlCfg = ControlCfg()
-    # Camera settings
-    camera: CameraCfg = CameraCfg()
+
+    # other
     YCBdata: YCBobjectsCfg = YCBobjectsCfg()
-    # resolution of the occupancy grid
     og_resolution: occupancy_grid_resolution = occupancy_grid_resolution()
     obj_mask: ObjMask = ObjMask()
     env_name: env_name = env_name().file_list
-    

@@ -3,9 +3,9 @@
 #
 # SPDX-License-Identifier: BSD-3-Clause
 
-"""Environment for lifting objects with fixed-arm robots."""
+"""Environment for pushing objects with fixed-arm robots."""
 
-from .push_cfg_v3 import PushEnvCfg
-from .push_env_v3 import PushEnv
+from .push_cfg import PushEnvCfg
+from .push_env import PushEnv
 
 __all__ = ["PushEnv", "PushEnvCfg"]

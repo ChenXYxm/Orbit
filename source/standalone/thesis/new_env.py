@@ -471,8 +471,8 @@ def main():
                             prim_utils.delete_prim(f"/World/Objects/{key}")
                         obj_dict[_] = 0
                     # break
-            plt.imshow(occupancy)
-            plt.show()
+            # plt.imshow(occupancy)
+            # plt.show()
             #
             # bound_detect(occupancy)
             # rgb=camera.data.output["rgb"]
@@ -529,7 +529,7 @@ def main():
                     sim.step
             else:
                 file_name_ori = "dict_"
-                file_list = os.listdir("generated_table/")
+                file_list = os.listdir("test_table/")
                 
                 num_file = 1
                 while True:
@@ -537,7 +537,7 @@ def main():
                     if file_name in file_list:
                         num_file +=1
                     else:
-                        file_path = "generated_table/"+file_name
+                        file_path = "test_table/"+file_name
                         f_save = open(file_path,'wb')
                         table_obj_pos_rot = [table_obj_pos_rot,obj_type]
                         pickle.dump(table_obj_pos_rot,f_save)
@@ -638,8 +638,8 @@ def get_new_obj_info(camera,size,hand_plane_model,obj_type):
         f_save = open(file_path,'wb')
         pickle.dump(occupancy,f_save)
         f_save.close()
-    plt.imshow(occupancy)
-    plt.show()
+    # plt.imshow(occupancy)
+    # plt.show()
     vertices_new_obj = get_new_obj_contour_bbox(occupancy)
     return aabb_points,occupancy, vertices_new_obj
 def get_new_obj_contour_bbox(occu:np.array):

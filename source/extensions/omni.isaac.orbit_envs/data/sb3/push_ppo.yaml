@@ -1,10 +1,10 @@
 # Reference: https://github.com/DLR-RM/rl-baselines3-zoo/blob/master/hyperparams/ppo.yml#L32
-seed: 41
+seed: 39
 
 # epoch * n_steps * nenvs: 500×512*8*8
 n_timesteps: 1024000
 policy: 'CnnPolicy'
-n_steps: 64
+n_steps: 32
 # mini batch size: num_envs * nsteps / nminibatches 2048×512÷2048
 
 batch_size: 32 ##ppo

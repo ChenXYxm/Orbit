@@ -47,12 +47,22 @@ print(centroid(poly))
 print(np.asarray(poly.centroid.coords))
 a = np.random.randint(0,9,(2,2,3))
 print(a)
-print(np.argmax(a,axis=0))
-x = np.arange(24).reshape((2, 3, 4))
-res = np.argmax(x, axis=1)
+print('max')
+# print(np.argmax(a,axis=0))
+x = np.arange(6).reshape((2, 3))
+x[0,0] = 5
+res = np.max(x)
 print(x)
 print(res)
-
+print(np.where(x==res))
+x = np.arange(6).reshape((2, 3))
+x[0,0] = 5
+x = torch.from_numpy(x).to('cuda:0')
+res = torch.max(x)
+print(x)
+print(res)
+print(torch.where(x==res))
+# print(np.array(np.where(x==res)).reshape(-1,2))
 yy = np.eye(3)
 print(np.where(yy==1)[1])
 
@@ -63,3 +73,10 @@ xx = yy.clone()
 xx[1,0] = 1
 print(torch.sum(torch.abs(yy-xx)>=0.1,dim=1))
 print(torch.where(torch.sum(torch.abs(yy-xx),dim=1)>=0.1,1,0))
+
+xx = {}
+xx[1] = 12
+yy = xx.copy()
+yy[1] = 10
+print(xx)
+print(yy)

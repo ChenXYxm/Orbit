@@ -115,8 +115,8 @@ class Sb3VecEnvWrapper(gym.Wrapper, VecEnv):
         # convert to tensor
         actions = torch.from_numpy(actions).to(device=self.env.device)
         # record step information
-        obs_dict, rew, dones, extras = self.env.step(actions)
-
+        obs_dict, rew, dones, extras= self.env.step(actions)
+        # rew = torch.zeros(rew.size()).to(self.env.device)
         # update episode un-discounted return and length
         self._ep_rew_buf += rew
         self._ep_len_buf += 1
@@ -125,6 +125,8 @@ class Sb3VecEnvWrapper(gym.Wrapper, VecEnv):
         # convert data types to numpy depending on backend
         # Note: IsaacEnv uses torch backend (by default).
         obs = self._process_obs(obs_dict)
+        self.extra_obs = self.env.done_obs
+        self.extra_obs = self._process_obs(self.extra_obs)
         rew = rew.cpu().numpy()
         dones = dones.cpu().numpy()
         # convert extra information to list of dicts
@@ -133,6 +135,9 @@ class Sb3VecEnvWrapper(gym.Wrapper, VecEnv):
         # reset info for terminated environments
         self._ep_rew_buf[reset_ids] = 0
         self._ep_len_buf[reset_ids] = 0
+        # print(obs.shape)
+        # plt.imshow(obs[0])
+        # plt.show()
         # print(rew,dones)
         return obs, rew, dones, infos
 
@@ -185,6 +190,8 @@ class Sb3VecEnvWrapper(gym.Wrapper, VecEnv):
         # plt.imshow(obs[1])
         # plt.show()
         # print(obs[0])
+        
+        # obs = np.zeros(obs.copy().shape)
         return obs
 
     def _process_extras(self, obs, dones, extras, reset_ids) -> List[Dict[str, Any]]:
@@ -218,12 +225,12 @@ class Sb3VecEnvWrapper(gym.Wrapper, VecEnv):
             # add information about terminal observation separately
             if dones[idx] == 1:
                 # extract terminal observations
-                if isinstance(obs, dict):
-                    terminal_obs = dict.fromkeys(obs.keys())
-                    for key, value in obs.items():
+                if isinstance(self.extra_obs, dict):
+                    terminal_obs = dict.fromkeys(self.extra_obs.keys())
+                    for key, value in self.extra_obs.items():
                         terminal_obs[key] = value[idx]
                 else:
-                    terminal_obs = obs[idx]
+                    terminal_obs = self.extra_obs[idx]
                 # add info to dict
                 infos[idx]["terminal_observation"] = terminal_obs
             else:

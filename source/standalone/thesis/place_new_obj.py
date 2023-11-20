@@ -308,8 +308,8 @@ def place_new_obj_fun(occu_ori,new_obj):
                     shape_dict[i][j][0] = 0    
                 occu_tmp[shape_dict[i][j][1],shape_dict[i][j][0]] = 3
         # print('shape mask')
-        plt.imshow(occu_tmp)
-        plt.show()
+        # plt.imshow(occu_tmp)
+        # plt.show()
         # print(shape_dict)
         length_dict = dict()
         length_list = []
@@ -352,8 +352,8 @@ def place_new_obj_fun(occu_ori,new_obj):
         length_dict[Nx].append(np.array([Ny-1,0]))
         length_dict[Nx].append(np.array([Ny-1,Nx-1]))
         # occu_tmp[Ny-1,Nx-1] = 3
-        plt.imshow(occu_tmp)
-        plt.show()
+        # plt.imshow(occu_tmp)
+        # plt.show()
         flag_found = False
         dila_polygons = []
         for i in polygons:
@@ -477,8 +477,8 @@ def place_new_obj_fun(occu_ori,new_obj):
                                             new_obj_pos = get_pos(new_obj,new_poly_vetices)
                                             # print(points_tmp)
                                             # print(new_obj_pos)
-                                            plt.imshow(occu_tmp)
-                                            plt.show()
+                                            # plt.imshow(occu_tmp)
+                                            # plt.show()
                                             
                                             return flag_found,new_poly_vetices,occu_tmp,new_obj_pos
                                             break

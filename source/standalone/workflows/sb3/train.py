@@ -43,7 +43,7 @@ import gym
 import os
 from datetime import datetime
 
-from stable_baselines3 import PPO,SAC
+from stable_baselines3 import PPO,SAC,common
 from stable_baselines3.common.callbacks import CheckpointCallback
 from stable_baselines3.common.logger import configure
 from stable_baselines3.common.vec_env import VecNormalize
@@ -107,7 +107,7 @@ def main():
             gamma=agent_cfg["gamma"],
             clip_reward=np.inf,
         )
-
+    # common.env_checker.check_env(env, warn=True, skip_render_check=True)
     # create agent from stable baselines
     agent = PPO(policy_arch, env, verbose=1, **agent_cfg)
     # print(agent.policy)

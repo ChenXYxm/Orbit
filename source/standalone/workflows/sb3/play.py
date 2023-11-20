@@ -12,7 +12,7 @@ import argparse
 import numpy as np
 
 from omni.isaac.kit import SimulationApp
-
+import matplotlib.pyplot as plt
 # add argparse arguments
 parser = argparse.ArgumentParser("Welcome to Orbit: Omniverse Robotics Environments!")
 parser.add_argument("--headless", action="store_true", default=False, help="Force display off at all times.")
@@ -64,22 +64,33 @@ def main():
             gamma=agent_cfg["gamma"],
             clip_reward=np.inf,
         )
-
+    print(f'starting to load')
     # check checkpoint is valid
     if args_cli.checkpoint is None:
         raise ValueError("Checkpoint path is not valid.")
     # create agent from stable baselines
     print(f"Loading checkpoint from: {args_cli.checkpoint}")
     agent = PPO.load(args_cli.checkpoint, env, print_system_info=True)
-
+    print(f"Loading checkpoint from:")
     # reset environment
     obs = env.reset()
+
     # simulate environment
+    print('play the model')
     while simulation_app.is_running():
         # agent stepping
+        print('into the loop')
+        # plt.imshow(obs[0])
+        # plt.show()
         actions, _ = agent.predict(obs, deterministic=True)
+        # print(actions)
+        # plt.imshow(actions[0])
+        # plt.show()
         # env stepping
         obs, _, _, _ = env.step(actions)
+        # plt.imshow(obs[0])
+        # plt.show()
+        
         # check if simulator is stopped
         if env.unwrapped.sim.is_stopped():
             break

@@ -61,7 +61,7 @@ class ManipulationObjectCfg(RigidObjectCfg):
         disable_gravity=False,
     )
     physics_material = RigidObjectCfg.PhysicsMaterialCfg(
-        static_friction=0.8, dynamic_friction=0.8, restitution=0.0, prim_path="/World/Materials/cubeMaterial"
+        static_friction=1.5, dynamic_friction=1.5, restitution=0.0, prim_path="/World/Materials/cubeMaterial"
     )
 
 @configclass
@@ -219,13 +219,13 @@ class RewardsCfg:
     # penalizing_robot_dof_acceleration_l2 = {"weight": 1e-7}
     # -- action-centric
     # penalizing_arm_action_rate_l2 = {"weight": 1e-2}
-    # reward_og_change = {"weight":0.5}
-    reward_distribution_closer = {"weight":0.25}
+    reward_og_change = {"weight":0.5}
+    # reward_distribution_closer = {"weight":0.25}
     check_placing = {"weight": 2}
-    penalizing_falling = {"weight": 2}
-    penalizing_steps = {"weight": 0.03}
-    penalizing_repeat_actions = {"weight": 0.5}
-    penalizing_pushing_outside = {"weight":1.0}
+    penalizing_falling = {"weight": 1}
+    penalizing_steps = {"weight": 0.1}
+    # penalizing_repeat_actions = {"weight": 0.5}
+    # penalizing_pushing_outside = {"weight":1.0}
     # penalizing_tool_action_l2 = {"weight": 1e-2}
     # -- object-centric
     # tracking_object_position_exp = {"weight": 5.0, "sigma": 0.25, "threshold": 0.08}
