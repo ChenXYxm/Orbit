@@ -47,12 +47,7 @@ def main():
     # simulate environment
     while simulation_app.is_running():
         # sample actions from -1 to 1
-        # actions = 2 * torch.rand((env.num_envs, env.action_space.shape[0]), device=env.device) - 1
-        actions = torch.zeros((env.num_envs,3), device=env.device)
-        actions[:,0] = (torch.rand((env.num_envs,)).to(env.device)-0.5)
-        actions[:,1] = (torch.rand((env.num_envs,)).to(env.device)-0.5)*0.6
-        actions[:,2] = torch.rand((env.num_envs,)).to(env.device)
-        # actions[:,3] = torch.randint(0,9,(env.num_envs,)).to(env.device)
+        actions = 2 * torch.rand((env.num_envs, env.action_space.shape[0]), device=env.device) - 1
         # apply actions
         _, _, _, _ = env.step(actions)
         # check if simulator is stopped

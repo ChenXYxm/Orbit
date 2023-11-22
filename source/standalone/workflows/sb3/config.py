@@ -20,11 +20,7 @@ SB3_PPO_CONFIG_FILE = {
     "Isaac-Humanoid-v0": os.path.join(ORBIT_ENVS_DATA_DIR, "sb3/humanoid_ppo.yaml"),
     # manipulation
     "Isaac-Reach-Franka-v0": os.path.join(ORBIT_ENVS_DATA_DIR, "sb3/reach_ppo.yaml"),
-    "Isaac-Lift-Franka-v0": os.path.join(ORBIT_ENVS_DATA_DIR, "sb3/reach_ppo.yaml"),
-    "Isaac-Contrib-Push-Franka-v0": os.path.join(ORBIT_ENVS_DATA_DIR, "sb3/push_ppo.yaml"),
     "Isaac-Push-Franka-v0": os.path.join(ORBIT_ENVS_DATA_DIR, "sb3/push_ppo.yaml"),
-    "Isaac-Push-Franka-v2": os.path.join(ORBIT_ENVS_DATA_DIR, "sb3/push_v2_ppo.yaml"),
-    # "Isaac-Push-Franka-v0": os.path.join(ORBIT_ENVS_DATA_DIR, "sb3/push_sac.yaml"),
 }
 """Mapping from environment names to PPO agent files."""
 

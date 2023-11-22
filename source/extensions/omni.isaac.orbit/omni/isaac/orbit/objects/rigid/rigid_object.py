@@ -108,7 +108,7 @@ class RigidObject:
             carb.log_warn(f"A prim already exists at prim path: '{prim_path}'. Skipping...")
 
         # apply rigid body properties API
-        RigidPrim(prim_path=prim_path,mass=0.6)
+        RigidPrim(prim_path=prim_path)
         # -- set rigid body properties
         kit_utils.set_nested_rigid_body_properties(prim_path, **self.cfg.rigid_props.to_dict())
         # apply collision properties

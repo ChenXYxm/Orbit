@@ -20,7 +20,7 @@ from omni.isaac.kit import SimulationApp
 parser = argparse.ArgumentParser("Welcome to Orbit: Omniverse Robotics Environments!")
 parser.add_argument("--headless", action="store_true", default=False, help="Force display off at all times.")
 parser.add_argument("--gpu", action="store_true", default=False, help="Use GPU device for camera rendering output.")
-parser.add_argument("--draw", action="store_true", default=True, help="Draw the obtained pointcloud on viewport.")
+parser.add_argument("--draw", action="store_true", default=False, help="Draw the obtained pointcloud on viewport.")
 args_cli = parser.parse_args()
 
 # launch omniverse app
@@ -106,7 +106,7 @@ def main():
     """Runs a camera sensor from orbit."""
 
     # Load kit helper
-    sim = SimulationContext(physics_dt=0.005, rendering_dt=0.005, backend="torch",device='cuda:0')
+    sim = SimulationContext(physics_dt=0.005, rendering_dt=0.005, backend="torch")
     # Set main camera
     set_camera_view([2.5, 2.5, 2.5], [0.0, 0.0, 0.0])
     # Acquire draw interface
@@ -186,8 +186,7 @@ def main():
             normalize_rgb=True,
             num_channels=4,
         )
-        # print('rgb')
-        # print(camera.data.output["rgb"])
+
         # Draw pointcloud
         if not args_cli.headless and args_cli.draw:
             # Convert to numpy for visualization

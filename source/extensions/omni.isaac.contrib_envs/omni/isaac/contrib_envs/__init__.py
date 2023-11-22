@@ -44,10 +44,3 @@ ORBIT_CONTRIB_ENVS_METADATA = toml.load(os.path.join(ORBIT_CONTRIB_ENVS_EXT_DIR,
 
 # Configure the module-level variables
 __version__ = ORBIT_CONTRIB_ENVS_METADATA["package"]["version"]
-
-gym.register(
-    id="Isaac-Contrib-Push-Franka-v0",
-    entry_point="omni.isaac.contrib_envs.push:PushEnv",
-    kwargs={"cfg_entry_point": "omni.isaac.contrib_envs.push:PushEnvCfg"},
-)
-

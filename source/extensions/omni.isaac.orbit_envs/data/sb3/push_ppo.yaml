@@ -4,7 +4,7 @@ seed: 39
 # epoch * n_steps * nenvs: 500×512*8*8
 n_timesteps: 1024000
 policy: 'CnnPolicy'
-n_steps: 32
+n_steps: 64
 # mini batch size: num_envs * nsteps / nminibatches 2048×512÷2048
 
 batch_size: 32 ##ppo
@@ -19,7 +19,7 @@ policy_kwargs: "dict(
                   activation_fn=nn.ELU,
                   net_arch=[32, 32, dict(pi=[256, 128, 64], vf=[256, 128, 64])]
                 )"
-target_kl: 0.01
+target_kl: 0.008
 max_grad_norm: 1.0
 
 # # Uses VecNormalize class to normalize obs

@@ -232,8 +232,7 @@ class RewardManager:
             self._reward_buf += value
             # update episodic sum
             self._episode_sums["termination"] += value
-            # print('from mdp')
-            # print(self._reward_buf)
+
         return self._reward_buf
 
     """
@@ -258,10 +257,7 @@ class RewardManager:
                 if term_cfg["weight"] == 0:
                     self._cfg.pop(term_name)
                 else:
-                    ############## TODO: change by cxy
-                    # term_cfg["weight"] *= self._dt ## original
-                    term_cfg["weight"] *= 0.1
-
+                    term_cfg["weight"] *= self._dt
             else:
                 raise KeyError(f"The key 'weight' not found for reward term: '{term_name}'.")
 

@@ -26,7 +26,6 @@ SKRL_PPO_CONFIG_FILE = {
     # manipulation
     "Isaac-Lift-Franka-v0": os.path.join(ORBIT_ENVS_DATA_DIR, "skrl/lift_ppo.yaml"),
     "Isaac-Reach-Franka-v0": os.path.join(ORBIT_ENVS_DATA_DIR, "skrl/reach_ppo.yaml"),
-    "Isaac-Contrib-Push-Franka-v0": os.path.join(ORBIT_ENVS_DATA_DIR, "skrl/push_ppo.yaml"),
     # locomotion
     "Isaac-Velocity-Anymal-C-v0": os.path.join(ORBIT_ENVS_DATA_DIR, "skrl/anymal_ppo.yaml"),
 }

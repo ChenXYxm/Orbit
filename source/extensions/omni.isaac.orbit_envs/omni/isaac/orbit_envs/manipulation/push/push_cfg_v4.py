@@ -24,8 +24,8 @@ from omni.isaac.orbit.sensors.camera import PinholeCameraCfg
 class CameraCfg:
     camera_cfg = PinholeCameraCfg(
         sensor_tick=0,
-        height=270,
-        width=360,
+        height=240,
+        width=240,
         data_types=["rgb", "distance_to_image_plane", "normals", "motion_vectors"],
         usd_params=PinholeCameraCfg.UsdCameraCfg(
             focal_length=24.0, focus_distance=400.0, horizontal_aperture=20.955, clipping_range=(0.1, 1.0e5)
@@ -61,7 +61,7 @@ class ManipulationObjectCfg(RigidObjectCfg):
         disable_gravity=False,
     )
     physics_material = RigidObjectCfg.PhysicsMaterialCfg(
-        static_friction=0.5, dynamic_friction=0.5, restitution=0.0, prim_path="/World/Materials/cubeMaterial"
+        static_friction=1.5, dynamic_friction=1.5, restitution=0.0, prim_path="/World/Materials/cubeMaterial"
     )
 
 @configclass
@@ -140,7 +140,7 @@ class ObservationsCfg:
         # -- joint state
         # table_scene = {"scale": 1.0}
         table_scene = {"scale": 1.0}
-        new_obj_mask = {"scale": 1.0}
+        # new_obj_mask = {"scale": 1.0}
         # arm_dof_pos = {"scale": 1.0}
         # # arm_dof_pos_scaled = {"scale": 1.0}
         # # arm_dof_vel = {"scale": 0.5, "noise": {"name": "uniform", "min": -0.01, "max": 0.01}}
@@ -184,13 +184,27 @@ class YCBobjectsCfg:
     # }
     # ycb_name = ['crackerBox','sugarBox','tomatoSoupCan','mustardBottle','mug','largeMarker','tunaFishCan',
     #             'banana','bowl','largeClamp','scissors']
+    # ycb_usd_paths = {
+    #     "crackerBox": f"{ISAAC_NUCLEUS_DIR}/Props/YCB/Axis_Aligned_Physics/003_cracker_box.usd",
+    #     "sugarBox": f"{ISAAC_NUCLEUS_DIR}/Props/YCB/Axis_Aligned_Physics/004_sugar_box.usd",
+    #     "tomatoSoupCan": f"{ISAAC_NUCLEUS_DIR}/Props/YCB/Axis_Aligned_Physics/005_tomato_soup_can.usd",
+    #     "mustardBottle": f"{ISAAC_NUCLEUS_DIR}/Props/YCB/Axis_Aligned_Physics/006_mustard_bottle.usd",
+    # }
+    # ycb_name = ['crackerBox','sugarBox','tomatoSoupCan','mustardBottle']
+    # ycb_usd_paths = {
+    #     "crackerBox": f"{ISAAC_NUCLEUS_DIR}/Props/YCB/Axis_Aligned_Physics/003_cracker_box.usd",
+    #     "sugarBox": f"{ISAAC_NUCLEUS_DIR}/Props/YCB/Axis_Aligned_Physics/004_sugar_box.usd",
+    #     # "tomatoSoupCan": f"{ISAAC_NUCLEUS_DIR}/Props/YCB/Axis_Aligned_Physics/005_tomato_soup_can.usd",
+    #     "mustardBottle": f"{ISAAC_NUCLEUS_DIR}/Props/YCB/Axis_Aligned_Physics/006_mustard_bottle.usd",
+    # }
+    # ycb_name = ['crackerBox','sugarBox','mustardBottle']
     ycb_usd_paths = {
-        "crackerBox": f"{ISAAC_NUCLEUS_DIR}/Props/YCB/Axis_Aligned_Physics/003_cracker_box.usd",
+        # "crackerBox": f"{ISAAC_NUCLEUS_DIR}/Props/YCB/Axis_Aligned_Physics/003_cracker_box.usd",
         "sugarBox": f"{ISAAC_NUCLEUS_DIR}/Props/YCB/Axis_Aligned_Physics/004_sugar_box.usd",
-        "tomatoSoupCan": f"{ISAAC_NUCLEUS_DIR}/Props/YCB/Axis_Aligned_Physics/005_tomato_soup_can.usd",
-        "mustardBottle": f"{ISAAC_NUCLEUS_DIR}/Props/YCB/Axis_Aligned_Physics/006_mustard_bottle.usd",
+        # "tomatoSoupCan": f"{ISAAC_NUCLEUS_DIR}/Props/YCB/Axis_Aligned_Physics/005_tomato_soup_can.usd",
+        # "mustardBottle": f"{ISAAC_NUCLEUS_DIR}/Props/YCB/Axis_Aligned_Physics/006_mustard_bottle.usd",
     }
-    ycb_name = ['crackerBox','sugarBox','tomatoSoupCan','mustardBottle']
+    ycb_name = ['sugarBox']
 
 @configclass
 class RewardsCfg:
@@ -205,10 +219,14 @@ class RewardsCfg:
     # penalizing_robot_dof_acceleration_l2 = {"weight": 1e-7}
     # -- action-centric
     # penalizing_arm_action_rate_l2 = {"weight": 1e-2}
-    reward_og_change = {"weight":0.05}
+    reward_og_change = {"weight":0.25}
+    reward_distribution_closer = {"weight":0.25}
     check_placing = {"weight": 2}
     penalizing_falling = {"weight": 1}
-    penalizing_steps = {"weight": 0.03}
+    reward_near_obj = {"weight":0.1}
+    # penalizing_steps = {"weight": 0.1}
+    # penalizing_repeat_actions = {"weight": 0.5}
+    # penalizing_pushing_outside = {"weight":1.0}
     # penalizing_tool_action_l2 = {"weight": 1e-2}
     # -- object-centric
     # tracking_object_position_exp = {"weight": 5.0, "sigma": 0.25, "threshold": 0.08}
@@ -219,16 +237,16 @@ class RewardsCfg:
 @configclass
 class TerminationsCfg:
     """Termination terms for the MDP."""
-
+    stop_pushing = False
     episode_timeout = True  # reset when episode length ended
     # object_falling = True  # reset when object falls off the table
-    is_success = True  # reset when object is placed
+    is_success = True # reset when object is placed
 
 @configclass
 class occupancy_grid_resolution:
     """resolution of the occupancy grid"""
-    tabletop = [200,120]
-    new_obj = [80,80]
+    tabletop = [50,50]
+    new_obj = [40,40]
 @configclass
 class ControlCfg:
     """Processing of MDP actions."""
@@ -245,8 +263,10 @@ class ControlCfg:
         # command_type = "pose_rel",
         command_type = "pose_abs",
         ik_method="dls",
-        position_command_scale=(0.1, 0.1, 0.1),
-        rotation_command_scale=(0.1, 0.1, 0.1),
+        # position_command_scale=(0.1, 0.1, 0.1),
+        # rotation_command_scale=(0.1, 0.1, 0.1),
+        position_command_scale=(0.03, 0.03, 0.03),
+        rotation_command_scale=(0.03, 0.03, 0.03),
     )
 
 
@@ -277,7 +297,7 @@ class PushEnvCfg(IsaacEnvCfg):
     """Configuration for the push environment."""
 
     # General Settings
-    env: EnvCfg = EnvCfg(num_envs=4096, env_spacing=3, episode_length_s=0.5)
+    env: EnvCfg = EnvCfg(num_envs=4096, env_spacing=3, episode_length_s=0.3)
     viewer: ViewerCfg = ViewerCfg(debug_vis=False, eye=(7.5, 7.5, 7.5), lookat=(0.0, 0.0, 0.0))
     # Physics settings
     sim: SimCfg = SimCfg(
