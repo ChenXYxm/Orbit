@@ -490,8 +490,8 @@ def place_new_obj_fun(occu_ori,new_obj):
                                             new_obj_pos = get_pos(new_obj,new_poly_vetices)
                                             # print(points_tmp)
                                             # print(new_obj_pos)
-                                            # plt.imshow(occu_tmp)
-                                            # plt.show()
+                                            plt.imshow(occu_tmp)
+                                            plt.show()
                                             
                                             return flag_found,new_poly_vetices,occu_tmp,new_obj_pos
                                             break
