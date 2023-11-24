@@ -139,7 +139,11 @@ class ObservationsCfg:
         # observation terms
         # -- joint state
         # table_scene = {"scale": 1.0}
+        ''' modified for toy example
         table_scene = {"scale": 1.0}
+        '''
+        ''' modified for toy example'''
+        obs_for_toy_example = {"scale": 1.0}
         # new_obj_mask = {"scale": 1.0}
         # arm_dof_pos = {"scale": 1.0}
         # # arm_dof_pos_scaled = {"scale": 1.0}
@@ -219,11 +223,15 @@ class RewardsCfg:
     # penalizing_robot_dof_acceleration_l2 = {"weight": 1e-7}
     # -- action-centric
     # penalizing_arm_action_rate_l2 = {"weight": 1e-2}
+    ''' modified for toy example
     reward_og_change = {"weight":0.25}
     reward_distribution_closer = {"weight":0.25}
     check_placing = {"weight": 2}
     penalizing_falling = {"weight": 1}
     reward_near_obj = {"weight":0.1}
+    '''
+    '''modified for toy example'''
+    reward_for_toy_example = {"weight": 1}
     # penalizing_steps = {"weight": 0.1}
     # penalizing_repeat_actions = {"weight": 0.5}
     # penalizing_pushing_outside = {"weight":1.0}
@@ -240,7 +248,7 @@ class TerminationsCfg:
     stop_pushing = False
     episode_timeout = True  # reset when episode length ended
     # object_falling = True  # reset when object falls off the table
-    is_success = True # reset when object is placed
+    is_success = True # reset when object is placed modified for toy example
 
 @configclass
 class occupancy_grid_resolution:
@@ -297,8 +305,8 @@ class PushEnvCfg(IsaacEnvCfg):
     """Configuration for the push environment."""
 
     # General Settings
-    env: EnvCfg = EnvCfg(num_envs=4096, env_spacing=3, episode_length_s=0.09)
-    viewer: ViewerCfg = ViewerCfg(debug_vis=False, eye=(7.5, 7.5, 7.5), lookat=(0.0, 0.0, 0.0))
+    env: EnvCfg = EnvCfg(num_envs=4096, env_spacing=3, episode_length_s=0.30)
+    viewer: ViewerCfg = ViewerCfg(debug_vis=True, eye=(7.5, 7.5, 7.5), lookat=(0.0, 0.0, 0.0))
     # Physics settings
     sim: SimCfg = SimCfg(
         dt=0.01,

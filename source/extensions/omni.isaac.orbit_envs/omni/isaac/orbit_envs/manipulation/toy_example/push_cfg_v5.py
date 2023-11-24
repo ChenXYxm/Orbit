@@ -219,12 +219,11 @@ class RewardsCfg:
     # penalizing_robot_dof_acceleration_l2 = {"weight": 1e-7}
     # -- action-centric
     # penalizing_arm_action_rate_l2 = {"weight": 1e-2}
-    reward_og_change = {"weight":0.25}
-    reward_distribution_closer = {"weight":0.25}
+    reward_og_change = {"weight":0.5}
+    # reward_distribution_closer = {"weight":0.25}
     check_placing = {"weight": 2}
     penalizing_falling = {"weight": 1}
-    reward_near_obj = {"weight":0.1}
-    # penalizing_steps = {"weight": 0.1}
+    penalizing_steps = {"weight": 0.1}
     # penalizing_repeat_actions = {"weight": 0.5}
     # penalizing_pushing_outside = {"weight":1.0}
     # penalizing_tool_action_l2 = {"weight": 1e-2}
@@ -297,7 +296,7 @@ class PushEnvCfg(IsaacEnvCfg):
     """Configuration for the push environment."""
 
     # General Settings
-    env: EnvCfg = EnvCfg(num_envs=4096, env_spacing=3, episode_length_s=0.09)
+    env: EnvCfg = EnvCfg(num_envs=4096, env_spacing=3, episode_length_s=0.3)
     viewer: ViewerCfg = ViewerCfg(debug_vis=False, eye=(7.5, 7.5, 7.5), lookat=(0.0, 0.0, 0.0))
     # Physics settings
     sim: SimCfg = SimCfg(

@@ -58,6 +58,7 @@ class PushEnv(IsaacEnv):
         # print(self.obj_handle_list)
         # create classes (these are called by the function :meth:`_design_scene`)
         self.robot = SingleArmManipulator(cfg=self.cfg.robot)
+        ################## create obj handle
         self.obj1 = []
         for i in range(8):
             obj_cfg1 = RigidObjectCfg()
@@ -112,14 +113,15 @@ class PushEnv(IsaacEnv):
         
         # Take an initial step to initialize the scene.
         # This is required to compute quantities like Jacobians used in step()
-        self.new_obj_vertices = []
+        
+        self.new_obj_vertices = [] ############ new obj info, vertices fo the bbox 
         self.sim.step()
         # -- fill up buffers
-        
+        ################### update the current position of the robot and objs
         self.robot.update_buffers(self.dt)
         for i,obj_t in enumerate(self.obj1):
             obj_t.update_buffers(self.dt)
-        
+        ################### calculate 
         self.obj_on_table = dict()
     """
     Implementation specifics.
@@ -342,6 +344,8 @@ class PushEnv(IsaacEnv):
                 # check that simulation is playing
                 if self.sim.is_stopped():
                     return
+            if self.cfg.viewer.debug_vis and self.enable_render:
+                self._debug_vis()
         for i in range(30):
             self.robot.update_buffers(self.dt)
             
@@ -373,6 +377,8 @@ class PushEnv(IsaacEnv):
                 # check that simulation is playing
                 if self.sim.is_stopped():
                     return
+            if self.cfg.viewer.debug_vis and self.enable_render:
+                self._debug_vis()
         ############ let the gripper go down to the start position
         for i in range(20):
             self.robot.update_buffers(self.dt)
@@ -406,6 +412,8 @@ class PushEnv(IsaacEnv):
                 # check that simulation is playing
                 if self.sim.is_stopped():
                     return
+            if self.cfg.viewer.debug_vis and self.enable_render:
+                self._debug_vis()
         ################# perform pushing
         for i in range(self.num_envs):
             vec_tmp = np.zeros(2)
@@ -439,6 +447,8 @@ class PushEnv(IsaacEnv):
                 # check that simulation is playing
                 if self.sim.is_stopped():
                     return
+            if self.cfg.viewer.debug_vis and self.enable_render:
+                self._debug_vis()
         for i in range(self.num_envs):
             vec_tmp = np.zeros(2)
             vec_tmp[0] = 0.03*np.cos(2*np.pi*actions_tmp[i,2].cpu().numpy())
@@ -476,6 +486,8 @@ class PushEnv(IsaacEnv):
                 # check that simulation is playing
                 if self.sim.is_stopped():
                     return
+            if self.cfg.viewer.debug_vis and self.enable_render:
+                self._debug_vis()
         ################ lift the gripper
         for i in range(self.num_envs):
             vec_tmp = np.zeros(2)
@@ -518,6 +530,8 @@ class PushEnv(IsaacEnv):
                 # check that simulation is playing
                 if self.sim.is_stopped():
                     return
+            if self.cfg.viewer.debug_vis and self.enable_render:
+                self._debug_vis()
         for i in range(3):
             self.robot.update_buffers(self.dt)
             if self.cfg.control.control_type == "inverse_kinematics":
@@ -549,6 +563,8 @@ class PushEnv(IsaacEnv):
                 # check that simulation is playing
                 if self.sim.is_stopped():
                     return
+            if self.cfg.viewer.debug_vis and self.enable_render:
+                self._debug_vis()
         for i in range(3):
             self.robot.update_buffers(self.dt)
             if self.cfg.control.control_type == "inverse_kinematics":
@@ -580,6 +596,8 @@ class PushEnv(IsaacEnv):
                 # check that simulation is playing
                 if self.sim.is_stopped():
                     return
+            if self.cfg.viewer.debug_vis and self.enable_render:
+                self._debug_vis()
         # post-step:
         # -- compute common buffers
         for _ in range(10):
@@ -630,8 +648,7 @@ class PushEnv(IsaacEnv):
                 if self.place_success[i]>=0.5:
                     self.extras["time_outs"][i] = False
         # -- update USD visualization
-        if self.cfg.viewer.debug_vis and self.enable_render:
-            self._debug_vis()
+        
 
     def _get_observations(self) -> VecEnvObs:
         # compute observations
@@ -695,7 +712,7 @@ class PushEnv(IsaacEnv):
             obj_t.initialize(self.env_ns + "/.*"+ f"/Objs/obj1/obj_{i}")
         
         self.new_obj_vertices = [i for i in range(self.num_envs)]
-        
+        ################# initialize carmeras and spawn them
         for _ in range(15):
             self.sim.render()
         for i in range(self.num_envs):
@@ -778,6 +795,7 @@ class PushEnv(IsaacEnv):
     
 
     def get_og(self,camera):
+        '''calculate occu and enlarge occu'''
         ############ get occupancy grid 
         camera.update(dt=0.0)
         pcd = self.get_pcd(camera)
@@ -894,7 +912,7 @@ class PushEnv(IsaacEnv):
         return occupancy,occupancy_ex
 
     def _debug_vis(self):
-        """Visualize the environment in debug mode."""
+        """Visualize the environment in debug mode. new to set debug_vis True in the ViewerCfg in cfg"""
         # apply to instance manager
         # -- goal
         # self._goal_markers.set_world_poses(self.object_des_pose_w[:, 0:3], self.object_des_pose_w[:, 3:7])
@@ -908,10 +926,8 @@ class PushEnv(IsaacEnv):
             # set poses
             self._cmd_markers.set_world_poses(ee_positions, ee_orientations)
 
-    """
-    Helper functions - MDP.
-    """
     def _get_obj_info(self,env_ids: VecEnvIndices):
+        '''get the 4 vertices of the bbox of new item'''
         if len(self.new_obj_vertices)==0:
             self.new_obj_vertices = [i for i in env_ids.tolist()]
         for i in env_ids.tolist():
@@ -922,6 +938,7 @@ class PushEnv(IsaacEnv):
             # plt.show()
             # print(self.new_obj_vertices)
     def _check_fallen_objs(self,env_ids:VecEnvIndices):
+        '''get the number of fallen items per push and also the total num of fallen objs by now'''
         torch_fallen = torch.zeros((self.num_envs,),device=self.device)
         for k in env_ids.tolist():
             if k in self.obj_on_table:
@@ -931,22 +948,23 @@ class PushEnv(IsaacEnv):
                     torch_fallen[k] += torch.where(obj.data.root_pos_w[k, 2] < -0.05, 1, 0)
         # print(torch_fallen)
         # print(self.falling_obj_all)
-        self.falling_obj[env_ids] = torch_fallen[env_ids] - self.falling_obj_all[env_ids]
-        self.falling_obj_all[env_ids] = torch_fallen[env_ids]
+        self.falling_obj[env_ids] = torch_fallen[env_ids] - self.falling_obj_all[env_ids] # fallen objs per push
+        self.falling_obj_all[env_ids] = torch_fallen[env_ids] ## total number of fallen objs
         
     def _update_table_og(self):
+        '''get the new occupancy grid'''
         if self.reset_f:
             for i in range(self.num_envs):
                 self.cams[i].update(self.dt)
                 
-                og,og_ex = self.get_og(self.cams[i])
+                og,og_ex = self.get_og(self.cams[i]) # og: original occu; og_ex: enlarged occu
                 
                 self.table_og[i] = torch.from_numpy(og.copy()).to(self.device)
                 self.table_expand_og[i] = torch.from_numpy(og_ex.copy()).to(self.device)
                 
 
     def _check_placing(self):
-        env_ids=torch.from_numpy(np.arange(self.num_envs)).to(self.device)
+        '''check place succeed or not'''
         self._update_table_og()
         # for i in range(self.num_envs):
         #     plt.imshow()
@@ -964,8 +982,8 @@ class PushEnv(IsaacEnv):
                 
                 
     def _check_termination(self) -> None:
+        '''check an iteration terminate or not'''
         # access buffers from simulator
-        # object_pos = self.object.data.root_pos_w - self.envs_positions
         # extract values from buffer
         self.reset_buf[:] = 0
         # compute resets
@@ -981,6 +999,7 @@ class PushEnv(IsaacEnv):
             self.reset_buf = torch.where(self.episode_length_buf >= self.max_episode_length, 1, self.reset_buf)
     
     def reset_objs(self,env_ids: torch.Tensor):
+        '''reset the position of items:(do before _randomize_table_scene)'''
         for i,obj_t in enumerate(self.obj1):
             root_state = obj_t.get_default_root_state(env_ids)
             # transform command from local env to world
@@ -989,6 +1008,7 @@ class PushEnv(IsaacEnv):
             obj_t.set_root_state(root_state, env_ids=env_ids)
         
     def _randomize_table_scene(self,env_ids: torch.Tensor):
+        '''place items on table according to the pre-generated cluttered table scene'''
         file_name = self.cfg.env_name
         # ycb_usd_paths = self.cfg.YCBdata.ycb_usd_paths
         ycb_name = self.cfg.YCBdata.ycb_name
@@ -1030,77 +1050,15 @@ class PushEnv(IsaacEnv):
                     for j in env_ids.tolist():
                         self.obj_on_table[j].append(self.obj1[_])
                     
-    def _randomize_object_initial_pose(self, env_ids: torch.Tensor, cfg: RandomizationCfg.ObjectInitialPoseCfg):
-        """Randomize the initial pose of the object."""
-        
-        # get the default root state
-        root_state = self.object.get_default_root_state(env_ids)
-        # -- object root position
-        if cfg.position_cat == "default":
-            pass
-        elif cfg.position_cat == "uniform":
-            # sample uniformly from box
-            # note: this should be within in the workspace of the robot
-            root_state[:, 0:3] = sample_uniform(
-                cfg.position_uniform_min, cfg.position_uniform_max, (len(env_ids), 3), device=self.device
-            )
-        else:
-            raise ValueError(f"Invalid category for randomizing the object positions '{cfg.position_cat}'.")
-        # -- object root orientation
-        if cfg.orientation_cat == "default":
-            pass
-        elif cfg.orientation_cat == "uniform":
-            # sample uniformly in SO(3)
-            root_state[:, 3:7] = random_orientation(len(env_ids), self.device)
-        else:
-            raise ValueError(f"Invalid category for randomizing the object orientation '{cfg.orientation_cat}'.")
-        # transform command from local env to world
-        root_state[:, 0:3] += self.envs_positions[env_ids]
-        # update object init pose
-        self.object_init_pose_w[env_ids] = root_state[:, 0:7]
-        # set the root state
-        self.object.set_root_state(root_state, env_ids=env_ids)
-
    
-    def _randomize_object_desired_pose(self, env_ids: torch.Tensor, cfg: RandomizationCfg.ObjectDesiredPoseCfg):
-        """Randomize the desired pose of the object."""
-        # -- desired object root position
-        if cfg.position_cat == "default":
-            # constant command for position
-            self.object_des_pose_w[env_ids, 0:3] = cfg.position_default
-        elif cfg.position_cat == "uniform":
-            # sample uniformly from box
-            # note: this should be within in the workspace of the robot
-            self.object_des_pose_w[env_ids, 0:3] = sample_uniform(
-                cfg.position_uniform_min, cfg.position_uniform_max, (len(env_ids), 3), device=self.device
-            )
-        else:
-            raise ValueError(f"Invalid category for randomizing the desired object positions '{cfg.position_cat}'.")
-        # -- desired object root orientation
-        if cfg.orientation_cat == "default":
-            # constant position of the object
-            self.object_des_pose_w[env_ids, 3:7] = cfg.orientation_default
-        elif cfg.orientation_cat == "uniform":
-            self.object_des_pose_w[env_ids, 3:7] = random_orientation(len(env_ids), self.device)
-        else:
-            raise ValueError(
-                f"Invalid category for randomizing the desired object orientation '{cfg.orientation_cat}'."
-            )
-        # transform command from local env to world
-        self.object_des_pose_w[env_ids, 0:3] += self.envs_positions[env_ids]
 
 
 class PushObservationManager(ObservationManager):
     """Reward manager for single-arm reaching environment."""
     def table_scene(self,env:PushEnv):
-        # print("get observs")
-        # obs_ta = torch.zeros((env.num_envs,env.cfg.og_resolution.tabletop[1]+12,
-        #                             env.cfg.og_resolution.tabletop[0]+12,1),device=env.device)
         obs_ta = torch.zeros((env.num_envs,env.cfg.og_resolution.tabletop[1],
                                     env.cfg.og_resolution.tabletop[0],1),device=env.device)
         for i in range(env.num_envs):
-            
-            # im = env.table_expand_og[i].cpu().numpy()*255/2.0
             im = env.table_og[i].cpu().numpy()
             ''' Add info of the position of the gripper'''
             # start_ind_x = max(env.actions_origin[i][0]-1,0)
@@ -1111,57 +1069,68 @@ class PushObservationManager(ObservationManager):
             # im = im/2.0
             ''' Add info of the position of the gripper'''
             im = im*255
-            # print('obs output')
-            # plt.imshow(im)
-            # plt.show()
             observation = np.array(im,dtype=np.uint8)
-            # observation = observation[:,np.newaxis].reshape([env.cfg.og_resolution.tabletop[1]+12,
-            #                         env.cfg.og_resolution.tabletop[0]+12])
             observation = observation[:,np.newaxis].reshape([env.cfg.og_resolution.tabletop[1],
                                     env.cfg.og_resolution.tabletop[0]])
             obs_ta[i,:,:,0] = torch.from_numpy(observation).to(env.device)
         return obs_ta
-        # return env.table_og
+    def enlarge_table_scene(self,env:PushEnv):
+       
+        obs_ta = torch.zeros((env.num_envs,env.cfg.og_resolution.tabletop[1]+12,
+                                    env.cfg.og_resolution.tabletop[0]+12,1),device=env.device)
+       
+        for i in range(env.num_envs):
+            
+            im = env.table_expand_og[i].cpu().numpy()*255/2.0
+            # print('obs output')
+            # plt.imshow(im)
+            # plt.show()
+            observation = np.array(im,dtype=np.uint8)
+            observation = observation[:,np.newaxis].reshape([env.cfg.og_resolution.tabletop[1]+12,
+                                    env.cfg.og_resolution.tabletop[0]+12])
+            obs_ta[i,:,:,0] = torch.from_numpy(observation).to(env.device)
+        return obs_ta
+        
         
     # def new_obj_mask(self,env:PushEnv):
     #     # print(env.new_obj_mask.shape)
         
     #     return obs_mask
         # return env.obj_masks
-    def arm_dof_pos(self, env: PushEnv):
-        """DOF positions for the arm."""
-        return env.robot.data.arm_dof_pos
+    # def arm_dof_pos(self, env: PushEnv):
+    #     """DOF positions for the arm."""
+    #     return env.robot.data.arm_dof_pos
 
-    def arm_dof_pos_scaled(self, env: PushEnv):
-        """DOF positions for the arm normalized to its max and min ranges."""
-        return scale_transform(
-            env.robot.data.arm_dof_pos,
-            env.robot.data.soft_dof_pos_limits[:, : env.robot.arm_num_dof, 0],
-            env.robot.data.soft_dof_pos_limits[:, : env.robot.arm_num_dof, 1],
-        )
+    # def arm_dof_pos_scaled(self, env: PushEnv):
+    #     """DOF positions for the arm normalized to its max and min ranges."""
+    #     return scale_transform(
+    #         env.robot.data.arm_dof_pos,
+    #         env.robot.data.soft_dof_pos_limits[:, : env.robot.arm_num_dof, 0],
+    #         env.robot.data.soft_dof_pos_limits[:, : env.robot.arm_num_dof, 1],
+    #     )
 
-    def arm_dof_vel(self, env: PushEnv):
-        """DOF velocity of the arm."""
-        return env.robot.data.arm_dof_vel
+    # def arm_dof_vel(self, env: PushEnv):
+    #     """DOF velocity of the arm."""
+    #     return env.robot.data.arm_dof_vel
 
-    def tool_dof_pos_scaled(self, env: PushEnv):
-        """DOF positions of the tool normalized to its max and min ranges."""
-        return scale_transform(
-            env.robot.data.tool_dof_pos,
-            env.robot.data.soft_dof_pos_limits[:, env.robot.arm_num_dof :, 0],
-            env.robot.data.soft_dof_pos_limits[:, env.robot.arm_num_dof :, 1],
-        )
+    # def tool_dof_pos_scaled(self, env: PushEnv):
+    #     """DOF positions of the tool normalized to its max and min ranges."""
+    #     return scale_transform(
+    #         env.robot.data.tool_dof_pos,
+    #         env.robot.data.soft_dof_pos_limits[:, env.robot.arm_num_dof :, 0],
+    #         env.robot.data.soft_dof_pos_limits[:, env.robot.arm_num_dof :, 1],
+    #     )
 
-    def tool_positions(self, env: PushEnv):
-        """Current end-effector position of the arm."""
-        return env.robot.data.ee_state_w[:, :3] - env.envs_positions
+    # def tool_positions(self, env: PushEnv):
+    #     """Current end-effector position of the arm."""
+    #     return env.robot.data.ee_state_w[:, :3] - env.envs_positions
 
-    def tool_orientations(self, env: PushEnv):
-        """Current end-effector orientation of the arm."""
-        # make the first element positive
-        quat_w = env.robot.data.ee_state_w[:, 3:7]
-        quat_w[quat_w[:, 0] < 0] *= -1
-        return quat_w
+    # def tool_orientations(self, env: PushEnv):
+    #     """Current end-effector orientation of the arm."""
+    #     # make the first element positive
+    #     quat_w = env.robot.data.ee_state_w[:, 3:7]
+    #     quat_w[quat_w[:, 0] < 0] *= -1
+    #     return quat_w
 
     # def object_positions(self, env: PushEnv):
     #     """Current object position."""
@@ -1197,57 +1166,24 @@ class PushObservationManager(ObservationManager):
     #     quat_w[quat_w[:, 0] < 0] *= -1
     #     return quat_w
 
-    def arm_actions(self, env: PushEnv):
-        """Last arm actions provided to env."""
-        return env.actions[:, :-1]
+    # def arm_actions(self, env: PushEnv):
+    #     """Last arm actions provided to env."""
+    #     return env.actions[:, :-1]
 
-    def tool_actions(self, env: PushEnv):
-        """Last tool actions provided to env."""
-        return env.actions[:, -1].unsqueeze(1)
+    # def tool_actions(self, env: PushEnv):
+    #     """Last tool actions provided to env."""
+    #     return env.actions[:, -1].unsqueeze(1)
 
-    def tool_actions_bool(self, env: PushEnv):
-        """Last tool actions transformed to a boolean command."""
-        return torch.sign(env.actions[:, -1]).unsqueeze(1)
+    # def tool_actions_bool(self, env: PushEnv):
+    #     """Last tool actions transformed to a boolean command."""
+    #     return torch.sign(env.actions[:, -1]).unsqueeze(1)
 
 
 class PushRewardManager(RewardManager):
-    """Reward manager for single-arm object lifting environment."""
+    """Reward manager for single-arm objects pushinging environment."""
 
-    # def reaching_object_position_l2(self, env: PushEnv):
-    #     """Penalize end-effector tracking position error using L2-kernel."""
-    #     return torch.sum(torch.square(env.robot.data.ee_state_w[:, 0:3]), dim=1)
-
-    # def reaching_object_position_exp(self, env: PushEnv, sigma: float):
-    #     """Penalize end-effector tracking position error using exp-kernel."""
-    #     error = torch.sum(torch.square(env.robot.data.ee_state_w[:, 0:3]), dim=1)
-    #     return torch.exp(-error / sigma)
-
-    # def reaching_object_position_tanh(self, env: PushEnv, sigma: float):
-    #     """Penalize tool sites tracking position error using tanh-kernel."""
-    #     # distance of end-effector to the object: (num_envs,)
-    #     ee_distance = torch.norm(env.robot.data.ee_state_w[:, 0:3], dim=1)
-    #     # distance of the tool sites to the object: (num_envs, num_tool_sites)
-    #     # object_root_pos = env.object.data.root_pos_w.unsqueeze(1)  # (num_envs, 1, 3)
-    #     tool_sites_distance = torch.norm(env.robot.data.tool_sites_state_w[:, :, :3], dim=-1)
-    #     # average distance of the tool sites to the object: (num_envs,)
-    #     # note: we add the ee distance to the average to make sure that the ee is always closer to the object
-    #     num_tool_sites = tool_sites_distance.shape[1]
-    #     average_distance = (ee_distance + torch.sum(tool_sites_distance, dim=1)) / (num_tool_sites + 1)
-
-    #     return 1 - torch.tanh(average_distance / sigma)
-
-    # def penalizing_arm_dof_velocity_l2(self, env: PushEnv):
-    #     """Penalize large movements of the robot arm."""
-    #     return -torch.sum(torch.square(env.robot.data.arm_dof_vel), dim=1)
-
-    # def penalizing_tool_dof_velocity_l2(self, env: PushEnv):
-    #     """Penalize large movements of the robot tool."""
-    #     return -torch.sum(torch.square(env.robot.data.tool_dof_vel), dim=1)
-
-    # def penalizing_arm_action_rate_l2(self, env: PushEnv):
-    #     """Penalize large variations in action commands besides tool."""
-    #     return -torch.sum(torch.square(env.actions[:, :-1] - env.previous_actions[:, :-1]), dim=1)
     def penalizing_pushing_outside(self,env:PushEnv):
+        '''penalize pushing partial item out of the table'''
         pixel_outside_table = torch.zeros((env.num_envs,),device=self.device)
         env_tab_ex_tmp = env.table_expand_og.clone()
         env_tab_ex_tmp_pre = env.table_expand_og_pre.clone()
@@ -1260,10 +1196,12 @@ class PushRewardManager(RewardManager):
         # print(-pixel_outside_table.type(torch.float16)/float(300.0))
         return -pixel_outside_table.type(torch.float16)/float(300.0)
     def penalizing_repeat_actions(self,env:PushEnv):
+        '''penalize repeat actions?TODO'''
         # print("repeat")
         # print(env.delta_same_action)
         return -env.delta_same_action.type(torch.float16) 
     def penalizing_falling(self,env:PushEnv):
+        '''get penalty when item fall off table'''
         # print("penalty fallen")
         # print(-env.falling_obj)
         # print("falling")
@@ -1277,12 +1215,12 @@ class PushRewardManager(RewardManager):
         # print(env.place_success)
         return env.place_success.type(torch.float16)
     def penalizing_steps(self,env:PushEnv):
-        # print("pernalize steps")
-        # print(-torch.where(env.step_count!=0,1,0).to(env.device))
+        '''try to make the pushing more efficient'''
         # print('steps')
         # print(torch.where(env.step_count!=0,1,0).to(env.device))
         return -torch.where(env.step_count!=0,1,0).to(env.device).type(torch.float16)
     def reward_og_change(self,env:PushEnv):
+        '''get reward when when the occupancy grid changed'''
         delta_og = torch.zeros((env.num_envs,),device=self.device)
         for i in range(env.num_envs):
             delta_tmp = env.table_og[i].clone() - env.table_og_pre[i].clone()
@@ -1298,6 +1236,7 @@ class PushRewardManager(RewardManager):
         # print(delta_og)
         return delta_og.type(torch.float16)
     def reward_near_obj(self,env:PushEnv):
+        '''try to force agent to find reasonable pushing starting points'''
         reward_near = torch.zeros((env.num_envs,),device=self.device)
         action_tmp_reward = env.actions.clone().cpu().numpy().astype(np.uint8)
         for i in range(env.num_envs):
@@ -1311,25 +1250,14 @@ class PushRewardManager(RewardManager):
                 start_ind_y = max(env.actions_origin[i][1]-1,0)
                 end_ind_y = min(env.actions_origin[i][1]+1,env.cfg.og_resolution.tabletop[1])
                 if torch.sum(table_og_tmp[start_ind_x:end_ind_x,start_ind_y:end_ind_y])>0:
-                    print('pushing reward')
+                    # print('pushing reward')
                     reward_near[i] = -2
-                    print(reward_near)
+                    # print(reward_near)
             else:
-                print('pushing reward')
+                # print('pushing reward')
                 reward_near[i] = -2
-                print(reward_near)
-                    # if env.actions_origin[i][0]<=env.cfg.og_resolution.tabletop[0]-2 and env.actions_origin[i][0]>=1:
-                    #     if env.actions_origin[i][1]<=env.cfg.og_resolution.tabletop[1]-2:
-                            # table_og_tmp = env.table_og[i].clone()
-                            # print(table_og_tmp[env.actions_origin[i][0]-1:env.actions_origin[i][0]+2,env.actions_origin[i][1]-1:env.actions_origin[i][1]+2])
-                            # if torch.sum(table_og_tmp[env.actions_origin[i][0]-1:env.actions_origin[i][0]+2,env.actions_origin[i][1]-1:env.actions_origin[i][1]+2])==0:
-                            #     reward_near[i] += 0.5
-                            # table_og_tmp[env.actions_origin[i][0]-1:env.actions_origin[i][0]+2,env.actions_origin[i][1]-1:env.actions_origin[i][1]+2]=2
-                            # table_og_tmp[env.actions_origin[i][0],env.actions_origin[i][1]-3:env.actions_origin[i][1]] = 2
-                            # print('pushing position')
-                            # plt.imshow(table_og_tmp.cpu().numpy())
-                            # plt.show()
-            
+                # print(reward_near)
+            '''penalize useless pushing'''        
             end_ind_y = min(env.actions_origin[i][1]+1,env.cfg.og_resolution.tabletop[1])
             start_ind_y = max(env.actions_origin[i][1]-5,0)
             if torch.sum(table_og_tmp[start_ind_x:end_ind_x,start_ind_y:end_ind_y]) == 0:
@@ -1347,8 +1275,7 @@ class PushRewardManager(RewardManager):
                 reward_near[i] -= 0.1*np.sqrt(np.min(np.abs(ind_pre_y))**2+np.min(np.abs(ind_pre_x))**2)
             
             
-            start_ind_y = max(env.actions_origin[i][1]-1,0)
-            
+            # start_ind_y = max(env.actions_origin[i][1]-1,0)
             # table_og_tmp[start_ind_x:end_ind_x,start_ind_y:end_ind_y] = 3
             # table_og_tmp[23:26,23:25] = 3
             # print('pushing position')
@@ -1357,6 +1284,7 @@ class PushRewardManager(RewardManager):
             # plt.show()
         return reward_near
     def reward_distribution_closer(self,env:PushEnv):
+        '''get reward when the item on the table be close to each other'''
         delta_og = torch.zeros((env.num_envs,),device=self.device)
         for i in range(env.num_envs):
             ind_pre = torch.where(env.table_og_pre[i]>=0.8)
