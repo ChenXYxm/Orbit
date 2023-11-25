@@ -1349,12 +1349,12 @@ class PushRewardManager(RewardManager):
             
             start_ind_y = max(env.actions_origin[i][1]-1,0)
             
-            # table_og_tmp[start_ind_x:end_ind_x,start_ind_y:end_ind_y] = 3
-            # table_og_tmp[23:26,23:25] = 3
-            # print('pushing position')
-            # print(reward_near)
-            # plt.imshow(table_og_tmp.cpu().numpy())
-            # plt.show()
+            table_og_tmp[start_ind_x:end_ind_x,start_ind_y:end_ind_y] = 3
+            
+            print('pushing position')
+            print(reward_near)
+            plt.imshow(table_og_tmp.cpu().numpy())
+            plt.show()
         return reward_near
     def reward_distribution_closer(self,env:PushEnv):
         delta_og = torch.zeros((env.num_envs,),device=self.device)

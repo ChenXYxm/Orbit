@@ -138,12 +138,13 @@ class ObservationsCfg:
         enable_corruption: bool = True
         # observation terms
         # -- joint state
-        # table_scene = {"scale": 1.0}
-        ''' modified for toy example
+        # table_scene = {"scale": 1.0} ######## original
+        ''' modified for toy example v2'''
         table_scene = {"scale": 1.0}
-        '''
-        ''' modified for toy example'''
-        obs_for_toy_example = {"scale": 1.0}
+        '''modified for toy example v2'''
+        ''' modified for toy example toy example v1'''
+        # obs_for_toy_example = {"scale": 1.0}
+        '''modified for toy example toy example v1'''
         # new_obj_mask = {"scale": 1.0}
         # arm_dof_pos = {"scale": 1.0}
         # # arm_dof_pos_scaled = {"scale": 1.0}
@@ -231,7 +232,13 @@ class RewardsCfg:
     reward_near_obj = {"weight":0.1}
     '''
     '''modified for toy example'''
-    reward_for_toy_example = {"weight": 1}
+    '''reward for toy example v1'''
+    #reward_for_toy_example = {"weight": 1}
+    '''reward for toy example v1'''
+    '''reward for toy example v2'''
+    #reward_for_toy_example = {"weight": 1}
+    '''reward for toy example v2'''
+    reward_near_obj = {"weight": 1}
     # penalizing_steps = {"weight": 0.1}
     # penalizing_repeat_actions = {"weight": 0.5}
     # penalizing_pushing_outside = {"weight":1.0}
@@ -306,7 +313,7 @@ class PushEnvCfg(IsaacEnvCfg):
 
     # General Settings
     env: EnvCfg = EnvCfg(num_envs=4096, env_spacing=3, episode_length_s=0.30)
-    viewer: ViewerCfg = ViewerCfg(debug_vis=True, eye=(7.5, 7.5, 7.5), lookat=(0.0, 0.0, 0.0))
+    viewer: ViewerCfg = ViewerCfg(debug_vis=False, eye=(7.5, 0.0, 0.0), lookat=(0.0, 0.0, 0.0))
     # Physics settings
     sim: SimCfg = SimCfg(
         dt=0.01,
