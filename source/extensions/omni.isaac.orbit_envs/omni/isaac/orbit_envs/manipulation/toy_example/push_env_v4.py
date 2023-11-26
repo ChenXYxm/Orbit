@@ -367,6 +367,7 @@ class PushEnv(IsaacEnv):
         # actions_tmp[:,:3] = self.actions.clone()
         # actions_tmp[:,1] +=0.1
         ''' modified for toy example'''
+        '''
         ########### lift the gripper above the start position
         for i in range(25):
             self.robot.update_buffers(self.dt)
@@ -806,7 +807,7 @@ class PushEnv(IsaacEnv):
         self.robot.update_buffers(self.dt)
         for _ in range(110):
             self.sim.step()
-        
+        '''
         # env_ids=torch.from_numpy(np.arange(self.num_envs)).to(self.device)
         # dof_pos, dof_vel = self.robot.get_default_dof_state(env_ids=env_ids)
         # self.robot.set_dof_state(dof_pos, dof_vel, env_ids=env_ids)
@@ -1689,12 +1690,12 @@ class PushRewardManager(RewardManager):
                 reward_near[i] -= 0.1*np.sqrt(np.min(np.abs(ind_pre_y))**2+np.min(np.abs(ind_pre_x))**2)
             
             ### visualize
-            # start_ind_y = max(env.actions_origin[i][1]-1,0)
-            # table_og_tmp[start_ind_x:end_ind_x,start_ind_y:end_ind_y] = 3
-            # print('pushing position')
-            # print(reward_near)
-            # plt.imshow(table_og_tmp.cpu().numpy())
-            # plt.show()
+            start_ind_y = max(env.actions_origin[i][1]-1,0)
+            table_og_tmp[start_ind_x:end_ind_x,start_ind_y:end_ind_y] = 3
+            print('pushing position')
+            print(reward_near)
+            plt.imshow(table_og_tmp.cpu().numpy())
+            plt.show()
         return reward_near
     def reward_for_toy_example(self,env:PushEnv):
         reward_toy = torch.zeros((env.num_envs,),device=self.device)
