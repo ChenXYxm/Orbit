@@ -28,7 +28,7 @@ from omni.isaac.orbit.utils.mdp import ObservationManager, RewardManager
 from omni.isaac.orbit.sensors.camera import Camera
 from omni.isaac.orbit_envs.isaac_env import IsaacEnv, VecEnvIndices, VecEnvObs
 from omni.isaac.core.objects import FixedCuboid
-from .push_cfg_v4 import PushEnvCfg, RandomizationCfg, YCBobjectsCfg, CameraCfg
+from .push_cfg_v6 import PushEnvCfg, RandomizationCfg, YCBobjectsCfg, CameraCfg
 from omni.isaac.orbit.utils.assets import ISAAC_NUCLEUS_DIR
 from omni.isaac.core.prims import RigidPrim,GeometryPrim
 # from omni.isaac.orbit.utils.math import 
@@ -330,6 +330,7 @@ class PushEnv(IsaacEnv):
         #     self.actions_origin[i,1] = min(self.cfg.og_resolution.tabletop[1]-1,int(self.actions_origin[i,1]))
         '''
         ###################### transform discrete actions into start positions and pushing directions
+        self._check_reaching_toy_v2()
         # print('action')
         # print(actions)
         # print(self.actions_origin)
@@ -343,15 +344,13 @@ class PushEnv(IsaacEnv):
         self.actions[:,0] = action_range[0]*(-actions_tmp[:,1].clone()+float(self.cfg.og_resolution.tabletop[0]/2))/float(self.cfg.og_resolution.tabletop[0]/2)
         # print(self.actions)
         ################# stop pushing
-        # for i in range(self.num_envs):
-        #     if self.actions[i,1] >=0.235:
-        #         if self.actions[i,0]>=0.235:
-        #             if self.actions[i,2]>=0.240 and self.actions[i,2]<=0.36:
-        #                 print("stop actions")
-        #                 print(self.actions)
-        #                 self.stop_pushing[i] = 1  
-        #                 self.actions[i,1] = -0.5
-        #                 self.actions[i,0] = 0.5
+        for i in range(self.num_envs):
+            if self.check_reaching[i] == 0:
+                        # print("stop actions")
+                        # print(self.actions)
+                        self.stop_pushing[i] = 1  
+                        self.actions[i,1] = -0.5
+                        self.actions[i,0] = 0.5
 
         actions_tmp = torch.zeros((self.num_envs,self._ik_controller.num_actions),device=self.device)
         actions_tmp[:,:2] = self.actions[:,:2].clone()
@@ -367,7 +366,7 @@ class PushEnv(IsaacEnv):
         # actions_tmp[:,:3] = self.actions.clone()
         # actions_tmp[:,1] +=0.1
         ''' modified for toy example'''
-        '''
+        
         ########### lift the gripper above the start position
         for i in range(25):
             self.robot.update_buffers(self.dt)
@@ -807,7 +806,7 @@ class PushEnv(IsaacEnv):
         self.robot.update_buffers(self.dt)
         for _ in range(110):
             self.sim.step()
-        '''
+        
         # env_ids=torch.from_numpy(np.arange(self.num_envs)).to(self.device)
         # dof_pos, dof_vel = self.robot.get_default_dof_state(env_ids=env_ids)
         # self.robot.set_dof_state(dof_pos, dof_vel, env_ids=env_ids)
@@ -817,9 +816,9 @@ class PushEnv(IsaacEnv):
         for i,obj_t in enumerate(self.obj1):
             obj_t.update_buffers(self.dt)
         ''' modified for toy example
-        self._check_fallen_objs(env_ids)
-        # check_placing
-        self._check_placing()
+            self._check_fallen_objs(env_ids)
+            # check_placing
+            self._check_placing()
         '''
         # reward
         self.reward_buf = self._reward_manager.compute()
@@ -1229,7 +1228,7 @@ class PushEnv(IsaacEnv):
             end_ind_x = min(self.actions_origin[i][0]+2,self.cfg.og_resolution.tabletop[0])
             start_ind_y = max(self.actions_origin[i][1]-4,0)
             end_ind_y = min(self.actions_origin[i][1],self.cfg.og_resolution.tabletop[1])
-            if torch.sum(table_og_tmp[start_ind_x:end_ind_x,start_ind_y:end_ind_y])>=1:
+            if torch.sum(table_og_tmp[self.actions_origin[i][0],start_ind_y:end_ind_y])>=1:
                 start_ind_y = max(self.actions_origin[i][1]-1,0)
                 end_ind_y = min(self.actions_origin[i][1]+1,self.cfg.og_resolution.tabletop[1])
                 if torch.sum(table_og_tmp[start_ind_x:end_ind_x,start_ind_y:end_ind_y])==0:
@@ -1548,7 +1547,7 @@ class PushRewardManager(RewardManager):
                            6:env.cfg.og_resolution.tabletop[0]+6] = 0
             env_tab_ex_tmp_pre[i][6:env.cfg.og_resolution.tabletop[1]+6,
                            6:env.cfg.og_resolution.tabletop[0]+6] = 0
-            pixel_outside_table[i] = torch.sum(env_tab_ex_tmp[i]-env_tab_ex_tmp_pre[i])
+            pixel_outside_table[i] = torch.sum(env_tab_ex_tmp[i]-env_tab_ex_tmp_pre[i])/30
         # print(-pixel_outside_table.type(torch.float16)/float(300.0))
         return -pixel_outside_table.type(torch.float16)/float(300.0)
     def penalizing_repeat_actions(self,env:PushEnv):
@@ -1690,12 +1689,12 @@ class PushRewardManager(RewardManager):
                 reward_near[i] -= 0.1*np.sqrt(np.min(np.abs(ind_pre_y))**2+np.min(np.abs(ind_pre_x))**2)
             
             ### visualize
-            # start_ind_y = max(env.actions_origin[i][1]-1,0)
-            # table_og_tmp[start_ind_x:end_ind_x,start_ind_y:end_ind_y] = 3
-            # print('pushing position')
-            # print(reward_near)
-            # plt.imshow(table_og_tmp.cpu().numpy())
-            # plt.show()
+            start_ind_y = max(env.actions_origin[i][1]-1,0)
+            table_og_tmp[start_ind_x:end_ind_x,start_ind_y:end_ind_y] = 3
+            print('pushing position')
+            print(reward_near)
+            plt.imshow(table_og_tmp.cpu().numpy())
+            plt.show()
         return reward_near
     def reward_for_toy_example(self,env:PushEnv):
         reward_toy = torch.zeros((env.num_envs,),device=self.device)
