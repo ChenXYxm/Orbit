@@ -2,7 +2,7 @@
 # All rights reserved.
 #
 # SPDX-License-Identifier: BSD-3-Clause
-
+''' different items'''
 """This script demonstrates how to create a simple stage in Isaac Sim with lights and a ground plane."""
 
 """Launch Isaac Sim Simulator first."""
@@ -203,9 +203,9 @@ def main():
         # "crackerBox": f"{ISAAC_NUCLEUS_DIR}/Props/YCB/Axis_Aligned_Physics/003_cracker_box.usd",
         "sugarBox": f"{ISAAC_NUCLEUS_DIR}/Props/YCB/Axis_Aligned_Physics/004_sugar_box.usd",
         # "tomatoSoupCan": f"{ISAAC_NUCLEUS_DIR}/Props/YCB/Axis_Aligned_Physics/005_tomato_soup_can.usd",
-        # "mustardBottle": f"{ISAAC_NUCLEUS_DIR}/Props/YCB/Axis_Aligned_Physics/006_mustard_bottle.usd",
+        "mustardBottle": f"{ISAAC_NUCLEUS_DIR}/Props/YCB/Axis_Aligned_Physics/006_mustard_bottle.usd",
     }
-    ycb_name = ['sugarBox']
+    ycb_name = ['sugarBox','mustardBottle']
     obj1 = []
     obj_name_list = []
     for i in range(9):
@@ -227,6 +227,26 @@ def main():
         )
         obj1.append(RigidObject(obj_cfg1))
         obj_name_list.append(ycb_name[0]+str(i))
+    obj2 = []
+    for i in range(9):
+        obj_cfg2 = RigidObjectCfg()
+        obj_cfg2.meta_info = RigidObjectCfg.MetaInfoCfg(usd_path=ycb_usd_paths[ycb_name[1]],scale=(1.0, 1.0, 1.0),)
+        obj_cfg2.init_state = RigidObjectCfg.InitialStateCfg(
+        pos=(2-0.25*i, 1.0, -0.4), rot=(1.0, 0.0, 0.0, 0.0), lin_vel=(0.0, 0.0, 0.0), ang_vel=(0.0, 0.0, 0.0)
+        )
+        obj_cfg2.rigid_props = RigidObjectCfg.RigidBodyPropertiesCfg(
+            solver_position_iteration_count=16,
+            solver_velocity_iteration_count=1,
+            max_angular_velocity=0.5,
+            max_linear_velocity=0.5,
+            max_depenetration_velocity=0.5,
+            disable_gravity=False,
+        )
+        obj_cfg2.physics_material = RigidObjectCfg.PhysicsMaterialCfg(
+            static_friction=0.5, dynamic_friction=0.5, restitution=0.0, prim_path="/World/Materials/cubeMaterial"
+        )
+        obj2.append(RigidObject(obj_cfg2))
+        obj_name_list.append(ycb_name[1]+str(i))
     ################################ robot setting
     robot_cfg = FRANKA_PANDA_ARM_WITH_PANDA_HAND_CFG
     robot_cfg.data_info.enable_jacobian = True
@@ -245,6 +265,8 @@ def main():
     ###################################### spawn items
     for i,obj_t in enumerate(obj1):
         obj_t.spawn(f"/World/Objs/obj1/obj_{i}")
+    for i,obj_t in enumerate(obj2):
+        obj_t.spawn(f"/World/Objs/obj2/obj_{i}")
     ###################################### sensor extension camera
     
     camera_cfg = PinholeCameraCfg(
@@ -273,6 +295,8 @@ def main():
     ik_controller.initialize()
     for i,obj_t in enumerate(obj1):
             obj_t.initialize(f"/World/Objs/obj1/obj_{i}")
+    for i,obj_t in enumerate(obj2):
+            obj_t.initialize(f"/World/Objs/obj2/obj_{i}")
     # Reset states
     robot.reset_buffers()
     ik_controller.reset_idx()
@@ -285,6 +309,8 @@ def main():
     sideTable.set_collision_enabled(True)
     Table.set_collision_enabled(True)
     for i,obj_t in enumerate(obj1):
+            obj_t.update_buffers(0.01)
+    for i,obj_t in enumerate(obj2):
             obj_t.update_buffers(0.01)
     for _ in range(10):
         sim.render()
@@ -311,18 +337,26 @@ def main():
         translation = torch.rand(2).tolist()
         translation = [0.33*translation[0]-0.165,0.33*translation[1]-0.165,0.07]
         rot = convert_quat(tf.Rotation.from_euler("XYZ", (0,0,angle), degrees=True).as_quat(), to="wxyz")
-        root_state = obj1[0].get_default_root_state()
-        root_state[:,:3] = torch.tensor(translation).cuda()
-        root_state[:,3:7] = torch.tensor(rot).cuda()
-        obj1[0].set_root_state(root_state)
-        obj1[0].update_buffers(0.01)
+        if randi == 0: 
+            root_state = obj1[0].get_default_root_state()
+            root_state[:,:3] = torch.tensor(translation).cuda()
+            root_state[:,3:7] = torch.tensor(rot).cuda()
+            obj1[0].set_root_state(root_state)
+            obj1[0].update_buffers(0.01)
+        else:
+            root_state = obj2[0].get_default_root_state()
+            root_state[:,:3] = torch.tensor(translation).cuda()
+            root_state[:,3:7] = torch.tensor(rot).cuda()
+            obj2[0].set_root_state(root_state)
+            obj2[0].update_buffers(0.01)
+        
         table_obj_pos_rot[obj_name_i] = [(translation,rot)]
         for j in range(10):
             sim.step()
         obj_dict[obj_name_i] += 1 
         #################### start the loop to drop item iteratively
-        for j in range(1,9):
-            print(j)
+        while obj_dict[ycb_name[0]] < 9 or obj_dict[ycb_name[1]] < 9:
+            # print(j)
             if simulation_app.is_running():
                 print('running')
             if sim.step(render=not args_cli.headless):
@@ -398,15 +432,29 @@ def main():
                 # print(new_obj_pos)
                 translation = [(Nx/2-new_obj_pos[1])*1./100.,(new_obj_pos[0]-Ny/2)*1./100.,0.05]
                 # print(translation)
-                root_state = obj1[j].get_default_root_state()
-                root_state[:,:3] = torch.tensor(translation).cuda()
-                root_state[:,3:7] = torch.tensor(rot).cuda()
-                obj1[j].set_root_state(root_state)
-                for k in range(30):
-                    sim.step()
-                obj1[j].update_buffers(0.01)
-                print('current state')
-                print(obj1[j].data.root_pos_w)
+                if randi == 0:
+                    j = int(obj_dict[obj_name_i]-1)
+                    root_state = obj1[j].get_default_root_state()
+                    root_state[:,:3] = torch.tensor(translation).cuda()
+                    root_state[:,3:7] = torch.tensor(rot).cuda()
+                    obj1[j].set_root_state(root_state)
+                    for k in range(30):
+                        sim.step()
+                    obj1[j].update_buffers(0.01)
+                    
+                    print('current state')
+                    print(obj1[j].data.root_pos_w)
+                else:
+                    j = int(obj_dict[obj_name_i]-1)
+                    root_state = obj2[j].get_default_root_state()
+                    root_state[:,:3] = torch.tensor(translation).cuda()
+                    root_state[:,3:7] = torch.tensor(rot).cuda()
+                    obj2[j].set_root_state(root_state)
+                    for k in range(30):
+                        sim.step()
+                    obj2[j].update_buffers(0.01)
+                    print('current state')
+                    print(obj2[j].data.root_pos_w)
                 if obj_name_i not in table_obj_pos_rot:
                     table_obj_pos_rot[obj_name_i] = [(translation,rot)]
                 else:
@@ -419,7 +467,7 @@ def main():
                 # print(obj1[j].data.root_pos_w)
             else:
                 file_name_ori = "dict_"
-                file_list = os.listdir("test_table/")
+                file_list = os.listdir("generated_table2/")
                 print('done')
                 print(table_obj_pos_rot)
                 for k in table_obj_pos_rot:
@@ -430,7 +478,7 @@ def main():
                     if file_name in file_list:
                         num_file +=1
                     else:
-                        file_path = "test_table/"+file_name
+                        file_path = "generated_table2/"+file_name
                         f_save = open(file_path,'wb')
                         table_obj_pos_rot = [table_obj_pos_rot,obj_name_i]
                         pickle.dump(table_obj_pos_rot,f_save)
@@ -442,6 +490,9 @@ def main():
                 break
         #################### reset
         for i,obj_t in enumerate(obj1):
+            root_state = obj_t.get_default_root_state()
+            obj_t.set_root_state(root_state)
+        for i,obj_t in enumerate(obj2):
             root_state = obj_t.get_default_root_state()
             obj_t.set_root_state(root_state)
         for j in range(30):
