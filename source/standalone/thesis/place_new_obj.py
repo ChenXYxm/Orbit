@@ -357,7 +357,7 @@ def place_new_obj_fun(occu_ori,new_obj):
         flag_found = False
         dila_polygons = []
         for i in polygons:
-            dila_polygons.append(i.buffer(3))
+            dila_polygons.append(i.buffer(2.5))
         tree = STRtree(dila_polygons)
         # print("new obj shape")
         # print([num_grid_l,num_grid_s])

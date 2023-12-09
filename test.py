@@ -4,6 +4,7 @@ import os
 import matplotlib.pyplot as plt
 import torch
 from shapely import centroid, Point, Polygon
+import torch.nn.functional as F
 a1 = np.array([17,9])
 a2 = np.array([17,0])
 a3 = np.array([0,0])
@@ -80,3 +81,18 @@ yy = xx.copy()
 yy[1] = 10
 print(xx)
 print(yy)
+
+a = torch.randn(4, 4,2)
+print(a)
+print(torch.max(a, 0,keepdim=True))
+a = a.numpy()
+ind = np.unravel_index(np.argmax(a), a.shape)
+print(ind)
+y = np.array([1,0])
+x = np.array([0,1])
+
+print(np.cross(x,y),np.cross(y,x))
+
+                        
+
+

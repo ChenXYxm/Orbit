@@ -85,6 +85,7 @@ class Sb3VecEnvWrapper(gym.Wrapper, VecEnv):
         # add buffer for logging episodic information
         self._ep_rew_buf = torch.zeros(self.env.num_envs, dtype=torch.float, device=self.env.device)
         self._ep_len_buf = torch.zeros(self.env.num_envs, dtype=torch.float, device=self.env.device)
+        
 
     """
     Properties

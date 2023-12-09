@@ -7,10 +7,10 @@ policy: 'CnnPolicy'
 n_steps: 64
 # mini batch size: num_envs * nsteps / nminibatches 2048×512÷2048
 
-batch_size: 64 ##ppo
+batch_size: 32 ##ppo
 gae_lambda: 0.95
 gamma: 0.99
-n_epochs: 8
+n_epochs: 6
 ent_coef: 0.001
 vf_coef: 0.5
 learning_rate: !!float 1e-4

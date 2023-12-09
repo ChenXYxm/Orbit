@@ -67,7 +67,6 @@ class ManipulationObjectCfg(RigidObjectCfg):
 @configclass
 class env_name:
     file_list = os.listdir("generated_table/")
-    test_file_list = os.listdir("test_table/")
 @configclass
 class GoalMarkerCfg:
     """Properties for visualization marker."""
@@ -239,10 +238,12 @@ class RewardsCfg:
     '''reward for toy example v2'''
     #reward_for_toy_example = {"weight": 1}
     '''reward for toy example v2'''
+    check_placing = {"weight": 1}
     reward_near_obj = {"weight": 1}
+    penalizing_falling = {"weight": 0.5}
     # penalizing_steps = {"weight": 0.1}
     # penalizing_repeat_actions = {"weight": 0.5}
-    # penalizing_pushing_outside = {"weight":1.0}
+    penalizing_pushing_outside = {"weight":0.2}
     # penalizing_tool_action_l2 = {"weight": 1e-2}
     # -- object-centric
     # tracking_object_position_exp = {"weight": 5.0, "sigma": 0.25, "threshold": 0.08}
@@ -313,7 +314,7 @@ class PushEnvCfg(IsaacEnvCfg):
     """Configuration for the push environment."""
 
     # General Settings
-    env: EnvCfg = EnvCfg(num_envs=4096, env_spacing=3, episode_length_s=0.060)
+    env: EnvCfg = EnvCfg(num_envs=4096, env_spacing=3, episode_length_s=0.30)
     viewer: ViewerCfg = ViewerCfg(debug_vis=False, eye=(7.5, 7.5, 7.5), lookat=(0.0, 0.0, 0.0))
     # Physics settings
     sim: SimCfg = SimCfg(

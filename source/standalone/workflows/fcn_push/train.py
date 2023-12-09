@@ -42,11 +42,9 @@ simulation_app = SimulationApp(config, experience=app_experience)
 import gym
 import os
 from datetime import datetime
-
-from stable_baselines3 import PPO
+import torch
 from stable_baselines3.common.callbacks import CheckpointCallback
 from stable_baselines3.common.logger import configure
-from stable_baselines3.common.vec_env import VecNormalize
 
 from omni.isaac.orbit.utils.dict import print_dict
 from omni.isaac.orbit.utils.io import dump_pickle, dump_yaml
@@ -55,32 +53,31 @@ import omni.isaac.contrib_envs  # noqa: F401
 import omni.isaac.orbit_envs  # noqa: F401
 from omni.isaac.orbit_envs.utils import parse_env_cfg
 from omni.isaac.orbit_envs.utils.wrappers.sb3 import Sb3VecEnvWrapper
+from DQNAgent import DQNAgent, ReplayBuffer,Sars
 
-from config import parse_sb3_cfg
-
+from fcn2 import FCNet
+# from config import parse_sb3_cfg
 
 def main():
     """Train with stable-baselines agent."""
     # parse configuration
     env_cfg = parse_env_cfg(args_cli.task, use_gpu=not args_cli.cpu, num_envs=args_cli.num_envs)
-    agent_cfg = parse_sb3_cfg(args_cli.task)
-    # override configuration with command line arguments
-    if args_cli.seed is not None:
-        agent_cfg["seed"] = args_cli.seed
+    # agent_cfg = parse_sb3_cfg(args_cli.task)
+    # # override configuration with command line arguments
+    # if args_cli.seed is not None:
+    #     agent_cfg["seed"] = args_cli.seed
 
     # directory for logging into
-    # logs/sb3/Isaac-Toy-Franka-v0/Dec06_17-42-42
-    # log_dir = os.path.join("logs", "sb3", 'Isaac-Toy-Franka-v0', 'Dec06_17-42-42')
     log_dir = os.path.join("logs", "sb3", args_cli.task, datetime.now().strftime("%b%d_%H-%M-%S"))
     # dump the configuration into log-directory
     dump_yaml(os.path.join(log_dir, "params", "env.yaml"), env_cfg)
-    dump_yaml(os.path.join(log_dir, "params", "agent.yaml"), agent_cfg)
+    # dump_yaml(os.path.join(log_dir, "params", "agent.yaml"), agent_cfg)
     dump_pickle(os.path.join(log_dir, "params", "env.pkl"), env_cfg)
-    dump_pickle(os.path.join(log_dir, "params", "agent.pkl"), agent_cfg)
+    # dump_pickle(os.path.join(log_dir, "params", "agent.pkl"), agent_cfg)
 
     # read configurations about the agent-training
-    policy_arch = agent_cfg.pop("policy")
-    n_timesteps = agent_cfg.pop("n_timesteps")
+    # policy_arch = agent_cfg.pop("policy")
+    # n_timesteps = agent_cfg.pop("n_timesteps")
 
     # create isaac environment
     env = gym.make(args_cli.task, cfg=env_cfg, headless=args_cli.headless, viewport=args_cli.video)
@@ -97,34 +94,52 @@ def main():
     # wrap around environment for stable baselines
     env = Sb3VecEnvWrapper(env)
     # set the seed
-    env.seed(seed=agent_cfg["seed"])
+    env.seed(seed=36)
 
-    if "normalize_input" in agent_cfg:
-        env = VecNormalize(
-            env,
-            training=True,
-            norm_obs="normalize_input" in agent_cfg and agent_cfg.pop("normalize_input"),
-            norm_reward="normalize_value" in agent_cfg and agent_cfg.pop("normalize_value"),
-            clip_obs="clip_obs" in agent_cfg and agent_cfg.pop("clip_obs"),
-            gamma=agent_cfg["gamma"],
-            clip_reward=np.inf,
-        )
+    # if "normalize_input" in agent_cfg:
+    #     env = VecNormalize(
+    #         env,
+    #         training=True,
+    #         norm_obs="normalize_input" in agent_cfg and agent_cfg.pop("normalize_input"),
+    #         norm_reward="normalize_value" in agent_cfg and agent_cfg.pop("normalize_value"),
+    #         clip_obs="clip_obs" in agent_cfg and agent_cfg.pop("clip_obs"),
+    #         gamma=agent_cfg["gamma"],
+    #         clip_reward=np.inf,
+    #     )
 
     # create agent from stable baselines
-    # agent = PPO(policy_arch, env, verbose=1, **agent_cfg)
-    # print(agent.policy)
-    checkpoint_path = '/home/cxy/Thesis/orbit/Orbit/logs/sb3/Isaac-Toy-Franka-v0/Dec08_15-00-21/model_32640_steps'
-    agent = PPO.load(checkpoint_path, env, print_system_info=True)
-    # configure the logger
-    new_logger = configure(log_dir, ["stdout", "tensorboard"])
-    agent.set_logger(new_logger)
+    policy_arch = FCNet(1,1).cuda()
+    agent = DQNAgent(env,policy_arch)
+    observation = env.reset()
+    observation = torch.from_numpy(observation/255.0).permute(0,3,1,2).to('cuda:0').float()
+    q_vals_push,_ = policy_arch(observation)
+    print(q_vals_push.size())
+    rb = ReplayBuffer()
+    last_observation = observation.clone()
+    try: 
+        while True:
+            action = env.action_space.sample().reshape(1,-1)
+            actions = np.concatenate((action,action),axis=0)
+            print(actions)
+            observation, reward, done, info = env.step(actions)
+            rb.insert(Sars(last_observation,actions,reward,observation))
+            
+            if done.any():
+                observation = env.reset()
+            last_observation = observation
+    except KeyboardInterrupt:
+        pass
 
-    # callbacks for agent
-    checkpoint_callback = CheckpointCallback(save_freq=640, save_path=log_dir, name_prefix="model", verbose=2)
-    # train the agent
-    agent.learn(total_timesteps=n_timesteps, callback=checkpoint_callback)
-    # save the final model
-    agent.save(os.path.join(log_dir, "model"))
+    # configure the logger
+    # new_logger = configure(log_dir, ["stdout", "tensorboard"])
+    # agent.set_logger(new_logger)
+
+    # # callbacks for agent
+    # checkpoint_callback = CheckpointCallback(save_freq=100, save_path=log_dir, name_prefix="model", verbose=2)
+    # # train the agent
+    # agent.learn(total_timesteps=n_timesteps, callback=checkpoint_callback)
+    # # save the final model
+    # agent.save(os.path.join(log_dir, "model"))
 
     # close the simulator
     env.close()

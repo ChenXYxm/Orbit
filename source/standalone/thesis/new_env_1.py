@@ -309,7 +309,7 @@ def main():
         obj_name_i = ycb_name[randi]
         angle = np.random.randint(0,180)
         translation = torch.rand(2).tolist()
-        translation = [0.3*translation[0]-0.15,0.3*translation[1]-0.15,0.07]
+        translation = [0.33*translation[0]-0.165,0.33*translation[1]-0.165,0.07]
         rot = convert_quat(tf.Rotation.from_euler("XYZ", (0,0,angle), degrees=True).as_quat(), to="wxyz")
         root_state = obj1[0].get_default_root_state()
         root_state[:,:3] = torch.tensor(translation).cuda()
@@ -395,15 +395,15 @@ def main():
                     rot = convert_quat(tf.Rotation.from_euler("XYZ", (-90,np.rad2deg(new_obj_pos[2]),0), degrees=True).as_quat(), to="wxyz")
                 else:
                     rot = convert_quat(tf.Rotation.from_euler("XYZ", (0,0,-np.rad2deg(new_obj_pos[2])), degrees=True).as_quat(), to="wxyz")
-                print(new_obj_pos)
+                # print(new_obj_pos)
                 translation = [(Nx/2-new_obj_pos[1])*1./100.,(new_obj_pos[0]-Ny/2)*1./100.,0.05]
-                print(translation)
+                # print(translation)
                 root_state = obj1[j].get_default_root_state()
                 root_state[:,:3] = torch.tensor(translation).cuda()
                 root_state[:,3:7] = torch.tensor(rot).cuda()
                 obj1[j].set_root_state(root_state)
-                for k in range(250):
-                    sim.step
+                for k in range(30):
+                    sim.step()
                 obj1[j].update_buffers(0.01)
                 print('current state')
                 print(obj1[j].data.root_pos_w)
@@ -411,15 +411,15 @@ def main():
                     table_obj_pos_rot[obj_name_i] = [(translation,rot)]
                 else:
                     table_obj_pos_rot[obj_name_i].append((translation,rot))
-                for k in range(250):
-                    sim.step
+                for k in range(20):
+                    sim.step()
                 for k in range(20):
                     sim.render()
-                print('current state')
-                print(obj1[j].data.root_pos_w)
+                # print('current state')
+                # print(obj1[j].data.root_pos_w)
             else:
                 file_name_ori = "dict_"
-                file_list = os.listdir("generated_table/")
+                file_list = os.listdir("test_table/")
                 print('done')
                 print(table_obj_pos_rot)
                 for k in table_obj_pos_rot:
@@ -430,7 +430,7 @@ def main():
                     if file_name in file_list:
                         num_file +=1
                     else:
-                        file_path = "generated_table/"+file_name
+                        file_path = "test_table/"+file_name
                         f_save = open(file_path,'wb')
                         table_obj_pos_rot = [table_obj_pos_rot,obj_name_i]
                         pickle.dump(table_obj_pos_rot,f_save)
@@ -444,7 +444,7 @@ def main():
         for i,obj_t in enumerate(obj1):
             root_state = obj_t.get_default_root_state()
             obj_t.set_root_state(root_state)
-        for j in range(200):
+        for j in range(30):
             sim.step()   
    
     
@@ -463,13 +463,13 @@ def get_pcd(camera):
         pointcloud_w = pointcloud_w.cpu().numpy()
     pcd = o3d.geometry.PointCloud()
     pcd.points = o3d.utility.Vector3dVector(pointcloud_w)
-    rgb=camera.data.output["rgb"]
-    rgb = convert_to_torch(rgb, device='cuda:0', dtype=torch.float32)
-    rgb = rgb[:, :, :3].cpu().data.numpy()
+    # rgb=camera.data.output["rgb"]
+    # rgb = convert_to_torch(rgb, device='cuda:0', dtype=torch.float32)
+    # rgb = rgb[:, :, :3].cpu().data.numpy()
     
-    img = Image.fromarray((rgb).astype(np.uint8))
-    plt.imshow(img)
-    plt.show()
+    # img = Image.fromarray((rgb).astype(np.uint8))
+    # plt.imshow(img)
+    # plt.show()
     # o3d.visualization.draw_geometries([pcd])
     return pcd
 def get_new_obj_info(obj_type):

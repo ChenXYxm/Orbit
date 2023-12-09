@@ -67,7 +67,6 @@ class ManipulationObjectCfg(RigidObjectCfg):
 @configclass
 class env_name:
     file_list = os.listdir("generated_table/")
-    test_file_list = os.listdir("test_table/")
 @configclass
 class GoalMarkerCfg:
     """Properties for visualization marker."""
@@ -313,7 +312,7 @@ class PushEnvCfg(IsaacEnvCfg):
     """Configuration for the push environment."""
 
     # General Settings
-    env: EnvCfg = EnvCfg(num_envs=4096, env_spacing=3, episode_length_s=0.060)
+    env: EnvCfg = EnvCfg(num_envs=4096, env_spacing=3, episode_length_s=0.30)
     viewer: ViewerCfg = ViewerCfg(debug_vis=False, eye=(7.5, 7.5, 7.5), lookat=(0.0, 0.0, 0.0))
     # Physics settings
     sim: SimCfg = SimCfg(
