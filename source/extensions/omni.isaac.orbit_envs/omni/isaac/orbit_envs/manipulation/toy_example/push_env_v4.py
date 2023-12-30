@@ -1229,7 +1229,7 @@ class PushEnv(IsaacEnv):
             end_ind_x = min(self.actions_origin[i][0]+2,self.cfg.og_resolution.tabletop[0])
             start_ind_y = max(self.actions_origin[i][1]-4,0)
             end_ind_y = min(self.actions_origin[i][1],self.cfg.og_resolution.tabletop[1])
-            if torch.sum(table_og_tmp[start_ind_x:end_ind_x,start_ind_y:end_ind_y])>=1:
+            if torch.sum(table_og_tmp[self.actions_origin[i][0],start_ind_y:end_ind_y])>=1:
                 start_ind_y = max(self.actions_origin[i][1]-1,0)
                 end_ind_y = min(self.actions_origin[i][1]+1,self.cfg.og_resolution.tabletop[1])
                 if torch.sum(table_og_tmp[start_ind_x:end_ind_x,start_ind_y:end_ind_y])==0:
@@ -1653,9 +1653,9 @@ class PushRewardManager(RewardManager):
             # if torch.sum(table_og_tmp[start_ind_x:end_ind_x,start_ind_y:end_ind_y])>=1:
                 start_ind_y = max(env.actions_origin[i][1]-1,0)
                 end_ind_y = min(env.actions_origin[i][1]+1,env.cfg.og_resolution.tabletop[1])
-                if torch.sum(table_og_tmp[start_ind_x:end_ind_x,start_ind_y:end_ind_y])>0:
+                if torch.sum(table_og_tmp[env.actions_origin[i][0],start_ind_y:end_ind_y])>0:
                     # print('pushing reward')
-                    reward_near[i] = -2
+                    reward_near[i] = -3
                     # print(reward_near)
             else:
                 # print('pushing reward')

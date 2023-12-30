@@ -238,7 +238,9 @@ class RewardsCfg:
     '''reward for toy example v2'''
     #reward_for_toy_example = {"weight": 1}
     '''reward for toy example v2'''
+    check_placing = {"weight": 1}
     reward_near_obj = {"weight": 1}
+    penalizing_falling = {"weight": 0.5}
     # penalizing_steps = {"weight": 0.1}
     # penalizing_repeat_actions = {"weight": 0.5}
     penalizing_pushing_outside = {"weight":0.2}

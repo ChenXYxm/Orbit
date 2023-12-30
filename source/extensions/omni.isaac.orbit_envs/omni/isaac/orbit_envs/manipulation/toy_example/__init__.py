@@ -5,7 +5,7 @@
 
 """Environment for lifting objects with fixed-arm robots."""
 
-from .push_cfg_v6 import PushEnvCfg
-from .push_env_v6 import PushEnv
+from .push_cfg_v12 import PushEnvCfg
+from .push_env_v12 import PushEnv
 
 __all__ = ["PushEnv", "PushEnvCfg"]
