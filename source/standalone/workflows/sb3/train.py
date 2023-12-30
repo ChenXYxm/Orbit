@@ -42,7 +42,7 @@ simulation_app = SimulationApp(config, experience=app_experience)
 import gym
 import os
 from datetime import datetime
-
+import torch
 from stable_baselines3 import PPO
 from stable_baselines3.common.callbacks import CheckpointCallback
 from stable_baselines3.common.logger import configure
@@ -111,16 +111,21 @@ def main():
         )
 
     # create agent from stable baselines
-    # agent = PPO(policy_arch, env, verbose=1, **agent_cfg)
+    agent = PPO(policy_arch, env, verbose=1, **agent_cfg)
+    print('/home/cxy/Downloads/436800weight.pth')
+    state_dict = torch.load('/home/cxy/Downloads/436800weight.pth')
+    agent.policy.load_state_dict(state_dict)
     # print(agent.policy)
-    checkpoint_path = '/home/cxy/Thesis/orbit/Orbit/logs/sb3/Isaac-Toy-Franka-v0/Dec08_15-00-21/model_32640_steps'
-    agent = PPO.load(checkpoint_path, env, print_system_info=True)
+    # checkpoint_path = '/home/cxy/Downloads/model_436800_steps'
+    # agent = PPO.load(checkpoint_path,env, print_system_info=True)
+    # torch.save(agent.policy.state_dict(),log_dir+'/436800weight.pth')
+    # print(agent.policy)
     # configure the logger
     new_logger = configure(log_dir, ["stdout", "tensorboard"])
     agent.set_logger(new_logger)
 
     # callbacks for agent
-    checkpoint_callback = CheckpointCallback(save_freq=640, save_path=log_dir, name_prefix="model", verbose=2)
+    checkpoint_callback = CheckpointCallback(save_freq=320, save_path=log_dir, name_prefix="model", verbose=2)
     # train the agent
     agent.learn(total_timesteps=n_timesteps, callback=checkpoint_callback)
     # save the final model

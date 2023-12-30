@@ -224,6 +224,8 @@ def place_new_obj_fun(occu_ori,new_obj):
     # print(shape_occu)
     num_check_edge = 0
     occu = occu_ori.copy()
+    # plt.imshow(occu)
+    # plt.show()
     bbox = []
     for i in range(2):
         bbox.append(np.linalg.norm(new_obj[i]-new_obj[i+1]))
@@ -367,6 +369,7 @@ def place_new_obj_fun(occu_ori,new_obj):
         # occu_tmp[Ny-1,Nx-1] = 3
         # plt.imshow(occu_tmp)
         # plt.show()
+        occu_tmp2 = occu_tmp.copy()
         flag_found = False
         dila_polygons = []
         for i in polygons:
@@ -399,7 +402,7 @@ def place_new_obj_fun(occu_ori,new_obj):
                     line = np.array(p_e_first) - np.array(p_s_first)
                     line = line.astype(np.float16)
                     length = np.linalg.norm(line)
-                    offset_l = [0.,1.,2.,3.,4.,-1.,-2.,-3.,-4.]
+                    offset_l = [0.,1.,2.,3.,4.,5.,6.,7.,8.,-1.,-2.,-3.,-4.,-5.,-6,-7.,-8.]
                     if length < 1:
                         length_arr[ind_tmp] = 1000
                         continue
@@ -492,6 +495,12 @@ def place_new_obj_fun(occu_ori,new_obj):
                                             # print(new_obj_pos)
                                             # plt.imshow(occu_tmp)
                                             # plt.show()
+                                            # fig, (ax1,ax2,ax3) = plt.subplots(1, 3, figsize=(7, 4))
+                                            # ax1.imshow(occu_ori)
+                                            # ax2.imshow(occu_tmp2)
+                                            # ax3.imshow(occu_tmp)
+                                            # plt.show()
+                                            
                                             
                                             return flag_found,new_poly_vetices,occu_tmp,new_obj_pos
                                             break

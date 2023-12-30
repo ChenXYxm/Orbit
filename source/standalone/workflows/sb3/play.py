@@ -10,7 +10,7 @@
 
 import argparse
 import numpy as np
-
+import torch
 from omni.isaac.kit import SimulationApp
 
 # add argparse arguments
@@ -71,15 +71,61 @@ def main():
     # create agent from stable baselines
     print(f"Loading checkpoint from: {args_cli.checkpoint}")
     agent = PPO.load(args_cli.checkpoint, env, print_system_info=True)
-
+    torch.save(agent.policy.state_dict(),'/home/cxy/Downloads/436800weight.pth')
     # reset environment
     obs = env.reset()
     # simulate environment
     while simulation_app.is_running():
         # agent stepping
+        act_app = np.zeros(len(obs))
         actions, _ = agent.predict(obs, deterministic=True)
+        obs_tensor = torch.from_numpy(obs).cuda()
+        # print(obs_tensor.size())
+        obs_tensor = obs_tensor.permute(0,3,1,2)
+        # print(obs_tensor.size())
+        actions_tensor_tmp =  torch.from_numpy(actions).cuda()
+        value,log_prob,entropy = agent.policy.evaluate_actions(obs_tensor,actions_tensor_tmp)
+        # print('value log prob entropy')
+        # print(value,log_prob,entropy)
+        obs_tmp = obs.copy()
+        obs_tensor_tmp = obs_tensor.detach().clone()
+        for j in range(3):
+            obs_tmp = np.rot90(obs_tmp,1,(2,1))
+            obs_tmp = obs_tmp.copy()
+            obs_tensor_tmp = obs_tensor_tmp.rot90(1,[3,2])
+            actions_tmp, _ = agent.predict(obs_tmp, deterministic=True)
+            actions_tensor_tmp =  torch.from_numpy(actions_tmp).cuda()
+            value_tmp,log_prob_tmp,entropy_tmp = agent.policy.evaluate_actions(obs_tensor_tmp,actions_tensor_tmp)
+            for i in range(len(obs_tensor)):
+                # if float(log_prob_tmp[i])>float(log_prob[i]):
+                if float(value_tmp[i]) > float(value[i]):
+                    actions[i] = actions_tmp[i]
+                    act_app[i] = j * 2.0 +2.0
+                    log_prob[i] = log_prob_tmp[i]
+                    value[i] = value_tmp[i]
+        actions_origin = actions.copy()
+        for _ in range(len(obs)):
+            if act_app[_] == 2:
+                actions[_,0] = 49-actions[_,1]
+                actions[_,1] = actions_origin[_,0]
+            elif act_app[_] == 4:
+                actions[_,0] = 49-actions[_,0]
+                actions[_,1] = 49-actions_origin[_,1]
+            elif act_app[_] == 6:
+                actions[_,0] = actions[_,1]
+                actions[_,1] = 49-actions_origin[_,0]
+        actions_new = np.c_[actions,act_app.T]    
+
+        # print(actions_new)
+        # print(_)
+        # print(obs)
+        # print(obs.shape)
+        ####################################### add by xy Dec 19
+        # value,log_prob,entropy = agent.policy.evaluate_actions()
+        #######################################
         # env stepping
-        obs, _, _, _ = env.step(actions)
+        obs, _, _, _ = env.step(actions_new)
+        
         # check if simulator is stopped
         if env.unwrapped.sim.is_stopped():
             break

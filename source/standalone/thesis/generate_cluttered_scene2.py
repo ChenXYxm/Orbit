@@ -247,6 +247,26 @@ def main():
         )
         obj2.append(RigidObject(obj_cfg2))
         obj_name_list.append(ycb_name[1]+str(i))
+    # obj3 = []
+    # for i in range(9):
+    #     obj_cfg3 = RigidObjectCfg()
+    #     obj_cfg3.meta_info = RigidObjectCfg.MetaInfoCfg(usd_path=ycb_usd_paths[ycb_name[2]],scale=(1.0, 1.0, 1.0),)
+    #     obj_cfg3.init_state = RigidObjectCfg.InitialStateCfg(
+    #     pos=(2-0.25*i, 1.2, -0.4), rot=(1.0, 0.0, 0.0, 0.0), lin_vel=(0.0, 0.0, 0.0), ang_vel=(0.0, 0.0, 0.0)
+    #     )
+    #     obj_cfg3.rigid_props = RigidObjectCfg.RigidBodyPropertiesCfg(
+    #         solver_position_iteration_count=16,
+    #         solver_velocity_iteration_count=1,
+    #         max_angular_velocity=0.5,
+    #         max_linear_velocity=0.5,
+    #         max_depenetration_velocity=0.5,
+    #         disable_gravity=False,
+    #     )
+    #     obj_cfg3.physics_material = RigidObjectCfg.PhysicsMaterialCfg(
+    #         static_friction=0.5, dynamic_friction=0.5, restitution=0.0, prim_path="/World/Materials/cubeMaterial"
+    #     )
+    #     obj3.append(RigidObject(obj_cfg3))
+    #     obj_name_list.append(ycb_name[2]+str(i))
     ################################ robot setting
     robot_cfg = FRANKA_PANDA_ARM_WITH_PANDA_HAND_CFG
     robot_cfg.data_info.enable_jacobian = True
@@ -267,6 +287,8 @@ def main():
         obj_t.spawn(f"/World/Objs/obj1/obj_{i}")
     for i,obj_t in enumerate(obj2):
         obj_t.spawn(f"/World/Objs/obj2/obj_{i}")
+    # for i,obj_t in enumerate(obj3):
+    #     obj_t.spawn(f"/World/Objs/obj3/obj_{i}")
     ###################################### sensor extension camera
     
     camera_cfg = PinholeCameraCfg(
@@ -297,6 +319,8 @@ def main():
             obj_t.initialize(f"/World/Objs/obj1/obj_{i}")
     for i,obj_t in enumerate(obj2):
             obj_t.initialize(f"/World/Objs/obj2/obj_{i}")
+    # for i,obj_t in enumerate(obj3):
+    #         obj_t.initialize(f"/World/Objs/obj3/obj_{i}")
     # Reset states
     robot.reset_buffers()
     ik_controller.reset_idx()
@@ -312,6 +336,8 @@ def main():
             obj_t.update_buffers(0.01)
     for i,obj_t in enumerate(obj2):
             obj_t.update_buffers(0.01)
+    # for i,obj_t in enumerate(obj3):
+    #         obj_t.update_buffers(0.01)
     for _ in range(10):
         sim.render()
     ##################################################################### get plane model of the table
@@ -393,7 +419,7 @@ def main():
             pcd.points = o3d.utility.Vector3dVector(inliers)
             # o3d.visualization.draw_geometries([pcd])
             pts_tab = np.array(pcd.points)
-            Nx,Ny = 50,50
+            Nx,Ny =50,50
             x = np.linspace(np.min(pts_tab[:,0]), np.max(pts_tab[:,0]), Nx)
             y = np.linspace(np.min(pts_tab[:,1]), np.max(pts_tab[:,1]), Ny)
             xv, yv = np.meshgrid(x, y)

@@ -167,10 +167,10 @@ def main():
     table_path = f"{ISAAC_NUCLEUS_DIR}/Props/Shapes/cube.usd"
     Table = FixedCuboid(prim_path="/World/Table",position=(0,0,-0.25),scale=(0.5,0.5,0.5))
     # Table.set_mass(10000000) 
-    sideTable = FixedCuboid(prim_path="/World/sideTable",position=(0.35,-0.9,-0.3),scale=(0.4,0.4,0.4))
+    sideTable = FixedCuboid(prim_path="/World/sideTable",position=(0.35,-0.9,-0.3),scale=(0.4,0.4,0.5))
     # sideTable.set_mass(10)
     #################### robot base
-    prim_utils.create_prim("/World/Robotbase", usd_path=table_path,position=(0,-0.45,-0.2),scale=(0.3,0.26,0.4))
+    # prim_utils.create_prim("/World/Robotbase", usd_path=table_path,position=(0,-0.45,-0.2),scale=(0.3,0.26,0.4))
     #################### ycb path
     ######################################### load ycb objects
     # ycb_usd_paths = {
@@ -199,10 +199,10 @@ def main():
     ycb_usd_paths = {
         # "crackerBox": f"{ISAAC_NUCLEUS_DIR}/Props/YCB/Axis_Aligned_Physics/003_cracker_box.usd",
         "sugarBox": f"{ISAAC_NUCLEUS_DIR}/Props/YCB/Axis_Aligned_Physics/004_sugar_box.usd",
-        # "tomatoSoupCan": f"{ISAAC_NUCLEUS_DIR}/Props/YCB/Axis_Aligned_Physics/005_tomato_soup_can.usd",
-        # "mustardBottle": f"{ISAAC_NUCLEUS_DIR}/Props/YCB/Axis_Aligned_Physics/006_mustard_bottle.usd",
+        "tomatoSoupCan": f"{ISAAC_NUCLEUS_DIR}/Props/YCB/Axis_Aligned_Physics/005_tomato_soup_can.usd",
+        "mustardBottle": f"{ISAAC_NUCLEUS_DIR}/Props/YCB/Axis_Aligned_Physics/006_mustard_bottle.usd",
     }
-    ycb_name = ['sugarBox']
+    ycb_name = ['sugarBox',"tomatoSoupCan","mustardBottle"]
     ################################ robot setting
     robot_cfg = FRANKA_PANDA_ARM_WITH_PANDA_HAND_CFG
     robot_cfg.data_info.enable_jacobian = True
@@ -222,8 +222,8 @@ def main():
     
     camera_cfg = PinholeCameraCfg(
         sensor_tick=0,
-        height=240,
-        width=240,
+        height=600,
+        width=600,
         data_types=["rgb", "distance_to_image_plane", "normals", "motion_vectors"],
         usd_params=PinholeCameraCfg.UsdCameraCfg(
             focal_length=24.0, focus_distance=400.0, horizontal_aperture=20.955, clipping_range=(0.1, 1.0e5)
@@ -250,7 +250,7 @@ def main():
     position = [0, 0, 1.2]
     orientation = [0, 0, -1, 0]
     camera.set_world_pose_ros(position, orientation)
-    hand_camera.set_world_pose_ros([0.35,-0.9,0.55], orientation)
+    hand_camera.set_world_pose_ros([0.35,-0.9,0.85], orientation)
     Table.initialize()
     sideTable.initialize()
     sideTable.set_collision_enabled(True)
@@ -283,7 +283,11 @@ def main():
         rot = convert_quat(tf.Rotation.from_euler("XYZ", (0,0,angle), degrees=True).as_quat(), to="wxyz")
         if key_ori in ["mug","tomatoSoupCan","pitcherBase","tunaFishCan","bowl","banana"]:
             rot = convert_quat(tf.Rotation.from_euler("XYZ", (-90,angle,0), degrees=True).as_quat(), to="wxyz")
-        prim_utils.create_prim(f"/World/Objects/{key}", usd_path=usd_path, translation=translation,orientation=rot)
+        if key_ori in ["tomatoSoupCan"]:
+            prim_utils.create_prim(f"/World/Objects/{key}", usd_path=usd_path, translation=translation,orientation=rot,scale=(1.35,0.33,1.35))
+        else:
+            prim_utils.create_prim(f"/World/Objects/{key}", usd_path=usd_path, translation=translation,orientation=rot)
+        
         GeometryPrim(f"/World/Objects/{key}",collision=True)
         RigidPrim(f"/World/Objects/{key}",mass=0.3)
     num_obj = np.random.randint(1,2)
@@ -302,13 +306,18 @@ def main():
                 obj_dict[key_ori] +=1
             key = key_ori+str(obj_dict[key_ori])
             translation = torch.rand(3).tolist()
-            translation = [translation[0]*0.4-0.2,0.2*translation[1]-0.2,0.05]
+            translation = [translation[0]*0.3-0.15,0.3*translation[1]-0.15,0.05]
             # translation = [0,0,0.2]
             print(translation,angle,key_ori)
             rot = convert_quat(tf.Rotation.from_euler("XYZ", (0,0,angle), degrees=True).as_quat(), to="wxyz")
             if key_ori in ["mug","tomatoSoupCan","pitcherBase","tunaFishCan","bowl","banana"]:
                 rot = convert_quat(tf.Rotation.from_euler("XYZ", (-90,angle,0), degrees=True).as_quat(), to="wxyz")
-            prim_utils.create_prim(f"/World/Objects/{key}", usd_path=usd_path, translation=translation,orientation=rot)
+            # prim_utils.create_prim(f"/World/Objects/{key}", usd_path=usd_path, translation=translation,orientation=rot)
+            if key_ori in ["tomatoSoupCan"]:
+                prim_utils.create_prim(f"/World/Objects/{key}", usd_path=usd_path, translation=translation,orientation=rot,scale=(1.35,0.33,1.35))
+            else:
+                prim_utils.create_prim(f"/World/Objects/{key}", usd_path=usd_path, translation=translation,orientation=rot)
+            
             GeometryPrim(f"/World/Objects/{key}",collision=True)
             RigidPrim(f"/World/Objects/{key}",mass=0.3)
             if key_ori not in table_obj_pos_rot:
@@ -518,7 +527,13 @@ def main():
                 translation = [(Nx/2-new_obj_pos[1])*1./100.,(new_obj_pos[0]-Ny/2)*1./100.,0.05]
                 print(translation)
                 usd_path = ycb_usd_paths[obj_type]
-                prim_utils.create_prim(new_obj_path, usd_path=usd_path, position=translation,orientation=rot)
+                
+                # prim_utils.create_prim(new_obj_path, usd_path=usd_path, position=translation,orientation=rot)
+                if obj_type in ["tomatoSoupCan"]:
+                    prim_utils.create_prim(new_obj_path, usd_path=usd_path, translation=translation,orientation=rot,scale=(1.35,0.33,1.35))
+                else:
+                    prim_utils.create_prim(new_obj_path, usd_path=usd_path, translation=translation,orientation=rot)
+            
                 new_obj = GeometryPrim(new_obj_path,collision=True)
                 RigidPrim(new_obj_path,mass=0.3)
                 if obj_type not in table_obj_pos_rot:
@@ -529,7 +544,7 @@ def main():
                     sim.step
             else:
                 file_name_ori = "dict_"
-                file_list = os.listdir("generated_table/")
+                file_list = os.listdir("generated_table2/")
                 
                 num_file = 1
                 while True:
@@ -537,7 +552,7 @@ def main():
                     if file_name in file_list:
                         num_file +=1
                     else:
-                        file_path = "generated_table/"+file_name
+                        file_path = "generated_table2/"+file_name
                         f_save = open(file_path,'wb')
                         table_obj_pos_rot = [table_obj_pos_rot,obj_type]
                         pickle.dump(table_obj_pos_rot,f_save)
@@ -583,6 +598,7 @@ def get_new_obj_info(camera,size,hand_plane_model,obj_type):
     plane_model_ori = plane_model
     plane_model = np.array([plane_model[0],plane_model[1],plane_model[2]])
     pointcloud_w = np.array(outlier_cloud.points)
+    # pointcloud_w = np.array(pcd.points)
     
     # o3d.visualization.draw_geometries([inlier_cloud])
     # o3d.visualization.draw_geometries([outlier_cloud])
@@ -638,8 +654,8 @@ def get_new_obj_info(camera,size,hand_plane_model,obj_type):
         f_save = open(file_path,'wb')
         pickle.dump(occupancy,f_save)
         f_save.close()
-    # plt.imshow(occupancy)
-    # plt.show()
+    plt.imshow(occupancy)
+    plt.show()
     vertices_new_obj = get_new_obj_contour_bbox(occupancy)
     return aabb_points,occupancy, vertices_new_obj
 def get_new_obj_contour_bbox(occu:np.array):
@@ -744,7 +760,12 @@ def place_new_object(occu,ycb_list,ycb_path,num_new,obj_dict):
     rot = convert_quat(tf.Rotation.from_euler("XYZ", (0,0,angle), degrees=True).as_quat(), to="wxyz")
     if key_ori in ["mug","tomatoSoupCan","pitcherBase","tunaFishCan","bowl","banana"]:
         rot = convert_quat(tf.Rotation.from_euler("XYZ", (-90,angle,0), degrees=True).as_quat(), to="wxyz")
-    prim_utils.create_prim(f"/World/newObjects/{key}", usd_path=usd_path, translation=translation,orientation=rot)
+    if key_ori in ["tomatoSoupCan"]:
+        prim_utils.create_prim(f"/World/newObjects/{key}", usd_path=usd_path, translation=translation,orientation=rot,scale=(1.35,0.33,1.35))
+    else:
+        prim_utils.create_prim(f"/World/newObjects/{key}", usd_path=usd_path, translation=translation,orientation=rot)
+        
+    # prim_utils.create_prim(f"/World/newObjects/{key}", usd_path=usd_path, translation=translation,orientation=rot)
     new_obj = GeometryPrim(f"/World/newObjects/{key}",collision=True)
     RigidPrim(f"/World/newObjects/{key}",mass=0.3)
     new_obj_path = f"/World/newObjects/{key}"

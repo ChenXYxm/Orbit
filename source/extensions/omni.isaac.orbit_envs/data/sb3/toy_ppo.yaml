@@ -4,16 +4,16 @@ seed: 39
 # epoch * n_steps * nenvs: 500×512*8*8
 n_timesteps: 1024000
 policy: 'CnnPolicy'
-n_steps: 64
+n_steps: 32
 # mini batch size: num_envs * nsteps / nminibatches 2048×512÷2048
 
 batch_size: 32 ##ppo
 gae_lambda: 0.95
 gamma: 0.99
-n_epochs: 6
-ent_coef: 0.001
+n_epochs: 3
+ent_coef: 0.01
 vf_coef: 0.5
-learning_rate: !!float 1e-4
+learning_rate: !!float 5e-4
 clip_range: 0.2
 policy_kwargs: "dict(
                   activation_fn=nn.ELU,

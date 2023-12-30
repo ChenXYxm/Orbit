@@ -103,3 +103,8 @@ gym.register(
     entry_point="omni.isaac.orbit_envs.manipulation.toy_example:PushEnv",
     kwargs={"cfg_entry_point": "omni.isaac.orbit_envs.manipulation.toy_example:PushEnvCfg"},
 )
+gym.register(
+    id="Isaac-Push-p-Franka-v0",
+    entry_point="omni.isaac.orbit_envs.manipulation.push_paper:PushEnv",
+    kwargs={"cfg_entry_point": "omni.isaac.orbit_envs.manipulation.push_paper:PushEnvCfg"},
+)

@@ -236,6 +236,19 @@ def place_new_obj_fun(occu_ori,new_obj):
         # approx = cv2.minAreaRect(cnt)
         # box = cv2.boxPoints(approx)
         # approx = np.int0(box)
+        #######################
+        # approx = cv2.minAreaRect(cnt)
+        # box = cv2.boxPoints(approx)
+        # approx = np.int0(box)
+        # if len(approx) >=2:
+        #     # img = cv2.drawContours(img,[approx],-1,(0,255,255),3)
+
+        #     # print(approx)
+        #     approx = approx.reshape((-1,2))
+        #     # print(approx)
+        #     shape_dict[i] = approx
+        #     polygons.append(Polygon(approx))
+        ############################
         hull = cv2.convexHull(cnt,returnPoints = True)
         # print(hull)
         approx = np.int0(hull)
@@ -352,12 +365,13 @@ def place_new_obj_fun(occu_ori,new_obj):
         length_dict[Nx].append(np.array([Ny-1,0]))
         length_dict[Nx].append(np.array([Ny-1,Nx-1]))
         # occu_tmp[Ny-1,Nx-1] = 3
+        occu_tmp2 = occu_tmp.copy()
         # plt.imshow(occu_tmp)
         # plt.show()
         flag_found = False
         dila_polygons = []
         for i in polygons:
-            dila_polygons.append(i.buffer(2.5))
+            dila_polygons.append(i.buffer(2.7))
         tree = STRtree(dila_polygons)
         # print("new obj shape")
         # print([num_grid_l,num_grid_s])
@@ -386,9 +400,9 @@ def place_new_obj_fun(occu_ori,new_obj):
                     line = np.array(p_e_first) - np.array(p_s_first)
                     line = line.astype(np.float16)
                     length = np.linalg.norm(line)
-                    offset_l = [0.,1.,2.,3.,4.,-1.,-2.,-3.,-4.]
+                    offset_l = [0.,1.,2.,3.,4.,5.,6.,7.,8.,-1.,-2.,-3.,-4.,-5.,-6,-7.,-8.]
                     if length < 1:
-                        length_arr[ind_tmp] = 1000
+                        length_arr[ind_tmp] = 200
                         continue
                     for p in offset_l:
                         # p_s = length_dict[length_list[ind_tmp]][2*m]
@@ -413,7 +427,7 @@ def place_new_obj_fun(occu_ori,new_obj):
                             p_e = p_e_ori - np.sign(delta_l)*o*line.copy()/length
                             # print("check original points")
                             # print(p_s,p_e,p,o)
-                            for gap in range(2,6):
+                            for gap in range(2,10):
                                 for n in range(2):
                                     sign = (-1)**n
                                     tmp_delta = gap*line.copy()/length
@@ -478,6 +492,11 @@ def place_new_obj_fun(occu_ori,new_obj):
                                             # print(points_tmp)
                                             # print(new_obj_pos)
                                             # plt.imshow(occu_tmp)
+                                            # plt.show()
+                                            # fig, (ax1,ax2,ax3) = plt.subplots(1, 3, figsize=(7, 4))
+                                            # ax1.imshow(occu_ori)
+                                            # ax2.imshow(occu_tmp2)
+                                            # ax3.imshow(occu_tmp)
                                             # plt.show()
                                             
                                             return flag_found,new_poly_vetices,occu_tmp,new_obj_pos

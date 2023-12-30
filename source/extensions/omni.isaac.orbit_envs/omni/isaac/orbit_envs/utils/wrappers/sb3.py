@@ -119,6 +119,7 @@ class Sb3VecEnvWrapper(gym.Wrapper, VecEnv):
     def step(self, actions: np.ndarray) -> VecEnvStepReturn:  # noqa: D102
         # convert input to numpy array
         actions = np.asarray(actions)
+        # print(actions.shape)
         # convert to tensor
         actions = torch.from_numpy(actions).to(device=self.env.device)
         # record step information
@@ -199,6 +200,8 @@ class Sb3VecEnvWrapper(gym.Wrapper, VecEnv):
         # print(obs[0])
         
         # obs = np.zeros(obs.copy().shape)
+        # print('obs shape')
+        # print(obs.shape)
         return obs
 
     def _process_extras(self, obs, dones, extras, reset_ids) -> List[Dict[str, Any]]:
