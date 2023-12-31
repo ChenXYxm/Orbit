@@ -251,7 +251,7 @@ class RewardsCfg:
     # penaltizing_repeat_actions = {"weight": 0.5}
     # penaltizing_pushing_outside = {"weight":0.2} ## Dec22_20-44-43 before
     # penaltizing_pushing_outside = {"weight":0.5} ## Dec24_16-21-23 before
-    penaltizing_pushing_outside = {"weight":0.7}
+    penaltizing_pushing_outside = {"weight":0.9}
     reward_max_tsdf_increase = {"weight": 10}
     penaltizing_stop = {"weight": 2} ## Dec26 after
     # penalizing_tool_action_l2 = {"weight": 1e-2}

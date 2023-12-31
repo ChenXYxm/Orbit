@@ -257,7 +257,7 @@ class PushEnv(IsaacEnv):
         # self.step_num = 0
         if not self.reset_f:
             self.new_obj_type = [i for i in range(self.num_envs)]
-            self.env_i_tmp = 630
+            self.env_i_tmp = 0
         self.reset_f = True
         dof_pos, dof_vel = self.robot.get_default_dof_state(env_ids=env_ids)
         self.robot.set_dof_state(dof_pos, dof_vel, env_ids=env_ids)
@@ -282,7 +282,7 @@ class PushEnv(IsaacEnv):
         self.table_og_pre[env_ids] = self.table_og[env_ids].clone()
         self.table_expand_og_pre[env_ids] = self.table_expand_og[env_ids].clone()
         self.table_tsdf_pre[env_ids] = self.table_tsdf[env_ids].clone()
-        self.falling_obj[env_ids] = 0
+        # self.falling_obj[env_ids] = 0
         self.falling_obj_all[env_ids] = 0
         
         self._check_fallen_objs(env_ids)
@@ -304,8 +304,8 @@ class PushEnv(IsaacEnv):
         self.actions_origin[env_ids] = 0
         self.actions_ori[env_ids] = 0
         self.actions[env_ids] = 0
-        self.falling_obj[env_ids] = 0
-        self.stop_pushing[env_ids] = 0
+        # self.falling_obj[env_ids] = 0
+        # self.stop_pushing[env_ids] = 0
         # self.falling_obj_all[env_ids] = 0
         self.place_success[env_ids] = 0
         self.reset_buf[env_ids] = 0
@@ -358,6 +358,7 @@ class PushEnv(IsaacEnv):
             # plt.show()
     def _step_impl(self, actions: torch.Tensor):
         # pre-step: set actions into buffer
+        self.stop_pushing[:] = 0
         self.step_all += 1.0
         self.previous_actions = self.actions_origin.clone()
         self.table_og_pre = self.table_og.clone()
@@ -930,7 +931,7 @@ class PushEnv(IsaacEnv):
         # reward
         self.reward_buf = self._reward_manager.compute()
         # print("reward")
-        # # # print(self._reward_manager.compute())
+        # # print(self._reward_manager.compute())
         # print(self.reward_buf)
         ##################### terminations #######################
         ''' only for toy example'''
@@ -1565,24 +1566,24 @@ class PushEnv(IsaacEnv):
                 self.obj_on_table_name[i][j] = 0
         # self.obj_on_table = []
         num_env = len(file_name)
-        # choosen_env_id = np.random.randint(0,num_env)
-        choosen_env_id = self.env_i_tmp
-        # print(file_name[choosen_env_id],env_ids,self.env_i_tmp,choosen_env_id)
+        choosen_env_id = np.random.randint(0,num_env)
+        # choosen_env_id = self.env_i_tmp
+        print(file_name[choosen_env_id],env_ids,self.env_i_tmp,choosen_env_id)
         env_path = "generated_table2/"+file_name[choosen_env_id]
         # env_path = "test_table/"+file_name[choosen_env_id]
         # env_path = "generated_table2/dict_478.pkl"
         if self.env_i_tmp <num_env-1:
             self.env_i_tmp +=1
-        else:
-            print('steps')
-            print(self.step_all)
-            print('place')
-            print(self.place_success_all)
-            print('reach')
-            print(self.reaching_all)
-            print('fallen')
-            print(self.fallen_all)
-            self.close()
+        # else:
+        #     print('steps')
+        #     print(self.step_all)
+        #     print('place')
+        #     print(self.place_success_all)
+        #     print('reach')
+        #     print(self.reaching_all)
+        #     print('fallen')
+        #     print(self.fallen_all)
+        #     self.close()
             
         fileObject2 = open(env_path, 'rb')
         env =  pkl.load(fileObject2)
@@ -1929,10 +1930,18 @@ class PushRewardManager(RewardManager):
         env_tab_ex_tmp = env.table_expand_og.clone()
         env_tab_ex_tmp_pre = env.table_expand_og_pre.clone()
         for i in range(env.num_envs):
+            # fig, (ax1,ax2) = plt.subplots(1, 2, figsize=(7, 4))
+            # ax1.imshow(env_tab_ex_tmp[i].cpu().numpy())
+            # ax2.imshow(env_tab_ex_tmp_pre[i].cpu().numpy())
+            # plt.show()
             env_tab_ex_tmp[i][6:env.cfg.og_resolution.tabletop[1]+6,
                            6:env.cfg.og_resolution.tabletop[0]+6] = 0
             env_tab_ex_tmp_pre[i][6:env.cfg.og_resolution.tabletop[1]+6,
                            6:env.cfg.og_resolution.tabletop[0]+6] = 0
+            # fig, (ax1,ax2) = plt.subplots(1, 2, figsize=(7, 4))
+            # ax1.imshow(env_tab_ex_tmp[i].cpu().numpy())
+            # ax2.imshow(env_tab_ex_tmp_pre[i].cpu().numpy())
+            # plt.show()
             if not env.cfg.pre_train:
                 if torch.sum(env_tab_ex_tmp[i])-torch.sum(env_tab_ex_tmp_pre[i])<=6:
                     if env.check_reaching[i]>0.5:
@@ -1940,6 +1949,7 @@ class PushRewardManager(RewardManager):
                 else:
                     if env.check_reaching[i]>0.5:
                         pixel_outside_table[i] = -(torch.sum(env_tab_ex_tmp[i])-torch.sum(env_tab_ex_tmp_pre[i]))/25
+                        # pixel_outside_table[i] = -2.0
             # else:
 
             # pixel_outside_table[i] = torch.sum(env_tab_ex_tmp[i])-torch.sum(env_tab_ex_tmp_pre[i])
@@ -1958,6 +1968,7 @@ class PushRewardManager(RewardManager):
         # print(env.delta_same_action)
         return -env.delta_same_action.type(torch.float16) 
     def penaltizing_stop(self,env:PushEnv):
+        # print('stop')
         # print(-env.stop_pushing.type(torch.float16))
         return -env.stop_pushing.type(torch.float16)
     def penaltizing_falling(self,env:PushEnv):
@@ -1996,7 +2007,7 @@ class PushRewardManager(RewardManager):
         # print(delta_og)
         return delta_og.type(torch.float16)
     def reward_near_obj_1(self,env:PushEnv):
-        print('reward 1')
+        # print('reward 1')
         reward_near = torch.zeros((env.num_envs,),device=self.device)
         action_tmp_reward = env.actions.clone().cpu().numpy().astype(np.uint8)
         for i in range(env.num_envs):
