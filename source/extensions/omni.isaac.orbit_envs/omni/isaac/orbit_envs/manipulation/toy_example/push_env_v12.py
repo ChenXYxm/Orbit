@@ -269,7 +269,7 @@ class PushEnv(IsaacEnv):
         '''modified for toy example v2'''
         self.reset_objs(env_ids=env_ids)
         # print()
-        self.new_obj_mask = np.zeros((self.num_envs,self.cfg.og_resolution.new_obj[1],self.cfg.og_resolution.new_obj[0]))
+        # self.new_obj_mask = np.zeros((self.num_envs,self.cfg.og_resolution.new_obj[1],self.cfg.og_resolution.new_obj[0]))
         
         for i in env_ids.tolist():
             env_ids_tmp = torch.from_numpy(np.array([i])).to(self.device)
@@ -1391,9 +1391,11 @@ class PushEnv(IsaacEnv):
                 # plt.show()
                 ############## visulaize placing
                 self.place_success_all +=1.0
-                # print('place')
-                # print(env_ids_tmp)
-                # print(self.place_success_all)
+                print('place')
+                print(env_ids_tmp)
+                print(self.place_success_all)
+                print('steps') 
+                print(self.step_all)
     '''
     only for toy example
     '''            
@@ -1566,24 +1568,25 @@ class PushEnv(IsaacEnv):
                 self.obj_on_table_name[i][j] = 0
         # self.obj_on_table = []
         num_env = len(file_name)
-        choosen_env_id = np.random.randint(0,num_env)
-        # choosen_env_id = self.env_i_tmp
+        # choosen_env_id = np.random.randint(0,num_env)
+        choosen_env_id = self.env_i_tmp
         print(file_name[choosen_env_id],env_ids,self.env_i_tmp,choosen_env_id)
-        env_path = "generated_table2/"+file_name[choosen_env_id]
-        # env_path = "test_table/"+file_name[choosen_env_id]
+        # env_path = "generated_table2/"+file_name[choosen_env_id]
+        env_path = "test_table2/"+file_name[choosen_env_id]
+        print(env_path)
         # env_path = "generated_table2/dict_478.pkl"
         if self.env_i_tmp <num_env-1:
             self.env_i_tmp +=1
-        # else:
-        #     print('steps')
-        #     print(self.step_all)
-        #     print('place')
-        #     print(self.place_success_all)
-        #     print('reach')
-        #     print(self.reaching_all)
-        #     print('fallen')
-        #     print(self.fallen_all)
-        #     self.close()
+        else:
+            print('steps')
+            print(self.step_all)
+            print('place')
+            print(self.place_success_all)
+            print('reach')
+            print(self.reaching_all)
+            print('fallen')
+            print(self.fallen_all)
+            self.close()
             
         fileObject2 = open(env_path, 'rb')
         env =  pkl.load(fileObject2)

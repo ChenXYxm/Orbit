@@ -493,7 +493,7 @@ def main():
                 # print(obj1[j].data.root_pos_w)
             else:
                 file_name_ori = "dict_"
-                file_list = os.listdir("generated_table2/")
+                file_list = os.listdir("test_table2/")
                 print('done')
                 print(table_obj_pos_rot)
                 for k in table_obj_pos_rot:
@@ -504,7 +504,7 @@ def main():
                     if file_name in file_list:
                         num_file +=1
                     else:
-                        file_path = "generated_table2/"+file_name
+                        file_path = "test_table2/"+file_name
                         f_save = open(file_path,'wb')
                         table_obj_pos_rot = [table_obj_pos_rot,obj_name_i]
                         pickle.dump(table_obj_pos_rot,f_save)

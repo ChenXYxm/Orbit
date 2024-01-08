@@ -193,11 +193,13 @@ class Sb3VecEnvWrapper(gym.Wrapper, VecEnv):
             pass
         else:
             raise NotImplementedError(f"Unsupported backend for simulation: {self.env.sim.backend}")
-        # plt.imshow(obs[0])
+        obs_tmp = np.swapaxes(obs,1,3)
+        obs_tmp = np.swapaxes(obs_tmp,2,3)
+        # plt.imshow(obs_tmp[0,0])
         # plt.show()
-        # plt.imshow(obs[1])
+        # plt.imshow(obs_tmp[0,1])
         # plt.show()
-        # print(obs[0])
+        # print(obs_tmp.shape)
         
         # obs = np.zeros(obs.copy().shape)
         # print('obs shape')

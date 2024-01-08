@@ -361,12 +361,12 @@ class PushEnv(IsaacEnv):
         ################# stop pushing
         for i in range(self.num_envs):
             if self.check_reaching[i] == 0:
-                        # print("stop actions")
-                        # print(self.actions)
-                        self.stop_pushing[i] = 1  
-                        self.actions[i,1] = -0.5
-                        self.actions[i,0] = 0.5
-                        self.actions[i,2] = 0
+                # print("stop actions")
+                # print(self.actions)
+                self.stop_pushing[i] = 1  
+                self.actions[i,1] = -0.5
+                self.actions[i,0] = 0.5
+                self.actions[i,2] = 0
 
         actions_tmp = torch.zeros((self.num_envs,self._ik_controller.num_actions),device=self.device)
         actions_tmp[:,:2] = self.actions[:,:2].clone()
@@ -850,6 +850,7 @@ class PushEnv(IsaacEnv):
             self._update_table_og()
         # self._check_fallen_objs(env_ids)
         # self._update_table_og()
+        self._check_placing()
         for i in range(self.num_envs):
             if self.check_reaching[i] ==0:
                 self.place_success[i] = 0
@@ -892,14 +893,14 @@ class PushEnv(IsaacEnv):
                 if value_timeout:
                     if self.place_success[i]>=0.5:
                         self.extras["time_outs"][i] = False
-        else:
-            tmp = torch.zeros(self.num_envs, device=self.device, dtype=torch.long)
-            self.extras["is_success"] = torch.where(self.check_reaching>=0.5, 1,tmp)
-            # print(self.extras["time_outs"])
-            for i,value_timeout in enumerate(self.extras['time_outs']):
-                if value_timeout:
-                    if self.check_reaching[i]>=0.5:
-                        self.extras["time_outs"][i] = False
+        # else:
+        #     tmp = torch.zeros(self.num_envs, device=self.device, dtype=torch.long)
+        #     self.extras["is_success"] = torch.where(self.check_reaching>=0.5, 1,tmp)
+        #     # print(self.extras["time_outs"])
+        #     for i,value_timeout in enumerate(self.extras['time_outs']):
+        #         if value_timeout:
+        #             if self.check_reaching[i]>=0.5:
+        #                 self.extras["time_outs"][i] = False
         ''' modified for toy example'''
         # -- update USD visualization
         # self._update_table_og()
@@ -1452,7 +1453,7 @@ class PushEnv(IsaacEnv):
         choosen_env_id = self.env_i_tmp
         print(file_name[choosen_env_id],env_ids,self.env_i_tmp,choosen_env_id)
         # env_path = "generated_table/"+file_name[choosen_env_id]
-        env_path = "test_table/"+file_name[choosen_env_id]
+        env_path = "test_table2/"+file_name[choosen_env_id]
         # env_path = "generated_table/dict_20.pkl"
         if self.env_i_tmp <num_env-1:
             self.env_i_tmp +=1
@@ -1465,6 +1466,7 @@ class PushEnv(IsaacEnv):
             print(self.reaching_all)
             print('fallen')
             print(self.fallen_all)
+            self.close()
             
         fileObject2 = open(env_path, 'rb')
         env =  pkl.load(fileObject2)

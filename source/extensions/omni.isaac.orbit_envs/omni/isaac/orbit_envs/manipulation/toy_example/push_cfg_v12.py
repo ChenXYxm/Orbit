@@ -68,7 +68,7 @@ class ManipulationObjectCfg(RigidObjectCfg):
 class env_name:
     # file_list = os.listdir("generated_table/")
     file_list = os.listdir("generated_table2/")
-    test_file_list = os.listdir("test_table/")
+    test_file_list = os.listdir("test_table2/")
 @configclass
 class GoalMarkerCfg:
     """Properties for visualization marker."""
@@ -374,6 +374,6 @@ class PushEnvCfg(IsaacEnvCfg):
     # resolution of the occupancy grid
     og_resolution: occupancy_grid_resolution = occupancy_grid_resolution()
     obj_mask: ObjMask = ObjMask()
-    env_name: env_name = env_name().file_list
+    env_name: env_name = env_name().test_file_list
     pre_train: bool=False
     

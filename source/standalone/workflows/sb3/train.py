@@ -112,9 +112,9 @@ def main():
 
     # create agent from stable baselines
     agent = PPO(policy_arch, env, verbose=1, **agent_cfg)
-    print('/home/cxy/Downloads/436800weight.pth')
-    state_dict = torch.load('/home/cxy/Downloads/436800weight.pth')
-    agent.policy.load_state_dict(state_dict)
+    # print('/home/cxy/Downloads/436800weight.pth')
+    # state_dict = torch.load('/home/cxy/Downloads/436800weight.pth')
+    # agent.policy.load_state_dict(state_dict)
     # print(agent.policy)
     # checkpoint_path = '/home/cxy/Downloads/model_436800_steps'
     # agent = PPO.load(checkpoint_path,env, print_system_info=True)

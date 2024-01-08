@@ -71,10 +71,12 @@ def main():
     # create agent from stable baselines
     print(f"Loading checkpoint from: {args_cli.checkpoint}")
     agent = PPO.load(args_cli.checkpoint, env, print_system_info=True)
-    torch.save(agent.policy.state_dict(),'/home/cxy/Downloads/436800weight.pth')
+    # torch.save(agent.policy.state_dict(),'/home/cxy/Downloads/436800weight.pth')
     # reset environment
     obs = env.reset()
+    stop_pushing = 0
     # simulate environment
+    print('using stop pushing method')
     while simulation_app.is_running():
         # agent stepping
         act_app = np.zeros(len(obs))
@@ -114,8 +116,15 @@ def main():
             elif act_app[_] == 6:
                 actions[_,0] = actions[_,1]
                 actions[_,1] = 49-actions_origin[_,0]
+        for _ in range(len(value)):
+            if float(value[_]) <=-0.1:
+                act_app[_] = 10
         actions_new = np.c_[actions,act_app.T]    
-
+        for _ in env.env.stop_pushing.tolist():
+            if _ >= 0.5:
+                stop_pushing +=1
+                print('stop pushing')
+                print(stop_pushing)
         # print(actions_new)
         # print(_)
         # print(obs)

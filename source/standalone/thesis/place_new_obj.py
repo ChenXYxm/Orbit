@@ -400,7 +400,7 @@ def place_new_obj_fun(occu_ori,new_obj):
                     line = np.array(p_e_first) - np.array(p_s_first)
                     line = line.astype(np.float16)
                     length = np.linalg.norm(line)
-                    offset_l = [0.,1.,2.,3.,4.,5.,6.,7.,8.,-1.,-2.,-3.,-4.,-5.,-6,-7.,-8.]
+                    offset_l = [3.,-3.,4.,-4.,5.,-5.,6.,-6.,7.,-7.,8.,-8.]
                     if length < 1:
                         length_arr[ind_tmp] = 200
                         continue

@@ -67,7 +67,7 @@ class ManipulationObjectCfg(RigidObjectCfg):
 @configclass
 class env_name:
     file_list = os.listdir("generated_table/")
-    test_file_list = os.listdir("test_table/")
+    test_file_list = os.listdir("test_table2/")
 @configclass
 class GoalMarkerCfg:
     """Properties for visualization marker."""
@@ -239,14 +239,14 @@ class RewardsCfg:
     '''reward for toy example v2'''
     #reward_for_toy_example = {"weight": 1}
     '''reward for toy example v2'''
-    check_placing = {"weight": 2}
+    # check_placing = {"weight": 2}
     # reward_near_obj = {"weight": 1}
     reward_reaching = {"weight": 1}
-    penalizing_falling = {"weight": 1}
-    penalizing_steps = {"weight": 0.1}
-    # penalizing_repeat_actions = {"weight": 0.5}
-    penalizing_pushing_outside = {"weight":0.2}
-    reward_max_tsdf_increase = {"weight": 10}
+    # penalizing_falling = {"weight": 1}
+    # penalizing_steps = {"weight": 0.1}
+    # # penalizing_repeat_actions = {"weight": 0.5}
+    # penalizing_pushing_outside = {"weight":0.2}
+    # reward_max_tsdf_increase = {"weight": 10}
     # penalizing_tool_action_l2 = {"weight": 1e-2}
     # -- object-centric
     # tracking_object_position_exp = {"weight": 5.0, "sigma": 0.25, "threshold": 0.08}
@@ -260,7 +260,7 @@ class TerminationsCfg:
     stop_pushing = False
     episode_timeout = True  # reset when episode length ended
     # object_falling = True  # reset when object falls off the table
-    is_success = True # reset when object is placed modified for toy example
+    is_success = False # reset when object is placed modified for toy example
 
 @configclass
 class occupancy_grid_resolution:
@@ -317,7 +317,7 @@ class PushEnvCfg(IsaacEnvCfg):
     """Configuration for the push environment."""
 
     # General Settings
-    env: EnvCfg = EnvCfg(num_envs=4096, env_spacing=2.5, episode_length_s=0.24)
+    env: EnvCfg = EnvCfg(num_envs=4096, env_spacing=2.5, episode_length_s=0.06)
     viewer: ViewerCfg = ViewerCfg(debug_vis=False, eye=(0.1, 7.5, 5.5), lookat=(0.0, 0.0, 0.0))
     # Physics settings
     sim: SimCfg = SimCfg(
@@ -368,5 +368,5 @@ class PushEnvCfg(IsaacEnvCfg):
     og_resolution: occupancy_grid_resolution = occupancy_grid_resolution()
     obj_mask: ObjMask = ObjMask()
     env_name: env_name = env_name().test_file_list
-    pre_train: bool=False
+    pre_train: bool=True
     

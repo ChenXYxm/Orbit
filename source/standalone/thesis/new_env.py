@@ -441,7 +441,7 @@ def main():
             pcd.points = o3d.utility.Vector3dVector(inliers)
             # o3d.visualization.draw_geometries([pcd])
             pts_tab = np.array(pcd.points)
-            Nx,Ny = 50,50
+            Nx,Ny = 150,150
             x = np.linspace(np.min(pts_tab[:,0]), np.max(pts_tab[:,0]), Nx)
             y = np.linspace(np.min(pts_tab[:,1]), np.max(pts_tab[:,1]), Ny)
             xv, yv = np.meshgrid(x, y)
@@ -480,8 +480,8 @@ def main():
                             prim_utils.delete_prim(f"/World/Objects/{key}")
                         obj_dict[_] = 0
                     # break
-            # plt.imshow(occupancy)
-            # plt.show()
+            plt.imshow(occupancy)
+            plt.show()
             #
             # bound_detect(occupancy)
             # rgb=camera.data.output["rgb"]
@@ -506,7 +506,7 @@ def main():
             
             # if num_new>=1:
                 # aabb_points = get_new_obj_pcd(hand_camera,(40,40),hand_plane_model)
-            aabb_points,_,vertices_new_obj = get_new_obj_info(hand_camera,(40,40),hand_plane_model,obj_type)
+            aabb_points,_,vertices_new_obj = get_new_obj_info(hand_camera,(120,120),hand_plane_model,obj_type)
             print(occupancy.shape)
             flag_found, new_poly_vetices,occu_tmp,new_obj_pos = place_new_obj_fun(occupancy,vertices_new_obj)
             if flag_found:
@@ -524,7 +524,7 @@ def main():
                 # new_obj.set_world_pose(position=[(50-new_obj_pos[1])*0.01,(new_obj_pos[0]-30)*0.01,0.2],orientation=rot)
                 # new_obj.initialize()
                 print(new_obj_pos)
-                translation = [(Nx/2-new_obj_pos[1])*1./100.,(new_obj_pos[0]-Ny/2)*1./100.,0.05]
+                translation = [(Nx/2-new_obj_pos[1])*1./300.,(new_obj_pos[0]-Ny/2)*1./300.,0.05]
                 print(translation)
                 usd_path = ycb_usd_paths[obj_type]
                 
@@ -544,7 +544,7 @@ def main():
                     sim.step
             else:
                 file_name_ori = "dict_"
-                file_list = os.listdir("generated_table2/")
+                file_list = os.listdir("generated_table3/")
                 
                 num_file = 1
                 while True:
@@ -552,7 +552,7 @@ def main():
                     if file_name in file_list:
                         num_file +=1
                     else:
-                        file_path = "generated_table2/"+file_name
+                        file_path = "generated_table3/"+file_name
                         f_save = open(file_path,'wb')
                         table_obj_pos_rot = [table_obj_pos_rot,obj_type]
                         pickle.dump(table_obj_pos_rot,f_save)
@@ -647,10 +647,10 @@ def get_new_obj_info(camera,size,hand_plane_model,obj_type):
     v = v[v_ind]
     occupancy[v,u] = 1
     occupancy = np.fliplr(occupancy)
-    file_list = os.listdir("obj_mask/")
+    file_list = os.listdir("obj_mask120x120/")
     file_name = obj_type +"_mask.pkl"
     if file_name not in file_list:
-        file_path = "obj_mask/"+file_name
+        file_path = "obj_mask120x120/"+file_name
         f_save = open(file_path,'wb')
         pickle.dump(occupancy,f_save)
         f_save.close()
