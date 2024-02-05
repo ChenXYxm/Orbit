@@ -196,7 +196,8 @@ class Sb3VecEnvWrapper(gym.Wrapper, VecEnv):
         # plt.imshow(obs[1])
         # plt.show()
         # print(obs[0])
-        
+        # print('obs shape')
+        # print(obs.shape)
         # obs = np.zeros(obs.copy().shape)
         return obs
 

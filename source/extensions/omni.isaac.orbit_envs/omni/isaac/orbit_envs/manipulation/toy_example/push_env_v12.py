@@ -366,9 +366,9 @@ class PushEnv(IsaacEnv):
                 self.stop_pushing[i] = 1
             elif self.check_reaching[i] == 0:
                         
-                        self.actions[i,1] = -0.5
-                        self.actions[i,0] = 0.5
-                        self.actions[i,2] = 0
+                self.actions[i,1] = -0.5
+                self.actions[i,0] = 0.5
+                self.actions[i,2] = 0
             
 
         actions_tmp = torch.zeros((self.num_envs,self._ik_controller.num_actions),device=self.device)
@@ -1193,6 +1193,7 @@ class PushEnv(IsaacEnv):
         u = u[v_ind]
         v = v[v_ind]
         occupancy_ex[v,u] = 2
+        occupancy_ex = np.fliplr(occupancy_ex)
         # plt.imshow(occupancy_ex)
         # plt.show()
         

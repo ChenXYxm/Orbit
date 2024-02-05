@@ -109,18 +109,19 @@ def main():
         )
 
     # create agent from stable baselines
-    agent = PPO(policy_arch, env, verbose=1, **agent_cfg)
-    # state_dict = torch.load('/home/chenxiny/orbit/Orbit/logs/sb3/Isaac-Toy-Franka-v0/Dec24_16-21-23/weight336000.pth')
-    # agent.policy.load_state_dict(state_dict)
-    # checkpoint_path = '/home/chenxiny/orbit/Orbit/logs/sb3/Isaac-Toy-Franka-v0/Dec24_16-21-23/model_336000_steps'
-    # agent = PPO.load(checkpoint_path, env, print_system_info=True)
-    # torch.save(agent.policy.state_dict(),'/home/chenxiny/orbit/Orbit/logs/sb3/Isaac-Toy-Franka-v0/Dec24_16-21-23/weight336000.pth')
+    #agent = PPO(policy_arch, env, verbose=1, **agent_cfg)
+    #state_dict = torch.load('/home/chenxiny/orbit/Orbit/logs/sb3/Isaac-Toy-Franka-v0/Feb03_08-25-40/weight320000.pth')
+    #agent.policy.load_state_dict(state_dict)
+    checkpoint_path = '/home/chenxiny/orbit/Orbit/logs/sb3/Isaac-Toy-Franka-v0/Feb03_23-18-29/model_96000_steps'
+    agent = PPO.load(checkpoint_path, env, print_system_info=True)
+    # agent.policy.to('cpu')
+    torch.save(agent.policy.state_dict(),'/home/chenxiny/orbit/Orbit/logs/sb3/Isaac-Toy-Franka-v0/Feb03_23-18-29/weight96000.pth')
     # configure the logger
     new_logger = configure(log_dir, ["stdout", "tensorboard"])
     agent.set_logger(new_logger)
 
     # callbacks for agent
-    checkpoint_callback = CheckpointCallback(save_freq=9000, save_path=log_dir, name_prefix="model", verbose=2)
+    checkpoint_callback = CheckpointCallback(save_freq=1000, save_path=log_dir, name_prefix="model", verbose=2)
     # train the agent
     agent.learn(total_timesteps=n_timesteps, callback=checkpoint_callback)
     # save the final model
