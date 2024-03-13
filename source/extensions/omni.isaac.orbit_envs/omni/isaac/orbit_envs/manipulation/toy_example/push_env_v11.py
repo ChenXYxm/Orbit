@@ -103,8 +103,8 @@ class PushEnv(IsaacEnv):
 
         # compute the observation space: arm joint state + ee-position + goal-position + actions
         num_obs = self._observation_manager.group_obs_dim["policy"]
-        # print("num_obs")
-        # print(num_obs)
+        print("num_obs")
+        print(num_obs)
         self.observation_space = gym.spaces.Box(low=0, high=255, shape=num_obs,dtype=np.uint8)
         # compute the action space
         # self.action_space = gym.spaces.Box(low=-1.0, high=1.0, shape=(self.num_actions,))

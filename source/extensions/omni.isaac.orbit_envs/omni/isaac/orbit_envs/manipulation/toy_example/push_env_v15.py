@@ -1135,6 +1135,8 @@ class PushEnv(IsaacEnv):
             pointcloud_w = pointcloud_w.cpu().numpy()
         pcd = o3d.geometry.PointCloud()
         pcd.points = o3d.utility.Vector3dVector(pointcloud_w)
+        # print('pointcloud 3d')
+        # print(pointcloud_w)
         # o3d.visualization.draw_geometries([pcd])
         return pcd
     def point_cloud_process(self,pcd):
@@ -1815,10 +1817,10 @@ class PushObservationManager(ObservationManager):
             #                         env.cfg.og_resolution.tabletop[0]])
             obs_ta[i,:,:,1] = torch.from_numpy(observation).to(env.device)
             # obs_ta=obs_ta.rot90(1,[2,1])
-            fig, (ax1,ax2) = plt.subplots(1, 2, figsize=(15, 10))
-            ax1.imshow(np.squeeze(obs_ta[i,:,:,1].cpu().numpy()))
-            ax2.imshow(np.squeeze(obs_ta[i,:,:,0].cpu().numpy()))
-            plt.show()
+            # fig, (ax1,ax2) = plt.subplots(1, 2, figsize=(15, 10))
+            # ax1.imshow(np.squeeze(obs_ta[i,:,:,1].cpu().numpy()))
+            # ax2.imshow(np.squeeze(obs_ta[i,:,:,0].cpu().numpy()))
+            # plt.show()
         return obs_ta
         # return env.table_og
     def obs_for_toy_example(self,env:PushEnv):

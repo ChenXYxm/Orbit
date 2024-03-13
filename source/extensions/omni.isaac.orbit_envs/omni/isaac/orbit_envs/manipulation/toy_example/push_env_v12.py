@@ -55,7 +55,7 @@ class PushEnv(IsaacEnv):
         self.reaching_all = 0.0
         self.step_all = 0.0
         self.fallen_all = 0.0
-        
+        self.un_satisfied_scenes = []
         # parse the configuration for controller configuration
         # note: controller decides the robot control mode
         self._pre_process_cfg()
@@ -130,7 +130,7 @@ class PushEnv(IsaacEnv):
         self._process_cfg()
         # initialize views for the cloned scenes
         self._initialize_views()
-
+        self.table_scenes = [0 for i in range(self.num_envs)]
         # prepare the observation manager
         self._observation_manager = PushObservationManager(class_to_dict(self.cfg.observations), self, self.device)
         # prepare the reward manager
@@ -146,8 +146,8 @@ class PushEnv(IsaacEnv):
 
         # compute the observation space: arm joint state + ee-position + goal-position + actions
         num_obs = self._observation_manager.group_obs_dim["policy"]
-        # print("num_obs")
-        # print(num_obs)
+        print("num_obs")
+        print(num_obs)
         self.observation_space = gym.spaces.Box(low=0, high=255, shape=num_obs,dtype=np.uint8)
         # compute the action space
         # self.action_space = gym.spaces.Box(low=-1.0, high=1.0, shape=(self.num_actions,))
@@ -1121,6 +1121,8 @@ class PushEnv(IsaacEnv):
             pointcloud_w = pointcloud_w.cpu().numpy()
         pcd = o3d.geometry.PointCloud()
         pcd.points = o3d.utility.Vector3dVector(pointcloud_w)
+        # print('pointcloud 3d')
+        # print(pointcloud_w)
         # o3d.visualization.draw_geometries([pcd])
         return pcd
     def point_cloud_process(self,pcd):
@@ -1391,11 +1393,14 @@ class PushEnv(IsaacEnv):
                 # plt.show()
                 ############## visulaize placing
                 self.place_success_all +=1.0
-                print('place')
-                print(env_ids_tmp)
-                print(self.place_success_all)
-                print('steps') 
-                print(self.step_all)
+                
+                # print('place')
+                # print(env_ids_tmp)
+                # self.un_satisfied_scenes.append(self.table_scenes[i])
+                # print(self.place_success_all)
+                # print(self.un_satisfied_scenes)
+                # print('steps') 
+                # print(self.step_all)
     '''
     only for toy example
     '''            
@@ -1568,25 +1573,34 @@ class PushEnv(IsaacEnv):
                 self.obj_on_table_name[i][j] = 0
         # self.obj_on_table = []
         num_env = len(file_name)
-        # choosen_env_id = np.random.randint(0,num_env)
-        choosen_env_id = self.env_i_tmp
+        choosen_env_id = np.random.randint(0,num_env)
+        # choosen_env_id = self.env_i_tmp
         print(file_name[choosen_env_id],env_ids,self.env_i_tmp,choosen_env_id)
-        # env_path = "generated_table2/"+file_name[choosen_env_id]
-        env_path = "test_table2/"+file_name[choosen_env_id]
+        env_path = "generated_table2/"+file_name[choosen_env_id]
+        # env_path = "test_table2/"+file_name[choosen_env_id]
         print(env_path)
         # env_path = "generated_table2/dict_478.pkl"
+        for i in env_ids.tolist():
+            self.table_scenes[i] = file_name[choosen_env_id]
         if self.env_i_tmp <num_env-1:
             self.env_i_tmp +=1
-        else:
-            print('steps')
-            print(self.step_all)
-            print('place')
-            print(self.place_success_all)
-            print('reach')
-            print(self.reaching_all)
-            print('fallen')
-            print(self.fallen_all)
-            self.close()
+        # else:
+        #     print('steps')
+        #     print(self.step_all)
+        #     print('place')
+        #     print(self.place_success_all)
+        #     print('reach')
+        #     print(self.reaching_all)
+        #     print('fallen')
+        #     print(self.fallen_all)
+        #     print(self.un_satisfied_scenes)
+        #     file_path = "un_satisfied_scenes.pkl"
+        #     f_save = open(file_path,'wb')
+            
+        #     pkl.dump(self.un_satisfied_scenes,f_save)
+        #     f_save.close()
+        #     self.close()
+        #     self.close()
             
         fileObject2 = open(env_path, 'rb')
         env =  pkl.load(fileObject2)

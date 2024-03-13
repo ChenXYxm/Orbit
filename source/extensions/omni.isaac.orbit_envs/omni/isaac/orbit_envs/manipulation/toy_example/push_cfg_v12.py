@@ -246,12 +246,12 @@ class RewardsCfg:
     reward_reaching = {"weight": 1}
     # penaltizing_falling = {"weight": 1} ## DEc20_00-56-30
     # penaltizing_falling = {"weight": 2} ## Dec24_16-21-23 before
-    penaltizing_falling = {"weight": 3} ## Dec24_16-21-23 before
+    penaltizing_falling = {"weight": 2} ## Dec24_16-21-23 before
     penaltizing_steps = {"weight": 0.1}
     # penaltizing_repeat_actions = {"weight": 0.5}
     # penaltizing_pushing_outside = {"weight":0.2} ## Dec22_20-44-43 before
     # penaltizing_pushing_outside = {"weight":0.5} ## Dec24_16-21-23 before
-    penaltizing_pushing_outside = {"weight":0.9}
+    penaltizing_pushing_outside = {"weight":0.2}
     reward_max_tsdf_increase = {"weight": 10}
     penaltizing_stop = {"weight": 2} ## Dec26 after
     # penalizing_tool_action_l2 = {"weight": 1e-2}
@@ -264,7 +264,7 @@ class RewardsCfg:
 @configclass
 class TerminationsCfg:
     """Termination terms for the MDP."""
-    stop_pushing = True
+    stop_pushing = False
     episode_timeout = True  # reset when episode length ended
     # object_falling = True  # reset when object falls off the table
     is_success = True # reset when object is placed modified for toy example
@@ -306,7 +306,7 @@ class ObjMask:
         self.mask = dict()
         file_list = os.listdir("obj_mask/")
         obj_name = ['crackerBox','sugarBox','tomatoSoupCan','mustardBottle','mug','largeMarker','tunaFishCan',
-                'banana','bowl','largeClamp','scissors']
+                'banana','bowl','largeClamp','scissors','Cube']
         for i in range(len(file_list)):
             for j in range(len(obj_name)):
                 if obj_name[j] in file_list[i]:
@@ -374,6 +374,6 @@ class PushEnvCfg(IsaacEnvCfg):
     # resolution of the occupancy grid
     og_resolution: occupancy_grid_resolution = occupancy_grid_resolution()
     obj_mask: ObjMask = ObjMask()
-    env_name: env_name = env_name().test_file_list
+    env_name: env_name = env_name().file_list
     pre_train: bool=False
     

@@ -1,13 +1,13 @@
 # Reference: https://github.com/DLR-RM/rl-baselines3-zoo/blob/master/hyperparams/ppo.yml#L32
-seed: 39
+seed: 42
 
 # epoch * n_steps * nenvs: 500×512*8*8
 n_timesteps: 1024000
 policy: 'CnnPolicy'
-n_steps: 32
+n_steps: 8
 # mini batch size: num_envs * nsteps / nminibatches 2048×512÷2048
 
-batch_size: 32 ##ppo
+batch_size: 24 ##ppo
 gae_lambda: 0.95
 gamma: 0.99
 n_epochs: 3
@@ -17,7 +17,7 @@ learning_rate: !!float 5e-4
 clip_range: 0.2
 policy_kwargs: "dict(
                   activation_fn=nn.ELU,
-                  net_arch=[32, 32, dict(pi=[256, 128, 64], vf=[256, 128, 64])]
+                  net_arch=[256, 256, dict(pi=[256, 128], vf=[256, 128])]
                 )"
 target_kl: 0.01
 max_grad_norm: 1.0

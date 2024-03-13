@@ -70,13 +70,23 @@ def main():
         raise ValueError("Checkpoint path is not valid.")
     # create agent from stable baselines
     print(f"Loading checkpoint from: {args_cli.checkpoint}")
+    # agent_cfg = parse_sb3_cfg(args_cli.task)
+    # override configuration with command line arguments
+    # if args_cli.seed is not None:
+    #     agent_cfg["seed"] = args_cli.seed
+    # policy_arch = agent_cfg.pop("policy")
     agent = PPO.load(args_cli.checkpoint, env, print_system_info=True)
+    # agent = PPO(policy_arch, env, verbose=1, **agent_cfg)
+    # state_dict = torch.load('/home/cxy/Downloads/weight758080.pth')
+    # agent.policy.load_state_dict(state_dict)
     # torch.save(agent.policy.state_dict(),'/home/cxy/Downloads/436800weight.pth')
     # reset environment
     obs = env.reset()
     stop_pushing = 0
     # simulate environment
     print('using stop pushing method')
+    x_start = 49
+    flag_compare = True
     while simulation_app.is_running():
         # agent stepping
         act_app = np.zeros(len(obs))
@@ -117,8 +127,16 @@ def main():
                 actions[_,0] = actions[_,1]
                 actions[_,1] = 49-actions_origin[_,0]
         for _ in range(len(value)):
-            if float(value[_]) <=-0.1:
-                act_app[_] = 10
+            print('value',value)
+            if not flag_compare:
+                if float(value[_]) <=-0.12:
+                    act_app[_] = 10
+        ################# TODO:only for comparision method
+            if flag_compare:
+                act_app[_] = 0
+                actions[_,0] = x_start
+                actions[_,1] = 49
+        #######################################
         actions_new = np.c_[actions,act_app.T]    
         for _ in env.env.stop_pushing.tolist():
             if _ >= 0.5:
@@ -133,8 +151,18 @@ def main():
         # value,log_prob,entropy = agent.policy.evaluate_actions()
         #######################################
         # env stepping
-        obs, _, _, _ = env.step(actions_new)
-        
+        print(actions_new)
+        obs, _, dones, _ = env.step(actions_new)
+
+        ################# TODO:only for comparision method
+        if flag_compare:
+            x_start = x_start -2
+            if x_start <0:
+                x_start = 49
+            for idx, done in enumerate(dones):
+                if done:
+                    x_start = 49
+        ############################
         # check if simulator is stopped
         if env.unwrapped.sim.is_stopped():
             break

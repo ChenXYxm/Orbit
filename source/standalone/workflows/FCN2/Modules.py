@@ -106,6 +106,7 @@ class BasicBlock(nn.Module):
             raise NotImplementedError("Dilation > 1 not supported in BasicBlock")
         # Both self.conv1 and self.downsample layers downsample the input when stride != 1
         self.conv1 = conv3x3(inplanes, planes, stride)
+        
         self.bn1 = norm_layer(planes)
         self.relu = nn.ReLU(inplace=True)
         self.conv2 = conv3x3(planes, planes)
@@ -148,14 +149,28 @@ def conv3x3(in_planes, out_planes, stride=1, groups=1, dilation=1):
         bias=False,
         dilation=dilation,
     )
-
+def conv5x5(in_planes, out_planes, stride=1, groups=2, dilation=0):
+    """3x3 convolution with padding"""
+    return nn.Conv2d(
+        in_planes,
+        out_planes,
+        kernel_size=5,
+        stride=stride,
+        padding=dilation,
+        groups=groups,
+        bias=False,
+        dilation=dilation,
+    )
 
 class Perception_Module(nn.Module):
     def __init__(self):
         super(Perception_Module, self).__init__()
         # self.C1 = conv3x3(1, 64)
+        # self.C0 = conv5x5(2, 32)
+        # self.C1 = conv3x3(32, 64)
         self.C1 = conv3x3(2, 64)
         self.MP1 = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
+        self.RB0 = BasicBlock(64, 64)
         self.RB1 = BasicBlock(64, 128)
         self.MP2 = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
         self.RB2 = BasicBlock(128, 256)
@@ -165,12 +180,18 @@ class Perception_Module(nn.Module):
         if verbose == 1:
             print("### Perception Module ###")
             print("Input: ".ljust(15), x.size())
+        # x = self.C0(x)
+        # if verbose == 1:
+        #     print("After Conv0: ".ljust(15), x.size())
         x = self.C1(x)
         if verbose == 1:
             print("After Conv1: ".ljust(15), x.size())
         x = self.MP1(x)
         if verbose == 1:
             print("After MP1: ".ljust(15), x.size())
+        x = self.RB0(x)
+        if verbose == 1:
+            print("After RB0: ".ljust(15), x.size())
         x = self.RB1(x)
         if verbose == 1:
             print("After RB1: ".ljust(15), x.size())
@@ -186,7 +207,7 @@ class Perception_Module(nn.Module):
 
         return x
 
-
+'''
 class Grasping_Module(nn.Module):
     def __init__(self, output_activation="Sigmoid"):
         super(Grasping_Module, self).__init__()
@@ -232,7 +253,7 @@ class Grasping_Module(nn.Module):
             return self.sigmoid(x)
         else:
             return x
-
+'''
 
 class Grasping_Module_multidiscrete(nn.Module):
     def __init__(self, output_activation="Sigmoid", act_dim_2=1):
@@ -241,6 +262,7 @@ class Grasping_Module_multidiscrete(nn.Module):
         self.RB2 = BasicBlock(256, 128)
         self.UP1 = nn.UpsamplingBilinear2d(scale_factor=2)
         self.RB3 = BasicBlock(128, 64)
+        self.RB4 = BasicBlock(64, 64)
         self.UP2 = nn.UpsamplingBilinear2d(scale_factor=2)
         self.C1 = nn.Conv2d(64, act_dim_2, kernel_size=1)
         self.output_activation = output_activation
@@ -263,6 +285,9 @@ class Grasping_Module_multidiscrete(nn.Module):
         x = self.RB3(x)
         if verbose == 1:
             print("After RB3: ".ljust(15), x.size())
+        x = self.RB4(x)
+        if verbose == 1:
+            print("After RB4: ".ljust(15), x.size())
         x = self.UP2(x)
         if verbose == 1:
             print("After UP2: ".ljust(15), x.size())
@@ -291,12 +316,12 @@ class Grasping_Module_multidiscrete(nn.Module):
         )
 
 
-def RESNET():
-    return nn.Sequential(Perception_Module(), Grasping_Module())
+# def RESNET():
+#     return nn.Sequential(Perception_Module(), Grasping_Module())
 
 
-def POLICY_RESNET():
-    return nn.Sequential(Perception_Module(), Grasping_Module(output_activation=None))
+# def POLICY_RESNET():
+#     return nn.Sequential(Perception_Module(), Grasping_Module(output_activation=None))
 
 
 def MULTIDISCRETE_RESNET(number_actions_dim_2):
@@ -337,22 +362,23 @@ def rotate(obs,number_actions_dim_2=1):
 
 if __name__ == "__main__":
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-    resnet = MULTIDISCRETE_RESNET(1)
+    print(device)
+    resnet = MULTIDISCRETE_RESNET(1).cuda()
     # resnet = RESNET()
 
-    test = torch.Tensor(3, 2, 144, 144)
+    test = torch.Tensor(3, 2, 144, 144).cuda()
 
     output = resnet(test)
-    print(output.size(),output.view(-1).max(0))
+    print(output.size(),output.view(3,-1).max(1))
+    print(output.size(),output.view(3,-1).shape)
     output_np = output.cpu().detach().numpy()
-    print(np.max(output_np),output_np.shape,np.unravel_index(np.argmax(output_np),output_np.shape))
+    print(np.max(output_np),output_np.shape,np.unravel_index(np.argmax(output_np[0]),output_np.shape))
     count_parameters(resnet)
     plt.figure()
     for i in range(1,3):
         output_img = output_np[i].copy()
         index_tmp = np.unravel_index(np.argmax(output_img),output_img.shape)
-        print(index_tmp)
+        print(index_tmp,output_img.shape)
         output_img[index_tmp] = 1
         plt.subplot(1,4,i)
         plt.imshow(output_img)

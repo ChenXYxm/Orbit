@@ -61,7 +61,7 @@ from omni.isaac.orbit_envs.isaac_env_cfg import EnvCfg, IsaacEnvCfg, PhysxCfg, S
 
 import carb
 #################
-from place_new_obj import place_new_obj_fun
+from source.standalone.thesis.place_new_obj_Feb16 import place_new_obj_fun
 """
 Main
 """

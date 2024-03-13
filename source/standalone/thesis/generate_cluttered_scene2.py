@@ -61,7 +61,7 @@ from omni.isaac.orbit_envs.isaac_env_cfg import EnvCfg, IsaacEnvCfg, PhysxCfg, S
 
 import carb
 #################
-from place_new_obj import place_new_obj_fun
+from source.standalone.thesis.place_new_obj_Feb16 import place_new_obj_fun
 """
 Main
 """
@@ -632,6 +632,10 @@ def get_new_obj_info(obj_type):
     # plt.imshow(occupancy)
     # plt.show()
     vertices_new_obj = get_new_obj_contour_bbox(occupancy)
+    print('new obj vertices')
+    print(vertices_new_obj)
+    plt.imshow(occupancy)
+    plt.show()
     return vertices_new_obj
 def get_new_obj_contour_bbox(occu:np.array):
     mask = occu.copy()
