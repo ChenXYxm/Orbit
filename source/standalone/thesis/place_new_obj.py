@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import cv2
-from shapely import Polygon, STRtree, area, contains, buffer, intersection,get_coordinates
+from shapely import Polygon, STRtree, area, contains, buffer, intersection,get_coordinates, concave_hull
 # from shapely.geometry import 
 ################## get the centers of the bboxes for objects on table 
 def get_center_range(occu:np.array):
@@ -230,31 +230,34 @@ def place_new_obj_fun(occu_ori,new_obj):
     print("Number of contours detected:",len(contours))
     shape_dict = dict()
     i = 0
+    ori_polygons = []
     polygons = []
     table_polygon = Polygon(np.array([[0,0],[Nx-1,0],[Nx-1,Ny-1],[0,Ny-1]]))
+    new_lines = []
+    
     for cnt in contours:
         i += 1
+        defect_points = []
+        defect_vertices_points = []
         # approx = cv2.minAreaRect(cnt)
         # box = cv2.boxPoints(approx)
         # approx = np.int0(box)
-        #######################
-        # approx = cv2.minAreaRect(cnt)
-        # box = cv2.boxPoints(approx)
-        # approx = np.int0(box)
-        # if len(approx) >=2:
-        #     # img = cv2.drawContours(img,[approx],-1,(0,255,255),3)
-
-        #     # print(approx)
-        #     approx = approx.reshape((-1,2))
-        #     # print(approx)
-        #     shape_dict[i] = approx
-        #     polygons.append(Polygon(approx))
-        ############################
-        
+        occu_tmp = occu_ori.copy()
+        occu_tmp2 = occu_ori.copy()
+        occu_tmp1 = occu_ori.copy()
+        cnt_tmp = cnt.copy()
+        cnt_tmp = cnt_tmp.reshape(-1,2)
+        polygon_tmp = Polygon(cnt_tmp)
+        if polygon_tmp.area>3:
+            ori_polygons.append(polygon_tmp)
+        ############################# get extract lines ################
         hull = cv2.convexHull(cnt,returnPoints = True)
-
         # print(hull)
         approx = np.int0(hull)
+        # print('approx',approx)
+        hull_2 = cv2.convexHull(cnt,returnPoints = False)
+        defects = cv2.convexityDefects(cnt, hull_2)
+        # print('defects: ',defects,i)
         if len(approx) >=3:
             # img = cv2.drawContours(img,[approx],-1,(0,255,255),3)
 
@@ -263,49 +266,144 @@ def place_new_obj_fun(occu_ori,new_obj):
             # for i in range(len(approx)):
             #     if approx[i,0] == 649:
             #         continue
+            
+            # print('approx',approx)
+            #shape_dict[i] = approx
+            polygon_tmp2 = Polygon(approx)
+            if polygon_tmp2.area>3:
+                polygons.append(polygon_tmp2)
+        #concave_hull_tmp = concave_hull(polygon_tmp)
+        if defects is not None: 
+            for i in range(defects.shape[0]):
+                s, e, f, d = defects[i, 0]
+                start = cnt[s][0]
+                end = cnt[e][0]
+                far = cnt[f][0]
+                #print('distance: ',d)
+                defect_points.append(far)
+                defect_vertices_points.append(start)
+                defect_vertices_points.append(end)
+                # print('start: ',start,'end: ',end,'far: ',far)
+                p1 = np.array(start).flatten()
+                p2 = np.array(end).flatten()
+                p3 = np.array(far).flatten()
+                distance = np.cross(p2 - p1, p3 - p1) / np.linalg.norm(p2 - p1)
+                # print('distance: ',distance)
+                # print(type(cnt))
+                # print(s,e,f)
+                cnt_tmp = cnt.copy()
+                cnt_tmp = cnt_tmp.reshape(-1,2)
+                if np.abs(distance) > 2:
+                    if s<e:
+                        new_lines.append(cnt_tmp[s:e+1])
+                        # print(cnt_tmp[s:e+1])
+                    else:
+                        points = cnt_tmp[s:-1]
+                        points = np.concatenate((points,cnt_tmp[e].reshape(-1,2)),axis=0)
+                        new_lines.append(points)
+                        # print(points)
+                # print(cnt_tmp[s:e+1])
+        # defect_vertices_points = [np.array([point]).flatten() for point in defect_vertices_points]  
+        # print('defect_vertices_points',defect_vertices_points)  
+        # defect_contours = [np.array([point]).flatten() for point in defect_points]
+        # poly_points_tmp = np.array(np.round(np.array(get_coordinates(polygon_tmp2))),dtype=np.int16)
 
-            # print(approx)
-            shape_dict[i] = approx
-            polygon_tmp = Polygon(approx)
-            polygon_tmp_2 = table_polygon.intersection(polygon_tmp)
-            if polygon_tmp_2.area>0:
-                polygons.append(polygon_tmp_2)
-    print(len(polygons))
+        # print('contour: ',cnt)
+        # print('contour2: ',cnt_tmp)
+        # for j in range(len(cnt_tmp)):
+        #     occu_tmp[cnt_tmp[j,1],cnt_tmp[j,0]] = 3
+        # for j in range(len(poly_points_tmp)):
+        #     occu_tmp2[poly_points_tmp[j,1],poly_points_tmp[j,0]] = 3
+        # for j in range(len(defect_points)):
+        #     occu_tmp1[defect_contours[j][1],defect_contours[j][0]] = 3
+        # for j in range(len(defect_vertices_points)):
+        #     occu_tmp1[defect_vertices_points[j][1],defect_vertices_points[j][0]] = 4
+        # fig, (ax1,ax2,ax3) = plt.subplots(1, 3, figsize=(7, 4))
+        # ax1.imshow(occu_tmp)
+        # ax2.imshow(occu_tmp2)
+        # ax3.imshow(occu_tmp1)
+        # plt.show()
+
+        # hull = cv2.convexHull(cnt,returnPoints = True)
+        # # print(hull)
+        # hull_2 = cv2.convexHull(cnt,returnPoints = False)
+        # defects = cv2.convexityDefects(cnt, hull_2)
+        
+        
+    # for cnt in contours:
+    #     i += 1
+    #     # approx = cv2.minAreaRect(cnt)
+    #     # box = cv2.boxPoints(approx)
+    #     # approx = np.int0(box)
+    #     #######################
+    #     # approx = cv2.minAreaRect(cnt)
+    #     # box = cv2.boxPoints(approx)
+    #     # approx = np.int0(box)
+    #     # if len(approx) >=2:
+    #     #     # img = cv2.drawContours(img,[approx],-1,(0,255,255),3)
+
+    #     #     # print(approx)
+    #     #     approx = approx.reshape((-1,2))
+    #     #     # print(approx)
+    #     #     shape_dict[i] = approx
+    #     #     polygons.append(Polygon(approx))
+    #     ############################
+        
+    #     hull = cv2.convexHull(cnt,returnPoints = True)
+
+    #     # print(hull)
+    #     approx = np.int0(hull)
+    #     if len(approx) >=3:
+    #         # img = cv2.drawContours(img,[approx],-1,(0,255,255),3)
+
+    #         # print(approx)
+    #         approx = approx.reshape((-1,2))
+    #         # for i in range(len(approx)):
+    #         #     if approx[i,0] == 649:
+    #         #         continue
+
+    #         print('approx',approx)
+    #         shape_dict[i] = approx
+    #         polygon_tmp = Polygon(approx)
+    #         polygon_tmp_2 = table_polygon.intersection(polygon_tmp)
+    #         if polygon_tmp_2.area>0:
+    #             polygons.append(polygon_tmp_2)
+    print('number of polygons',len(polygons))
     if len(polygons)>=1:
-        tree_ori = STRtree(polygons)
-        del_ind = []
-        for i,poly in enumerate(polygons):
-            poly_tmp = buffer(poly,distance=1)
-            # print(poly_tmp,poly)
-            if i == 0:
-                polygons_tmp = polygons[1:]
-            elif i == len(polygons)-1:
-                polygons_tmp = polygons[:-1]
-            else:
-                polygons_tmp = polygons[:i] +polygons[i+1:]
-            tree = STRtree(polygons_tmp)
-            indice = tree.query(poly_tmp, predicate="contains").tolist()
-            if len(indice) >0:
-                for j in indice:
-                    if contains(poly_tmp,tree.geometries.take(j)) and area(poly_tmp)>area(tree.geometries.take(j)):
-                        if j >= i:
-                            j_tmp = j+1
-                        else:
-                            j_tmp = j
-                        if j_tmp+1 in shape_dict:
-                            # print("show remove")
-                            # print(j_tmp)
-                            del(shape_dict[j_tmp+1])
-                            del_ind.append(int(j_tmp))
+        
+        # del_ind = []
+        # for i,poly in enumerate(polygons):
+        #     poly_tmp = buffer(poly,distance=1)
+        #     # print(poly_tmp,poly)
+        #     if i == 0:
+        #         polygons_tmp = polygons[1:]
+        #     elif i == len(polygons)-1:
+        #         polygons_tmp = polygons[:-1]
+        #     else:
+        #         polygons_tmp = polygons[:i] +polygons[i+1:]
+        #     tree = STRtree(polygons_tmp)
+        #     indice = tree.query(poly_tmp, predicate="contains").tolist()
+        #     if len(indice) >0:
+        #         for j in indice:
+        #             if contains(poly_tmp,tree.geometries.take(j)) and area(poly_tmp)>area(tree.geometries.take(j)):
+        #                 if j >= i:
+        #                     j_tmp = j+1
+        #                 else:
+        #                     j_tmp = j
+        #                 if j_tmp+1 in shape_dict:
+        #                     # print("show remove")
+        #                     # print(j_tmp)
+        #                     del(shape_dict[j_tmp+1])
+        #                     del_ind.append(int(j_tmp))
         shape_dict = dict()
-        polygons_tmp = polygons.copy()
-        # print(del_ind)
-        # print(polygons_tmp)
-        polygons = []
-        for i in range(len(polygons_tmp)):
-            if i not in del_ind:
-                polygons.append(polygons_tmp[i])
-        print(len(polygons))
+        # polygons_tmp = polygons.copy()
+        # # print(del_ind)
+        # # print(polygons_tmp)
+        # polygons = []
+        # for i in range(len(polygons_tmp)):
+        #     if i not in del_ind:
+        #         polygons.append(polygons_tmp[i])
+        # print('number of polygon after filter: ',len(polygons))
         occu_tmp = occu_ori.copy()
         for i in range(len(polygons)):
             # print(polygons[i])
@@ -336,6 +434,7 @@ def place_new_obj_fun(occu_ori,new_obj):
                     # print(shape_dict[i][j][0])   
                 occu_tmp[shape_dict[i][j][1],shape_dict[i][j][0]] = 3
         # print('shape mask')
+        occu_tmp1 = occu_tmp.copy()
         # plt.imshow(occu_tmp)
         # plt.show()
         # print(shape_dict)
@@ -371,6 +470,32 @@ def place_new_obj_fun(occu_ori,new_obj):
                             tmp_delta[_] = np.floor(l)
                     occu_tmp[int(np.round(p_s[0]+tmp_delta[0])),int(np.round(p_s[1]+tmp_delta[1]))] = 3
                     # occu_tmp[int(np.round(p_s[0]+k*line[0]/length)),int(np.round(p_s[1]+k*line[1]/length))] = 2
+        for _ in new_lines:
+            points_tmp = _.copy()
+            points_tmp[:,0] = points_tmp[:,1]
+            points_tmp[:,1] = _[:,0].copy()
+            for j in range(len(points_tmp)-1):
+                p_s = points_tmp[j]
+                p_e = points_tmp[j+1]
+                line = p_e - p_s
+                length = np.linalg.norm(line)
+                if length not in length_dict:
+                    length_dict[length] = [p_s,p_e]
+                    length_list.append(length)
+                else:
+                    length_dict[length].append(p_s)
+                    length_dict[length].append(p_e)
+                # print(p_s,p_e,length)
+                for k in range(int(np.ceil(length))):
+                    tmp_delta = [k*line[0]/length,k*line[1]/length]
+                    for _,l in enumerate(tmp_delta):
+                        if l >=0:
+                            tmp_delta[_] = np.ceil(l)
+                        else:
+                            tmp_delta[_] = np.floor(l)
+                    occu_tmp[int(np.round(p_s[0]+tmp_delta[0])),int(np.round(p_s[1]+tmp_delta[1]))] = 3
+               
+        # print('new_lines: ',new_lines)
         length_list.append(Ny)
         length_dict[Ny] = [np.array([0,0]),np.array([Ny-1,0])]
         length_dict[Ny].append(np.array([0,Nx-1]))
@@ -381,12 +506,30 @@ def place_new_obj_fun(occu_ori,new_obj):
         length_dict[Nx].append(np.array([Ny-1,Nx-1]))
         # occu_tmp[Ny-1,Nx-1] = 3
         occu_tmp2 = occu_tmp.copy()
+        # print('convexity defect')
+        # print(defect_contours)
         # print('edges')
         # plt.imshow(occu_tmp)
         # plt.show()
+
+        ######################################## visualize convixity defect
+        # occu_tmp3 = occu_tmp.copy()
+        # for i in defect_contours:
+        #     print(i)
+        #     i = np.array(i).flatten()
+            
+        #     occu_tmp3[int(i[1]),int(i[0])] = 4
+        # fig, (ax1,ax2,ax3) = plt.subplots(1, 3, figsize=(7, 4))
+        # ax1.imshow(occu_tmp1)
+        # ax2.imshow(occu_tmp2)
+        # ax3.imshow(occu_tmp3)
+        # plt.show()
+
+
+        ########################################
         flag_found = False
         dila_polygons = []
-        for i in polygons:
+        for i in ori_polygons:
             dila_polygons.append(i.buffer(2.5))
         tree = STRtree(dila_polygons)
         # print("new obj shape")
@@ -445,7 +588,7 @@ def place_new_obj_fun(occu_ori,new_obj):
                             p_e = p_e_ori - np.sign(delta_l)*o*line.copy()/length
                             # print("check original points")
                             # print(p_s,p_e,p,o)
-                            for gap in range(6,19):
+                            for gap in range(3,10):
                                 for n in range(2):
                                     sign = (-1)**n
                                     tmp_delta = gap*line.copy()/length

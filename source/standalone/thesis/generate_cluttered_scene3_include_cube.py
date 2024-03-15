@@ -135,7 +135,7 @@ def main():
     # Load kit helper
     # sim = SimulationContext(physics_dt=0.01, rendering_dt=1, backend="torch",device='cuda:0',)
     # Set main camera
-    set_camera_view([0, 2, 3.], [0.0, 0.0, 0])
+    set_camera_view([0, 2, 3], [0.0, 0.0, 0])
     # Enable GPU pipeline and flatcache
     if sim.get_physics_context().use_gpu_pipeline:
         sim.get_physics_context().enable_flatcache(True)
@@ -168,7 +168,7 @@ def main():
     )
     #################### create table 
     table_path = f"{ISAAC_NUCLEUS_DIR}/Props/Shapes/cube.usd"
-    Table = FixedCuboid(prim_path="/World/Table",position=(0,0,-0.25),scale=(0.5,0.5,0.5))
+    Table = FixedCuboid(prim_path="/World/Table",position=(0,0,-0.25),scale=(0.42,0.42,0.5))
     # Table.set_mass(10000000) 
     sideTable = FixedCuboid(prim_path="/World/sideTable",position=(0.35,-0.9,-0.3),scale=(0.4,0.4,0.4))
     # sideTable.set_mass(10)
@@ -397,7 +397,7 @@ def main():
     ##################################################################### load ycb
     obj_dict = dict()
     table_obj_pos_rot = dict()
-    for i in range(1000):
+    for i in range(2000):
         print('i')
         print(i)
         ## initialize parameters
@@ -409,7 +409,7 @@ def main():
         obj_name_i = ycb_name[randi]
         angle = np.random.randint(0,180)
         translation = torch.rand(2).tolist()
-        translation = [0.33*translation[0]-0.165,0.33*translation[1]-0.165,0.07]
+        translation = [0.25*translation[0]-0.125,0.25*translation[1]-0.125,0.07]
         if obj_name_i in ["mug","tomatoSoupCan","pitcherBase","tunaFishCan","bowl","banana"]:
             rot = convert_quat(tf.Rotation.from_euler("XYZ", (-90,0,0), degrees=True).as_quat(), to="wxyz")
         else:
@@ -486,7 +486,7 @@ def main():
             pcd.points = o3d.utility.Vector3dVector(inliers)
             # o3d.visualization.draw_geometries([pcd])
             pts_tab = np.array(pcd.points)
-            Nx,Ny =50,50
+            Nx,Ny =42,42
             x = np.linspace(np.min(pts_tab[:,0]), np.max(pts_tab[:,0]), Nx)
             y = np.linspace(np.min(pts_tab[:,1]), np.max(pts_tab[:,1]), Ny)
             xv, yv = np.meshgrid(x, y)
@@ -531,7 +531,8 @@ def main():
                     rot = convert_quat(tf.Rotation.from_euler("XYZ", (0,0,-np.rad2deg(new_obj_pos[2])), degrees=True).as_quat(), to="wxyz")
                 # print(new_obj_pos)
                 translation = [(Nx/2-new_obj_pos[1])*1./100.,(new_obj_pos[0]-Ny/2)*1./100.,0.05]
-                # print(translation)
+
+                print("real pos: ",translation)
                 if randi == 0:
                     j = int(obj_dict[obj_name_i]-1)
                     root_state = obj1[j].get_default_root_state()
@@ -647,13 +648,13 @@ def main():
                         table_obj_pos_rot[obj_name_i] = [(translation,rot)]
                     else:
                         table_obj_pos_rot[obj_name_i].append((translation,rot))
-                    for k in range(20):
+                    for k in range(25):
                         sim.step()
-                    for k in range(20):
+                    for k in range(25):
                         sim.render()
                 else:
                     file_name_ori = "dict_"
-                    file_list = os.listdir("train_table4/")
+                    file_list = os.listdir("train_table_42x42/")
                     print('done')
                     print(table_obj_pos_rot)
                     for k in table_obj_pos_rot:
@@ -664,7 +665,7 @@ def main():
                         if file_name in file_list:
                             num_file +=1
                         else:
-                            file_path = "train_table4/"+file_name
+                            file_path = "train_table_42x42/"+file_name
                             f_save = open(file_path,'wb')
                             table_obj_pos_rot = [table_obj_pos_rot,obj_name_i]
                             pickle.dump(table_obj_pos_rot,f_save)

@@ -38,11 +38,11 @@ simulation_app = SimulationApp(config, experience=app_experience)
 
 """Rest everything follows."""
 
-import torch
+
 import gym
 import os
 from datetime import datetime
-
+import torch
 from stable_baselines3 import PPO
 from stable_baselines3.common.callbacks import CheckpointCallback
 from stable_baselines3.common.logger import configure
@@ -69,6 +69,8 @@ def main():
         agent_cfg["seed"] = args_cli.seed
 
     # directory for logging into
+    # logs/sb3/Isaac-Toy-Franka-v0/Dec06_17-42-42
+    # log_dir = os.path.join("logs", "sb3", 'Isaac-Toy-Franka-v0', 'Dec06_17-42-42')
     log_dir = os.path.join("logs", "sb3", args_cli.task, datetime.now().strftime("%b%d_%H-%M-%S"))
     # dump the configuration into log-directory
     dump_yaml(os.path.join(log_dir, "params", "env.yaml"), env_cfg)
@@ -109,19 +111,31 @@ def main():
         )
 
     # create agent from stable baselines
-    #agent = PPO(policy_arch, env, verbose=1, **agent_cfg)
-    #state_dict = torch.load('/home/chenxiny/orbit/Orbit/logs/sb3/Isaac-Toy-Franka-v0/Feb03_08-25-40/weight320000.pth')
-    #agent.policy.load_state_dict(state_dict)
-    checkpoint_path = '/home/chenxiny/orbit/Orbit/logs/sb3/Isaac-Toy-Franka-v0/Feb03_23-18-29/model_96000_steps'
-    agent = PPO.load(checkpoint_path, env, print_system_info=True)
+    # agent = PPO(policy_arch, env, verbose=1, **agent_cfg)
+    # print('/home/cxy/Downloads/436800weight.pth')
+    # print(agent.policy)
+    # state_dict = torch.load('/home/cxy/Downloads/weight758080.pth')
+   
+    # agent.policy.load_state_dict(state_dict)
+    # agent.save("./model1")
+    # agent.policy.load_state_dict(state_dict)
     # agent.policy.to('cpu')
-    torch.save(agent.policy.state_dict(),'/home/chenxiny/orbit/Orbit/logs/sb3/Isaac-Toy-Franka-v0/Feb03_23-18-29/weight96000.pth')
+    # torch.save(agent.policy.state_dict(),'./weight758080.pth')
+    
+    # print(len(list(agent.policy.children())))
+    # print(agent.policy.children())
+    # for name, param in agent.policy.named_parameters():
+    #     print(name)
+    checkpoint_path = '/home/chenxiny/orbit/Orbit/logs/sb3/Isaac-Push-50-PPO-Franka-v0/Mar07_23-46-48/model_6000_steps'
+    agent = PPO.load(checkpoint_path,env, print_system_info=True)
+    # torch.save(agent.policy.state_dict(),log_dir+'/436800weight.pth')
+    # print(agent.policy)
     # configure the logger
     new_logger = configure(log_dir, ["stdout", "tensorboard"])
     agent.set_logger(new_logger)
 
     # callbacks for agent
-    checkpoint_callback = CheckpointCallback(save_freq=1000, save_path=log_dir, name_prefix="model", verbose=2)
+    checkpoint_callback = CheckpointCallback(save_freq=500, save_path=log_dir, name_prefix="model", verbose=2)
     # train the agent
     agent.learn(total_timesteps=n_timesteps, callback=checkpoint_callback)
     # save the final model

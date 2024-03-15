@@ -4,12 +4,12 @@ seed: 41 ## before Jan25 is 41
 # epoch * n_steps * nenvs: 500×512*8*8
 n_timesteps: 1024000
 policy: 'CnnPolicy'
-n_steps: 8
+n_steps: 4
 # mini batch size: num_envs * nsteps / nminibatches 2048×512÷2048
 
-batch_size: 32 ##ppo
+batch_size: 24 ##ppo
 gae_lambda: 0.95
-gamma: 0.99
+gamma: 0.8
 n_epochs: 4
 ent_coef: 0.01
 vf_coef: 0.5

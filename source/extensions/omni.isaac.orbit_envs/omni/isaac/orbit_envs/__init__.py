@@ -103,3 +103,23 @@ gym.register(
     entry_point="omni.isaac.orbit_envs.manipulation.toy_example:PushEnv",
     kwargs={"cfg_entry_point": "omni.isaac.orbit_envs.manipulation.toy_example:PushEnvCfg"},
 )
+gym.register(
+    id="Isaac-Push-Place-Franka-v0",
+    entry_point="omni.isaac.orbit_envs.manipulation.push_place:PushEnv",
+    kwargs={"cfg_entry_point": "omni.isaac.orbit_envs.manipulation.push_place:PushEnvCfg"},
+)
+gym.register(
+    id="Isaac-Push-50-PPO-Franka-v0",
+    entry_point="omni.isaac.orbit_envs.manipulation.push_PPO:PushEnv",
+    kwargs={"cfg_entry_point": "omni.isaac.orbit_envs.manipulation.push_PPO:PushEnvCfg"},
+)
+gym.register(
+    id="Isaac-Push-Place-50-Franka-v0",
+    entry_point="omni.isaac.orbit_envs.manipulation.push_placeMar1_50_FCN.push_place:PushEnv",
+    kwargs={"cfg_entry_point": "omni.isaac.orbit_envs.manipulation.push_placeMar1_50_FCN.push_place:PushEnvCfg"},
+)
+gym.register(
+    id="Isaac-Push-Place-42-Franka-v0",
+    entry_point="omni.isaac.orbit_envs.manipulation.push_placeFeb19.push_place:PushEnv",
+    kwargs={"cfg_entry_point": "omni.isaac.orbit_envs.manipulation.push_placeFeb19.push_place:PushEnvCfg"},
+)

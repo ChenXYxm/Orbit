@@ -55,6 +55,7 @@ class PushEnv(IsaacEnv):
         self.reaching_all = 0.0
         self.step_all = 0.0
         self.fallen_all = 0.0
+        self.un_satisfied_scenes = []
         
         # parse the configuration for controller configuration
         # note: controller decides the robot control mode
@@ -149,7 +150,7 @@ class PushEnv(IsaacEnv):
         self._process_cfg()
         # initialize views for the cloned scenes
         self._initialize_views()
-
+        self.table_scenes = [0 for i in range(self.num_envs)]
         # prepare the observation manager
         self._observation_manager = PushObservationManager(class_to_dict(self.cfg.observations), self, self.device)
         # prepare the reward manager
@@ -281,6 +282,7 @@ class PushEnv(IsaacEnv):
         if not self.reset_f:
             self.new_obj_type = [i for i in range(self.num_envs)]
             self.env_i_tmp = 0
+            self.total_env = 0
         self.reset_f = True
         dof_pos, dof_vel = self.robot.get_default_dof_state(env_ids=env_ids)
         self.robot.set_dof_state(dof_pos, dof_vel, env_ids=env_ids)
@@ -297,6 +299,7 @@ class PushEnv(IsaacEnv):
         for i in env_ids.tolist():
             env_ids_tmp = torch.from_numpy(np.array([i])).to(self.device)
             self._randomize_table_scene(env_ids=env_ids_tmp)
+        # print(self.table_scenes)
         '''modified for toy example v2'''
         
         for _ in range(30):
@@ -936,7 +939,7 @@ class PushEnv(IsaacEnv):
             self._check_placing()
         '''
         ''' remove useless scene'''
-        # self._check_placing()
+        self._check_placing()
         
         # if not self.cfg.pre_train:
         #     self._check_fallen_objs(env_ids)
@@ -947,8 +950,8 @@ class PushEnv(IsaacEnv):
         if not self.cfg.pre_train:
             self._check_fallen_objs(env_ids)
             ############## TODO: changed in Feb 1
-            #self._check_placing() #delete this condition in Feb 1
-            self._update_table_og() # add this condition at Feb 1
+            self._check_placing() #delete this condition in Feb 1
+            #self._update_table_og() # add this condition at Feb 1
         else: 
             self._update_table_og()
         # self._check_fallen_objs(env_ids)
@@ -1165,7 +1168,20 @@ class PushEnv(IsaacEnv):
                                             ransac_n=3,
                                             num_iterations=1000)
         return plane_model
-    
+    def add_salt_and_pepper_noise(self,image, salt_prob, pepper_prob):
+        noisy_image = np.copy(image)
+
+        
+        num_salt = np.ceil(salt_prob * image.size)
+        salt_coords = [np.random.randint(0, i - 1, int(num_salt)) for i in image.shape]
+        noisy_image[salt_coords[0], salt_coords[1]] = 1
+
+        
+        num_pepper = np.ceil(pepper_prob * image.size)
+        pepper_coords = [np.random.randint(0, i - 1, int(num_pepper)) for i in image.shape]
+        noisy_image[pepper_coords[0], pepper_coords[1]] = 0
+
+        return noisy_image
 
     def get_og(self,camera):
         ############ get occupancy grid 
@@ -1251,7 +1267,7 @@ class PushEnv(IsaacEnv):
         v = v[v_ind]
         occupancy[v,u] = 1
         occupancy = np.fliplr(occupancy)
-
+        
         # if self.reset_f and self.show_first_og:
         #     # plt.imshow(occupancy)
         #     # plt.show()
@@ -1278,7 +1294,7 @@ class PushEnv(IsaacEnv):
         # o3d.visualization.draw_geometries([objects_pcd])
         ################ original table
         occupancy_ex = np.zeros( (Ny,Nx) )
-        occupancy_ex[6:self.cfg.og_resolution.tabletop[1]+6,6:self.cfg.og_resolution.tabletop[0]+6] = 1
+        occupancy_ex[6:self.cfg.og_resolution.tabletop[1]+6,6:self.cfg.og_resolution.tabletop[0]+6] = 0
         u = (pts_ex[:,0] - np.min(pts_tab[:,0]))/ ( np.max(pts_tab[:,0])-np.min(pts_tab[:,0]) )
         v = (pts_ex[:,1] - np.min(pts_tab[:,1]))/ ( np.max(pts_tab[:,1])-np.min(pts_tab[:,1]) )
         u = (Nx-12-1)*u +6
@@ -1304,7 +1320,32 @@ class PushEnv(IsaacEnv):
         
         
         return occupancy,occupancy_ex,Tsdf
+    def noise_tsdf(self,occu):
+        point_obj = o3d.geometry.PointCloud()
+        Nx,Ny = [50,50]
+        if np.max(occu) >=0.5:
+            occupied_ind = np.where(occu>=0.5)
+            # print(occupied_ind)
+            point_obj_points = np.zeros((len(occupied_ind[0]),3))
+            point_obj_points[:,0] = occupied_ind[1].copy() * 0.01+0.005
+            point_obj_points[:,1] = occupied_ind[0].copy() * 0.01+0.005
+            # print(point_obj_points)
+            point_obj.points = o3d.utility.Vector3dVector(point_obj_points)
+            x = np.linspace(0,0.5, 50)
+            y = np.linspace(0,0.5, 50)
+            xv, yv = np.meshgrid(x, y)
 
+            grid = np.zeros((Nx*Ny,3))
+            grid[:,0] = xv.flatten()
+            grid[:,1] = yv.flatten()
+            pts_grid = o3d.geometry.PointCloud(o3d.utility.Vector3dVector(grid))
+            distance = pts_grid.compute_point_cloud_distance(point_obj)
+            dist = np.array(distance)
+            # norm = mplc.Normalize(vmin=min(distance), vmax=max(distance), clip=True)
+            Tsdf = dist.reshape(Ny,Nx)
+            return Tsdf
+        else:
+            return None
     def _debug_vis(self):
         """Visualize the environment in debug mode."""
         # apply to instance manager
@@ -1431,7 +1472,9 @@ class PushEnv(IsaacEnv):
                 self.place_success_all +=1.0
                 print('place')
                 print(env_ids_tmp)
+                self.un_satisfied_scenes.append(self.table_scenes[i])
                 print(self.place_success_all)
+                print(self.un_satisfied_scenes)
                 print('steps') 
                 print(self.step_all)
     '''
@@ -1471,15 +1514,15 @@ class PushEnv(IsaacEnv):
             '''
             
             if (self.actions_origin[i,2]%4) == 0:
-                start_ind_x = max(self.actions_origin[i][0]-2,0)
-                end_ind_x = min(self.actions_origin[i][0]+3,self.cfg.og_resolution.tabletop[0])
-                start_ind_y = max(self.actions_origin[i][1]-2,0)
-                end_ind_y = min(self.actions_origin[i][1]+2,self.cfg.og_resolution.tabletop[1])
-            else:
-                start_ind_x = max(self.actions_origin[i][0]-2,0)
+                start_ind_x = max(self.actions_origin[i][0]-1,0)
                 end_ind_x = min(self.actions_origin[i][0]+2,self.cfg.og_resolution.tabletop[0])
-                start_ind_y = max(self.actions_origin[i][1]-2,0)
-                end_ind_y = min(self.actions_origin[i][1]+3,self.cfg.og_resolution.tabletop[1])
+                start_ind_y = max(self.actions_origin[i][1]-1,0)
+                end_ind_y = min(self.actions_origin[i][1]+1,self.cfg.og_resolution.tabletop[1])
+            else:
+                start_ind_x = max(self.actions_origin[i][0]-1,0)
+                end_ind_x = min(self.actions_origin[i][0]+1,self.cfg.og_resolution.tabletop[0])
+                start_ind_y = max(self.actions_origin[i][1]-1,0)
+                end_ind_y = min(self.actions_origin[i][1]+2,self.cfg.og_resolution.tabletop[1])
             if torch.sum(table_og_tmp[start_ind_x:end_ind_x,start_ind_y:end_ind_y])==0:
                 if self.actions_origin[i,2] == 0:
                     start_ind_y = max(self.actions_origin[i][1]-5,0)
@@ -1501,8 +1544,8 @@ class PushEnv(IsaacEnv):
                     end_ind_x = min(self.actions_origin[i][0],self.cfg.og_resolution.tabletop[0])
                     if torch.sum(table_og_tmp[start_ind_x:end_ind_x,self.actions_origin[i][1]])>=1:
                         self.check_reaching[i] = 1  
-            if self.actions_origin[i][0] <= 2 or self.actions_origin[i][0] >= self.cfg.og_resolution.tabletop[1]-3:
-                self.check_reaching[i] = 0
+            # if self.actions_origin[i][0] <= 2 or self.actions_origin[i][0] >= self.cfg.og_resolution.tabletop[1]-3:
+            #     self.check_reaching[i] = 0
             # elif self.actions_origin[i][1] <= 2 or self.actions_origin[i][1] >= self.cfg.og_resolution.tabletop[1]-3:
             #     self.check_reaching[i] = 0
             if self.check_reaching[i] == 1:
@@ -1617,25 +1660,36 @@ class PushEnv(IsaacEnv):
                 self.obj_on_table_name[i][j] = 0
         # self.obj_on_table = []
         num_env = len(file_name)
-        choosen_env_id = np.random.randint(0,num_env)
-        #choosen_env_id = self.env_i_tmp
-        # print(file_name[choosen_env_id],env_ids,self.env_i_tmp,choosen_env_id)
+        # choosen_env_id = np.random.randint(0,num_env)
+        choosen_env_id = self.env_i_tmp
+        print(file_name[choosen_env_id],env_ids,self.env_i_tmp,choosen_env_id)
         # env_path = "generated_table2/"+file_name[choosen_env_id]
         env_path = "train_table4/"+file_name[choosen_env_id]
         # print(env_path)
         # env_path = "generated_table2/dict_478.pkl"
+        self.total_env += 1
+        for i in env_ids.tolist():
+            self.table_scenes[i] = file_name[choosen_env_id]
         if self.env_i_tmp <num_env-1:
             self.env_i_tmp +=1
-        # else:
-        #     print('steps')
-        #     print(self.step_all)
-        #     print('place')
-        #     print(self.place_success_all)
-        #     print('reach')
-        #     print(self.reaching_all)
-        #     print('fallen')
-        #     print(self.fallen_all)
-        #     self.close()
+            
+        if self.total_env>self.env_i_tmp+self.num_envs:
+
+            print('steps')
+            print(self.step_all)
+            print('place')
+            print(self.place_success_all)
+            print('reach')
+            print(self.reaching_all)
+            print('fallen')
+            print(self.fallen_all)
+            print(self.un_satisfied_scenes)
+            file_path = "un_satisfied_scenes.pkl"
+            f_save = open(file_path,'wb')
+            
+            pkl.dump(self.un_satisfied_scenes,f_save)
+            f_save.close()
+            self.close()
             
         fileObject2 = open(env_path, 'rb')
         env =  pkl.load(fileObject2)
@@ -1800,18 +1854,27 @@ class PushObservationManager(ObservationManager):
         for i in range(env.num_envs):
             
             # im = env.table_expand_og[i].cpu().numpy()*255/2.0
-            im = env.table_og[i].cpu().numpy()*255
-            
+            im = env.table_og[i].cpu().numpy()
+            #im = env.add_salt_and_pepper_noise(im,0.007,0.007)
+            #im_tsdf = env.noise_tsdf(im)
+            im = im*255
             # print('obs output')
             # plt.imshow(im)
             # plt.show()
             observation = np.array(im,dtype=np.uint8)
+
+            
             # observation = observation[:,np.newaxis].reshape([env.cfg.og_resolution.tabletop[1]+12,
             #                         env.cfg.og_resolution.tabletop[0]+12])
             observation = observation[:,np.newaxis].reshape([env.cfg.og_resolution.tabletop[1],
                                     env.cfg.og_resolution.tabletop[0]])
             obs_ta[i,:,:,0] = torch.from_numpy(observation).to(env.device)
+            # if im_tsdf is not None:
 
+            #     im_tsdf = im_tsdf*255
+            #     # print('None')
+            # else:
+            #     im_tsdf = env.table_tsdf[i].cpu().numpy()*255
             im_tsdf = env.table_tsdf[i].cpu().numpy()*255
             observation = np.array(im_tsdf,dtype=np.uint8)
             # observation = observation[:,np.newaxis].reshape([env.cfg.og_resolution.tabletop[1]+12,
@@ -1819,10 +1882,14 @@ class PushObservationManager(ObservationManager):
             observation = observation[:,np.newaxis].reshape([env.cfg.og_resolution.tabletop[1],
                                     env.cfg.og_resolution.tabletop[0]])
             obs_ta[i,:,:,1] = torch.from_numpy(observation).to(env.device)
-            # obs_ta=obs_ta.rot90(1,[2,1])
+            obs_ta=obs_ta.rot90(1,[2,1])
             # fig, (ax1,ax2) = plt.subplots(1, 2, figsize=(15, 10))
             # ax1.imshow(np.squeeze(obs_ta[i,:,:,1].cpu().numpy()))
             # ax2.imshow(np.squeeze(obs_ta[i,:,:,0].cpu().numpy()))
+            # plt.show()
+            # fig, (ax1,ax2) = plt.subplots(1, 2, figsize=(15, 10))
+            # ax1.imshow(env.table_tsdf[i].cpu().numpy()*255)
+            # ax2.imshow(env.table_og[i].cpu().numpy()*255)
             # plt.show()
         return obs_ta
         # return env.table_og
@@ -2368,15 +2435,15 @@ class PushRewardManager(RewardManager):
             #     plt.imshow(table_og_tmp.cpu().numpy())
             #     plt.show()
             if (env.actions_origin[i,2]%4) == 0:
-                start_ind_x = max(env.actions_origin[i][0]-2,0)
-                end_ind_x = min(env.actions_origin[i][0]+3,env.cfg.og_resolution.tabletop[0])
-                start_ind_y = max(env.actions_origin[i][1]-2,0)
-                end_ind_y = min(env.actions_origin[i][1]+2,env.cfg.og_resolution.tabletop[1])
-            else:
-                start_ind_x = max(env.actions_origin[i][0]-2,0)
+                start_ind_x = max(env.actions_origin[i][0]-1,0)
                 end_ind_x = min(env.actions_origin[i][0]+2,env.cfg.og_resolution.tabletop[0])
-                start_ind_y = max(env.actions_origin[i][1]-2,0)
-                end_ind_y = min(env.actions_origin[i][1]+3,env.cfg.og_resolution.tabletop[1])
+                start_ind_y = max(env.actions_origin[i][1]-1,0)
+                end_ind_y = min(env.actions_origin[i][1]+1,env.cfg.og_resolution.tabletop[1])
+            else:
+                start_ind_x = max(env.actions_origin[i][0]-1,0)
+                end_ind_x = min(env.actions_origin[i][0]+1,env.cfg.og_resolution.tabletop[0])
+                start_ind_y = max(env.actions_origin[i][1]-1,0)
+                end_ind_y = min(env.actions_origin[i][1]+2,env.cfg.og_resolution.tabletop[1])
 
             if torch.sum(table_og_tmp[start_ind_x:end_ind_x,start_ind_y:end_ind_y])>0:
                 reward_near[i] = -2
@@ -2402,10 +2469,10 @@ class PushRewardManager(RewardManager):
                     end_ind_x = min(env.actions_origin[i][0],env.cfg.og_resolution.tabletop[0])
                     if torch.sum(table_og_tmp[start_ind_x:end_ind_x,env.actions_origin[i][1]]) == 0:
                         reward_near[i] = -2
-            if reward_near[i]==0 and env.stop_pushing[i]==0:
-                if env.actions_origin[i][0] >= env.cfg.og_resolution.tabletop[0]-3 or env.actions_origin[i][0]<=2:
-                    # print(env.actions_origin[i])
-                    reward_near[i] = -2
+            # if reward_near[i]==0 and env.stop_pushing[i]==0:
+            #     if env.actions_origin[i][0] >= env.cfg.og_resolution.tabletop[0]-3 or env.actions_origin[i][0]<=2:
+            #         # print(env.actions_origin[i])
+            #         reward_near[i] = -2
                 # elif env.actions_origin[i][1] >= env.cfg.og_resolution.tabletop[1]-3 or env.actions_origin[i][1]<=2:
                 #     # print(env.actions_origin[i])
                 #     reward_near[i] = -2     
