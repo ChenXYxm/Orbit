@@ -939,11 +939,9 @@ class PushEnv(IsaacEnv):
         
         if not self.cfg.pre_train:
             self._check_fallen_objs(env_ids)
-            self._update_table_og()
-            self._check_pushing_outside()
             ############## TODO: changed in Feb 1
             # self._check_placing() #delete this condition in Feb 1
-             # add this condition at Feb 1
+            self._update_table_og() # add this condition at Feb 1
         else: 
             self._update_table_og()
         # self._check_fallen_objs(env_ids)
@@ -955,7 +953,7 @@ class PushEnv(IsaacEnv):
         self.reward_buf = self._reward_manager.compute()
         # print("reward")
         # # print(self._reward_manager.compute())
-        print('rewards',self.reward_buf)
+        # print(self.reward_buf)
         ##################### terminations #######################
         ''' only for toy example'''
         # self._check_reaching_toy_v2()
@@ -982,22 +980,22 @@ class PushEnv(IsaacEnv):
 
         ''' modified for toy example'''
         # self.extras["is_success"] = torch.where(self.place_success>=0.5, 1, self.reset_buf) #changed in 08 Dec
-        # if not self.cfg.pre_train:
-        #     tmp = torch.zeros(self.num_envs, device=self.device, dtype=torch.long)
-        #     self.extras["is_success"] = torch.where(self.place_success>=0.5, 1, tmp)
-        #     # print(self.extras["time_outs"])
-        #     for i,value_timeout in enumerate(self.extras['time_outs']):
-        #         if value_timeout:
-        #             if self.place_success[i]>=0.5:
-        #                 self.extras["time_outs"][i] = False
-        # else:
-        #     tmp = torch.zeros(self.num_envs, device=self.device, dtype=torch.long)
-        #     self.extras["is_success"] = torch.where(self.check_reaching>=0.5, 1,tmp)
-        #     # print(self.extras["time_outs"])
-        #     for i,value_timeout in enumerate(self.extras['time_outs']):
-        #         if value_timeout:
-        #             if self.check_reaching[i]>=0.5:
-        #                 self.extras["time_outs"][i] = False
+        if not self.cfg.pre_train:
+            tmp = torch.zeros(self.num_envs, device=self.device, dtype=torch.long)
+            self.extras["is_success"] = torch.where(self.place_success>=0.5, 1, tmp)
+            # print(self.extras["time_outs"])
+            for i,value_timeout in enumerate(self.extras['time_outs']):
+                if value_timeout:
+                    if self.place_success[i]>=0.5:
+                        self.extras["time_outs"][i] = False
+        else:
+            tmp = torch.zeros(self.num_envs, device=self.device, dtype=torch.long)
+            self.extras["is_success"] = torch.where(self.check_reaching>=0.5, 1,tmp)
+            # print(self.extras["time_outs"])
+            for i,value_timeout in enumerate(self.extras['time_outs']):
+                if value_timeout:
+                    if self.check_reaching[i]>=0.5:
+                        self.extras["time_outs"][i] = False
         ''' modified for toy example'''
         # -- update USD visualization
         # self._update_table_og()
@@ -1421,32 +1419,6 @@ class PushEnv(IsaacEnv):
             self.sim.step()
 
         pass
-    def _check_pushing_outside(self):
-        self.pixel_outside_table = torch.zeros((self.num_envs,),device=self.device)
-        env_tab_ex_tmp = self.table_expand_og.copy()
-        env_tab_ex_tmp_pre = self.table_expand_og_pre.copy()
-        for i in range(self.num_envs):
-            # fig, (ax1,ax2) = plt.subplots(1, 2, figsize=(7, 4))
-            # ax1.imshow(env_tab_ex_tmp[i].cpu().numpy())
-            # ax2.imshow(env_tab_ex_tmp_pre[i].cpu().numpy())
-            # plt.show()
-            env_tab_ex_tmp[i][6:self.cfg.og_resolution.tabletop[1]+6,
-                           6:self.cfg.og_resolution.tabletop[0]+6] = 0
-            env_tab_ex_tmp_pre[i][6:self.cfg.og_resolution.tabletop[1]+6,
-                           6:self.cfg.og_resolution.tabletop[0]+6] = 0
-            # fig, (ax1,ax2) = plt.subplots(1, 2, figsize=(7, 4))
-            # ax1.imshow(env_tab_ex_tmp[i].cpu().numpy())
-            # ax2.imshow(env_tab_ex_tmp_pre[i].cpu().numpy())
-            # plt.show()
-            if not self.cfg.pre_train:
-                if np.sum(env_tab_ex_tmp[i])-np.sum(env_tab_ex_tmp_pre[i])<=6:
-                    if self.check_reaching[i]>0.5:
-                        self.pixel_outside_table[i] = 0.0
-                else:
-                    if self.check_reaching[i]>0.5:
-                        self.pixel_outside_table[i] = -0.5
-        # return self.pixel_outside_table.type(torch.float16)
-    
     def _check_fallen_objs(self,env_ids:VecEnvIndices):
         torch_fallen = torch.zeros((self.num_envs,),device=self.device)
         for k in env_ids.tolist():
@@ -2132,7 +2104,7 @@ class PushRewardManager(RewardManager):
                 max_pre = np.max(env.table_tsdf_pre[i])
                 max_curr = np.max(env.table_tsdf[i])
                 if max_curr > max_pre and not env.cfg.pre_train:
-                    if env.falling_obj[i]==0 or env.pixel_outside_table[i]==0:
+                    if env.falling_obj[i]==0:
                         # max_tsdf_increase[i] = max_curr - max_pre
                         max_tsdf_increase[i] = 0.5
         # print('max_tsdf_increase')
@@ -2219,7 +2191,7 @@ class PushRewardManager(RewardManager):
         for i in range(env.num_envs):
             delta_tmp = env.table_og[i].copy() - env.table_og_pre[i].copy()
             if np.sum(np.abs(delta_tmp))>15 and env.check_reaching[i]>0.5 and env.falling_obj[i]==0:
-                delta_og[i] = 1
+                delta_og[i] = 0.5
                 # if torch.sum(torch.abs(delta_tmp))<60:
                 #     delta_og[i] = 1
                 # else:
@@ -2513,13 +2485,12 @@ class PushRewardManager(RewardManager):
     #         # print(reward_near)
     #     return reward_near
     def outside_zone(self,env:PushEnv):
-        # out_flag = torch.where(env.out_side>0.5,-1,0)
-        out_flag = torch.where(env.out_side>0.5,0,1)
+        out_flag = torch.where(env.out_side>0.5,-1,0)
         return out_flag
     def reward_reaching(self,env:PushEnv):
         reward_near = torch.zeros((env.num_envs,),device=self.device)
-        reward_near = torch.where(env.check_reaching>0.5,1,0)
         # reward_near = torch.where(env.check_reaching>0.5,0,-1)
+        reward_near = env.check_reaching.clone()
         # print('reach')
         # print(reward_near)
         '''

@@ -17,12 +17,12 @@ import matplotlib.pyplot as plt
 class Push_Agent():
     def __init__(self,env,num_envs,device) -> None:
         self.env = env
-        self.obs_shape = [2,64,64]
+        self.obs_shape = [2,72,72]
         self.num_envs = num_envs
-        learning_rate=0.001
-        mem_size=500
-        self.eps_start=0.2
-        self.eps_end=0.2
+        learning_rate=0.0001
+        mem_size=1000
+        self.eps_start=0.3
+        self.eps_end=0.25
         self.eps_decay=30000
         depth_only=False
         load_path=None
@@ -35,15 +35,15 @@ class Push_Agent():
         np.random.seed(seed)
         random.seed(seed)
         self.Orient = 8
-        self.WIDTH = 64
-        self.HEIGHT = 64
-        self.BATCH_SIZE = 16
-        self.GAMMA = 0.9
+        self.WIDTH = 72
+        self.HEIGHT = 72
+        self.BATCH_SIZE = 48
+        self.GAMMA = 0.84
         self.policy_net = MULTIDISCRETE_RESNET_Rotate(number_actions_dim_2=1)
         # Only need a target network if gamma is not zero
         self.target_net = MULTIDISCRETE_RESNET_Rotate(number_actions_dim_2=1)
-        checkpoint = torch.load('/home/chenxiny/orbit/Orbit/FCN_regression/Feb23_rotate_4_42_3Maxpooling_weight78000.pth')
-        # # checkpoint = torch.load('/home/cxy/Thesis/orbit/Orbit/FCN_regression/weight12000.pth')
+        checkpoint = torch.load('/home/chenxiny/orbit/Orbit/FCN_regression/weight6000.pth')
+        # # # checkpoint = torch.load('/home/cxy/Thesis/orbit/Orbit/FCN_regression/weight12000.pth')
         self.policy_net.load_state_dict(checkpoint)
         self.target_net.load_state_dict(checkpoint)
         # print('load weight',checkpoint)
@@ -115,6 +115,7 @@ class Push_Agent():
                 max_idx = output.view(-1).max(0)[1]
                 output_np = output.cpu().detach().numpy()
                 max_idx = max_idx.view(1)
+                print(max_value)
                 # Do not want to store replay buffer in GPU memory, so put action tensor to cpu.
                 # print(state.size())
                 # image = np.zeros((144,144,3))
@@ -248,7 +249,7 @@ class Push_Agent():
                 self.writer.add_scalar("mean rewards", np.mean(rewards.flatten()), global_step=self.steps_done)
                 print("mean rewards: ", np.mean(rewards.flatten()*10))
             self.learn()
-            if self.steps_done>=6000*self.save_i:
+            if self.steps_done>=1200*self.save_i:
                 self.save_i += 1
                 print('num model to be saved: ',self.save_i)
                 torch.save(self.policy_net.state_dict(),'FCN_regression/weight'+str(self.steps_done)+'.pth')
@@ -280,13 +281,14 @@ class Push_Agent():
         batch = Transition(*zip(*transitions))
 
         # Gradient accumulation to bypass GPU memory restrictions
-        for i in range(1):
+        for i in range(2):
             # Transfer weights every TARGET_NETWORK_UPDATE steps
-            if self.steps_done % 64 == 0:
-                self.target_net.load_state_dict(self.policy_net.state_dict())
-                print('load the weight of policy net to target')
-            start_idx = i * self.BATCH_SIZE
-            end_idx = (i + 1) * self.BATCH_SIZE
+            if self.steps_done % 240 == 0:
+                if i == 0:
+                    self.target_net.load_state_dict(self.policy_net.state_dict())
+                    print('load the weight of policy net to target')
+            start_idx = i * (self.BATCH_SIZE//2)
+            end_idx = (i + 1) * (self.BATCH_SIZE//2)
 
             state_batch = torch.cat(batch.state[start_idx:end_idx]).to(self.device)
             action_batch = torch.cat(batch.action[start_idx:end_idx]).to(self.device)
@@ -295,14 +297,14 @@ class Push_Agent():
 
             # Current Q prediction of our policy net, for the actions we took
             q_pred = (
-                self.policy_net(state_batch).view(self.BATCH_SIZE, -1).gather(1, action_batch)
+                self.policy_net(state_batch).view(self.BATCH_SIZE//2, -1).gather(1, action_batch)
             )
             # print('q_pred')
             # print(self.policy_net(state_batch).size())
             # q_pred = self.policy_net(state_batch).gather(1, action_batch)
             # print('q_pred',q_pred)
 
-            q_next_state = self.target_net(next_state_batch).view(self.BATCH_SIZE, -1).max(1)[0].unsqueeze(1).detach()
+            q_next_state = self.target_net(next_state_batch).view(self.BATCH_SIZE//2, -1).max(1)[0].unsqueeze(1).detach()
             # print('q_pred')
             # print(self.target_net(next_state_batch).size())
                 # Calulate expected Q value using Bellmann: Q_t = r + gamma*Q_t+1
@@ -313,7 +315,7 @@ class Push_Agent():
             # loss = F.binary_cross_entropy(q_pred, q_expected,reduction='mean')
             loss = criterien(q_pred, q_expected)
             loss.backward()
-
+            print('backpropagate',i)
         self.last_100_loss.append(loss.item())
         self.writer.add_scalar('Average loss', loss, global_step=self.steps_done)
         print('loss: ',loss,'steps',self.steps_done)

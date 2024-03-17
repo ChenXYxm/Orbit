@@ -65,7 +65,7 @@ class ManipulationObjectCfg(RigidObjectCfg):
 
 @configclass
 class env_name:
-    file_list = os.listdir("train_table_42x42/")
+    file_list = os.listdir("train_table4/")
     #file_list = os.listdir("generated_table2/")
     # test_file_list = os.listdir("test_table2/")
 @configclass
@@ -241,17 +241,19 @@ class RewardsCfg:
     #reward_for_toy_example = {"weight": 1}
     '''reward for toy example v2'''
     # check_placing = {"weight": 2} ##Feb 1 do not terminate
+    reward_og_change = {"weight": 1}
     # reward_near_obj = {"weight": 1}
-    reward_reaching = {"weight": 1}
-    penaltizing_falling = {"weight": 2} ## DEc20_00-56-30
+    reward_reaching = {"weight": 0.25}
+    # outside_zone = {"weight": 0.25}
+    penaltizing_falling = {"weight": 1.5} ## DEc20_00-56-30
     # penaltizing_falling = {"weight": 2} ## Dec24_16-21-23 before
     # penaltizing_falling = {"weight": 3} ## Dec24_16-21-23 before
     # penaltizing_steps = {"weight": 0.1}
     # penaltizing_repeat_actions = {"weight": 0.5}
-    penaltizing_pushing_outside = {"weight":0.6} ## Dec22_20-44-43 before
+    penaltizing_pushing_outside = {"weight":1.5} ## Dec22_20-44-43 before
     # penaltizing_pushing_outside = {"weight":0.5} ## Dec24_16-21-23 before
-    # penaltizing_pushing_outside = {"weight":0.9}
-    reward_max_tsdf_increase = {"weight": 10}
+    #penaltizing_pushing_outside = {"weight":0.9}
+    reward_max_tsdf_increase = {"weight": 1}
     # penaltizing_stop = {"weight": 2} ## Dec26 after
     # penalizing_tool_action_l2 = {"weight": 1e-2}
     # -- object-centric
@@ -272,8 +274,8 @@ class TerminationsCfg:
 class occupancy_grid_resolution:
     """resolution of the occupancy grid"""
     ex_occu = [6,6]
-    expand_obs = [64,64]
-    tabletop = [42,42]
+    expand_obs = [72,72]
+    tabletop = [50,50]
     new_obj = [32,32]
 @configclass
 class ControlCfg:
@@ -332,8 +334,8 @@ class PushEnvCfg(IsaacEnvCfg):
         dt=0.01,
         substeps=1,
         physx=PhysxCfg(
-            gpu_found_lost_aggregate_pairs_capacity=1024 * 1024 * 2, # 1024 * 1024 * 2
-            gpu_total_aggregate_pairs_capacity= 1024 * 1024 * 2 *1,#16 * 1024,
+            gpu_found_lost_aggregate_pairs_capacity=1024 * 1024 * 4, # 1024 * 1024 * 2
+            gpu_total_aggregate_pairs_capacity= 1024 * 1024 * 4 *1,#16 * 1024,
             friction_correlation_distance=0.00625,
             friction_offset_threshold=0.01,
             bounce_threshold_velocity=0.2,

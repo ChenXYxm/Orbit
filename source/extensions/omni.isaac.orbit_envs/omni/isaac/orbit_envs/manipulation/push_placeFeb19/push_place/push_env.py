@@ -438,7 +438,7 @@ class PushEnv(IsaacEnv):
         action_range = (float(self.cfg.og_resolution.tabletop[0])/200.0,float(self.cfg.og_resolution.tabletop[1])/200.0)
         self.actions[:,1] = action_range[1]*(actions_tmp[:,0].clone()-float(self.cfg.og_resolution.tabletop[1]/2))/float(self.cfg.og_resolution.tabletop[0]/2)
         self.actions[:,0] = action_range[0]*(-actions_tmp[:,1].clone()+float(self.cfg.og_resolution.tabletop[0]/2))/float(self.cfg.og_resolution.tabletop[0]/2)
-        print(self.actions)
+        # print(self.actions)
         ################# stop pushing
         # for i in range(self.num_envs):
         #     if self.check_reaching[i] == 0:

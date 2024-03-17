@@ -109,6 +109,7 @@ class BasicBlock(nn.Module):
         
         self.bn1 = norm_layer(planes)
         self.relu = nn.ReLU(inplace=True)
+        # self.relu = nn.LeakyReLU(negative_slope=0.02) ## new Mar16
         self.conv2 = conv3x3(planes, planes)
         self.bn2 = norm_layer(planes)
         self.downsample = downsample
@@ -373,7 +374,7 @@ class MULTIDISCRETE_RESNET_Rotate(nn.Module):
         # obs_tmp = x.clone().cpu()
         # print("network obs size",obs_tmp.size())
         rotate_num = 8
-        self.output = torch.zeros((len(state),rotate_num,64,64),device='cuda')
+        self.output = torch.zeros((len(state),rotate_num,72,72),device='cuda')
         for rotate_idx in range(rotate_num):
             rotate_theta = -np.radians(rotate_idx*(360/rotate_num))
 
@@ -399,10 +400,10 @@ class MULTIDISCRETE_RESNET_Rotate(nn.Module):
             # plt.show()   
             obs_feature = self.net(rotate_obs)
             if obs_feature.dim() == 2:
-                tmp_tensor = torch.zeros((1,1,64,64),device='cuda')
+                tmp_tensor = torch.zeros((1,1,72,72),device='cuda')
                 tmp_tensor[0,0,:,:] = obs_feature
             else:
-                tmp_tensor = torch.zeros((1,len(obs_feature),64,64),device='cuda')
+                tmp_tensor = torch.zeros((1,len(obs_feature),72,72),device='cuda')
                 tmp_tensor[0,:,:,:] = obs_feature
                 tmp_tensor=tmp_tensor.permute(1,0,2,3)
             affine_mat_after = np.asarray([[np.cos(rotate_theta), np.sin(rotate_theta), 0],[-np.sin(rotate_theta), np.cos(rotate_theta), 0]])
@@ -421,11 +422,26 @@ class MULTIDISCRETE_RESNET_Rotate(nn.Module):
             # print('obs_rotate_bask_size: ',obs_feature_rotated_back.size())
             # self.output_prob.append(obs_feature_rotated_back)
             self.output[:,rotate_idx,:,:] = obs_feature_rotated_back[:,0,:,:]
-            fig, (ax1,ax2,ax3) = plt.subplots(1, 3, figsize=(7, 4))
-            ax1.imshow(np.array(rotate_obs[0,0,:,:].clone().cpu()))
-            ax2.imshow(np.array(tmp_tensor[0,0,:,:].clone().detach().cpu()))
-            ax3.imshow(np.array(obs_feature_rotated_back[0,0,:,:].clone().detach().cpu()))
-            plt.show()
+            
+            # fig, (ax1,ax2,ax3) = plt.subplots(1, 3, figsize=(7, 4))
+            # ax1.imshow(np.array(rotate_obs[0,0,:,:].clone().cpu()))
+            # ax2.imshow(np.array(tmp_tensor[0,0,:,:].clone().detach().cpu()))
+            # ax3.imshow(np.array(obs_feature_rotated_back[0,0,:,:].clone().detach().cpu()))
+            # plt.show()
+            # img_tmp = np.zeros((72,72,3))
+            # img_tmp[:,:,1] = 100
+            # img_tmp[:,:,0] = rotate_obs[0,0,:,:].clone().cpu().numpy()
+            # img_tmp[:,:,0] = img_tmp[:,:,0]*255/np.max(img_tmp[:,:,0])
+            # img_tmp[:,:,2] = np.array(tmp_tensor[0,0,:,:].clone().detach().cpu())
+            # img_tmp[:,:,2] = (img_tmp[:,:,2]-np.min(img_tmp[:,:,2]))*255/(np.max(img_tmp[:,:,2])-np.min(img_tmp[:,:,2]))
+            # img_tmp = img_tmp.astype(np.uint8)
+            # fig, (ax1,ax2,ax3) = plt.subplots(1, 3, figsize=(7, 4))
+            # ax1.imshow(np.array(rotate_obs[0,1,:,:].clone().cpu()))
+            # ax2.imshow(np.array(tmp_tensor[0,0,:,:].clone().detach().cpu()))
+            # ax3.imshow(np.array(obs_feature_rotated_back[0,0,:,:].clone().detach().cpu()))
+            # plt.show()
+            # plt.imshow(img_tmp)
+            # plt.show()
         return self.output
 
 
