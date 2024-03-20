@@ -38,11 +38,12 @@ class Push_Agent():
         self.WIDTH = 72
         self.HEIGHT = 72
         self.BATCH_SIZE = 48
-        self.GAMMA = 0.84
+        self.GAMMA = 0.8
         self.policy_net = MULTIDISCRETE_RESNET_Rotate(number_actions_dim_2=1)
         # Only need a target network if gamma is not zero
         self.target_net = MULTIDISCRETE_RESNET_Rotate(number_actions_dim_2=1)
-        checkpoint = torch.load('/home/chenxiny/orbit/Orbit/FCN_regression/weight6000.pth')
+        checkpoint = torch.load('/local/home/chenxiny/Orbit/Orbit/FCN_regression/weight9600.pth')
+        #checkpoint = torch.load('/local/home/chenxiny/Downloads/weight9.pth')
         # # # checkpoint = torch.load('/home/cxy/Thesis/orbit/Orbit/FCN_regression/weight12000.pth')
         self.policy_net.load_state_dict(checkpoint)
         self.target_net.load_state_dict(checkpoint)
@@ -249,7 +250,7 @@ class Push_Agent():
                 self.writer.add_scalar("mean rewards", np.mean(rewards.flatten()), global_step=self.steps_done)
                 print("mean rewards: ", np.mean(rewards.flatten()*10))
             self.learn()
-            if self.steps_done>=1200*self.save_i:
+            if self.steps_done>=2400*self.save_i:
                 self.save_i += 1
                 print('num model to be saved: ',self.save_i)
                 torch.save(self.policy_net.state_dict(),'FCN_regression/weight'+str(self.steps_done)+'.pth')
@@ -283,7 +284,7 @@ class Push_Agent():
         # Gradient accumulation to bypass GPU memory restrictions
         for i in range(2):
             # Transfer weights every TARGET_NETWORK_UPDATE steps
-            if self.steps_done % 240 == 0:
+            if self.steps_done % 480 == 0:
                 if i == 0:
                     self.target_net.load_state_dict(self.policy_net.state_dict())
                     print('load the weight of policy net to target')

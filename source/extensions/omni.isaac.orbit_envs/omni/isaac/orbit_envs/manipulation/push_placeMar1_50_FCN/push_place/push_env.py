@@ -2132,10 +2132,10 @@ class PushRewardManager(RewardManager):
                 max_pre = np.max(env.table_tsdf_pre[i])
                 max_curr = np.max(env.table_tsdf[i])
                 if max_curr > max_pre and not env.cfg.pre_train:
-                    if env.falling_obj[i]==0 or env.pixel_outside_table[i]==0:
+                    if env.falling_obj[i]==0 and env.pixel_outside_table[i]==0:
                         # max_tsdf_increase[i] = max_curr - max_pre
                         max_tsdf_increase[i] = 0.5
-        # print('max_tsdf_increase')
+        #print('max_tsdf_increase',max_tsdf_increase)
         # print(max_tsdf_increase)
         return max_tsdf_increase
     def penaltizing_pushing_outside(self,env:PushEnv):
@@ -2176,8 +2176,8 @@ class PushRewardManager(RewardManager):
         # return -pixel_outside_table.type(torch.float16)/float(20.0)
         # print('pushing outside')
         # print(pixel_outside_table.type(torch.float16))
-        # print('out')
-        # print(pixel_outside_table)
+        #print('out')
+        #print(pixel_outside_table)
         return pixel_outside_table.type(torch.float16)
     def penaltizing_repeat_actions(self,env:PushEnv):
         # print("repeat")
@@ -2218,17 +2218,17 @@ class PushRewardManager(RewardManager):
         delta_og = torch.zeros((env.num_envs,),device=self.device)
         for i in range(env.num_envs):
             delta_tmp = env.table_og[i].copy() - env.table_og_pre[i].copy()
-            if np.sum(np.abs(delta_tmp))>15 and env.check_reaching[i]>0.5 and env.falling_obj[i]==0:
+            if np.sum(np.abs(delta_tmp))>15 and env.check_reaching[i]>0.5 :
                 delta_og[i] = 1
                 # if torch.sum(torch.abs(delta_tmp))<60:
                 #     delta_og[i] = 1
                 # else:
                 #     delta_og[i] = 2
         # env.table_og_pre = env.table_og.clone()
-        # print("reward og")
-        # print(delta_og)
-        # print('og change')
-        # print(delta_og)
+        #print("reward og")
+        #print(delta_og)
+        #print('og change')
+        #print(delta_og)
         return delta_og.type(torch.float16)
     # def reward_near_obj_1(self,env:PushEnv):
     #     # print('reward 1')
@@ -2515,12 +2515,13 @@ class PushRewardManager(RewardManager):
     def outside_zone(self,env:PushEnv):
         # out_flag = torch.where(env.out_side>0.5,-1,0)
         out_flag = torch.where(env.out_side>0.5,0,1)
+        #print('out side',out_flag)
         return out_flag
     def reward_reaching(self,env:PushEnv):
         reward_near = torch.zeros((env.num_envs,),device=self.device)
         reward_near = torch.where(env.check_reaching>0.5,1,0)
         # reward_near = torch.where(env.check_reaching>0.5,0,-1)
-        # print('reach')
+        #print('reach',reward_near)
         # print(reward_near)
         '''
         action_tmp_reward = env.actions_origin.clone().cpu().numpy().astype(np.uint8)
