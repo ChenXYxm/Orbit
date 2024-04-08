@@ -309,7 +309,7 @@ class PushEnv(IsaacEnv):
         # self.step_num = 0
         if not self.reset_f:
             self.new_obj_type = [i for i in range(self.num_envs)]
-            self.env_i_tmp = 0
+            self.env_i_tmp = 30
         self.reset_f = True
         dof_pos, dof_vel = self.robot.get_default_dof_state(env_ids=env_ids)
         self.robot.set_dof_state(dof_pos, dof_vel, env_ids=env_ids)
@@ -1836,7 +1836,7 @@ class PushEnv(IsaacEnv):
         f_name = 'dict_pose_'+str(self.env_i_tmp)+'.pkl'
         # f_name = 'dict_pose_'+str(1)+'.pkl'
         print(f_name)
-        if self.env_i_tmp>1:
+        if self.env_i_tmp>32:
             file_path = "./placing_test/pushing_compare2_"+str(self.env_i_tmp-1)+".pkl"
             # file_path = "./placing_test/pushing_policy_"+str(1)+".pkl"
             f_save = open(file_path,'wb')
