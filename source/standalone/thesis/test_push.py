@@ -17,6 +17,7 @@ added_item = 0
 occu_ratio_p = 0
 fallen_item_num = 0
 per_item_per_pushing = 0
+
 for i in range(10):
         file_list = os.listdir("placing_test/")
         file_name = "pushing_policy_new_"+str(i+1)+".pkl"

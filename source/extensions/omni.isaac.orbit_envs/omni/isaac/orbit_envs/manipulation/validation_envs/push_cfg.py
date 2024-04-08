@@ -206,13 +206,15 @@ class YCBobjectsCfg:
     # }
     # ycb_name = ['crackerBox','sugarBox','mustardBottle']
     ycb_usd_paths = {
-        "Cube": f"{ISAAC_NUCLEUS_DIR}/Props/YCB/Axis_Aligned_Physics/004_sugar_box.usd",
+        # "crackerBox": f"{ISAAC_NUCLEUS_DIR}/Props/YCB/Axis_Aligned_Physics/003_cracker_box.usd",
+        "Cube3": f"{ISAAC_NUCLEUS_DIR}/Props/YCB/Axis_Aligned_Physics/004_sugar_box.usd",
+        "Cube2": f"{ISAAC_NUCLEUS_DIR}/Props/YCB/Axis_Aligned_Physics/004_sugar_box.usd",
         "sugarBox": f"{ISAAC_NUCLEUS_DIR}/Props/YCB/Axis_Aligned_Physics/004_sugar_box.usd",
         "mustardBottle": f"{ISAAC_NUCLEUS_DIR}/Props/YCB/Axis_Aligned_Physics/006_mustard_bottle.usd",
         "tomatoSoupCan": f"{ISAAC_NUCLEUS_DIR}/Props/YCB/Axis_Aligned_Physics/005_tomato_soup_can.usd",
         
     }
-    ycb_name = ['sugarBox',"mustardBottle","tomatoSoupCan",'Cube']
+    ycb_name = ['sugarBox','mustardBottle','tomatoSoupCan','Cube3','Cube2']
     
 
 @configclass
@@ -308,7 +310,7 @@ class ObjMask:
         self.mask = dict()
         file_list = os.listdir("obj_mask/")
         obj_name = ['crackerBox','sugarBox','tomatoSoupCan','mustardBottle','mug','largeMarker','tunaFishCan',
-                'banana','bowl','largeClamp','scissors','Cube']
+                'banana','bowl','largeClamp','scissors','Cube','Cube2','Cube3']
         for i in range(len(file_list)):
             for j in range(len(obj_name)):
                 if obj_name[j] in file_list[i]:

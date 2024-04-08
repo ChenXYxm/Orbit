@@ -34,7 +34,7 @@ from omni.isaac.core.prims import RigidPrim,GeometryPrim
 # from omni.isaac.orbit.utils.math import 
 from omni.isaac.orbit.utils.array import convert_to_torch
 import scipy.spatial.transform as tf
-from .place_new_obj import place_new_obj_fun,get_new_obj_contour_bbox,draw_bbox
+from .place_new_obj import place_new_obj_fun,get_new_obj_contour_bbox,draw_bbox,placing_compare_fun_2
 from omni.isaac.dynamic_control import _dynamic_control
 from omni.isaac.orbit.objects import RigidObjectCfg
 import torchvision
@@ -57,7 +57,7 @@ class PushEnv(IsaacEnv):
         self.fallen_all = 0.0
         self.un_satisfied_scenes = []
         self.obj_list = []
-        
+        self.no_place_step = 0
         # parse the configuration for controller configuration
         # note: controller decides the robot control mode
         self._pre_process_cfg()
@@ -68,7 +68,7 @@ class PushEnv(IsaacEnv):
         self.obj1 = []
         
         self.pushing_policy_result = dict()
-        for i in range(8):
+        for i in range(9):
             obj_cfg1 = RigidObjectCfg()
             obj_cfg1.meta_info = RigidObjectCfg.MetaInfoCfg(usd_path=ycb_usd_paths[ycb_name[0]],scale=(1.0, 1.0, 1.0),)
             obj_cfg1.init_state = RigidObjectCfg.InitialStateCfg(
@@ -130,7 +130,7 @@ class PushEnv(IsaacEnv):
         self.obj4 = []
         for i in range(16):
             obj_cfg4 = RigidObjectCfg()
-            obj_cfg4.meta_info = RigidObjectCfg.MetaInfoCfg(usd_path=ycb_usd_paths[ycb_name[3]],scale=(0.42,0.28,1.35),)
+            obj_cfg4.meta_info = RigidObjectCfg.MetaInfoCfg(usd_path=ycb_usd_paths[ycb_name[3]],scale=(0.5,1,1.2),)
             obj_cfg4.init_state = RigidObjectCfg.InitialStateCfg(
             pos=(2-0.1*i, 1.3, -0.4), rot=(1.0, 0.0, 0.0, 0.0), lin_vel=(0.0, 0.0, 0.0), ang_vel=(0.0, 0.0, 0.0)
             )
@@ -147,6 +147,26 @@ class PushEnv(IsaacEnv):
             )
             self.obj4.append(RigidObject(obj_cfg4))
             self.obj_name_list.append(ycb_name[3]+str(i))
+        self.obj5 = []
+        for i in range(16):
+            obj_cfg5 = RigidObjectCfg()
+            obj_cfg5.meta_info = RigidObjectCfg.MetaInfoCfg(usd_path=ycb_usd_paths[ycb_name[4]],scale=(0.5,0.6,1.2),)
+            obj_cfg5.init_state = RigidObjectCfg.InitialStateCfg(
+            pos=(2-0.25*i, 1.6, -0.4), rot=(1.0, 0.0, 0.0, 0.0), lin_vel=(0.0, 0.0, 0.0), ang_vel=(0.0, 0.0, 0.0)
+            )
+            obj_cfg5.rigid_props = RigidObjectCfg.RigidBodyPropertiesCfg(
+                solver_position_iteration_count=16,
+                solver_velocity_iteration_count=1,
+                max_angular_velocity=0.5,
+                max_linear_velocity=0.5,
+                max_depenetration_velocity=0.5,
+                disable_gravity=False,
+            )
+            obj_cfg5.physics_material = RigidObjectCfg.PhysicsMaterialCfg(
+                static_friction=0.5, dynamic_friction=0.5, restitution=0.0, prim_path="/World/Materials/cubeMaterial"
+            )
+            self.obj5.append(RigidObject(obj_cfg5))
+            self.obj_name_list.append(ycb_name[4]+str(i))
         # initialize the base class to setup the scene.
         super().__init__(self.cfg, **kwargs)
         # parse the configuration for information
@@ -200,6 +220,8 @@ class PushEnv(IsaacEnv):
             obj_t.update_buffers(self.dt)
         for i,obj_t in enumerate(self.obj4):
             obj_t.update_buffers(self.dt)
+        for i,obj_t in enumerate(self.obj5):
+            obj_t.update_buffers(self.dt)
         self.obj_on_table = dict()
         self.obj_on_table_name = dict()
     """
@@ -244,6 +266,8 @@ class PushEnv(IsaacEnv):
             obj_t.spawn(self.template_env_ns + f"/Objs/obj3/obj_{i}")
         for i,obj_t in enumerate(self.obj4):
             obj_t.spawn(self.template_env_ns + f"/Objs/obj4/obj_{i}")
+        for i,obj_t in enumerate(self.obj5):
+            obj_t.spawn(self.template_env_ns + f"/Objs/obj5/obj_{i}")
         # camera
         position_camera = [0, 0, 1.2]
         orientation = [1, 0, 0, 0]
@@ -289,7 +313,7 @@ class PushEnv(IsaacEnv):
         self.reset_f = True
         dof_pos, dof_vel = self.robot.get_default_dof_state(env_ids=env_ids)
         self.robot.set_dof_state(dof_pos, dof_vel, env_ids=env_ids)
-
+        self.no_place_step = 0
         ''' modified for toy example
         # self.reset_objs(env_ids=env_ids)
         # self._randomize_table_scene(env_ids=env_ids)
@@ -430,14 +454,22 @@ class PushEnv(IsaacEnv):
         #     self.actions_origin[i,1] = min(self.cfg.og_resolution.tabletop[1]-1,int(self.actions_origin[i,1]))
         '''
         ###################### transform discrete actions into start positions and pushing directions
+        self.no_place_step += 1
+        print('no placed step num',self.no_place_step)
+        print(self.new_obj_type)
         self._check_reaching_toy_v2()
+        flag_placed = self._check_placing()
+        if flag_placed:
+            self.no_place_step = 0
+        self._update_table_og()
+        print(flag_placed,self.new_obj_type)
         # print('action')
         # print(actions)
-        # print(self.check_reaching)
+        print(self.check_reaching,flag_placed)
         # print(self.actions_origin)
         
         ''' modified for toy example'''
-        self.pushing_policy_result[self.env_i_tmp][2] += 1
+        
         self.actions = actions.detach().clone()
         self.actions = self.actions.type(torch.float16)
         actions_tmp = self.actions.clone()
@@ -458,7 +490,7 @@ class PushEnv(IsaacEnv):
         for i in range(self.num_envs):
             if self.cfg.flag_compare:
                 self.check_reaching[i] = 1
-            if self.actions[i,2]>1.0:
+            if self.actions[i,2]>1.0 and not flag_placed:
                 # print('stop action')
                 # print(self.actions[i],i,actions[i])
                 # print(actions[i])
@@ -471,6 +503,10 @@ class PushEnv(IsaacEnv):
                 self.actions[i,1] = -0.5
                 self.actions[i,0] = 0.5
                 self.actions[i,2] = 0
+            if self.check_reaching[i] == 0 and not flag_placed:
+                self.stop_pushing[i] = 1
+            if self.stop_pushing[i] == 1 or flag_placed:
+                self.check_reaching[i] = 0
 
         actions_tmp = torch.zeros((self.num_envs,self._ik_controller.num_actions),device=self.device)
         actions_tmp[:,:2] = self.actions[:,:2].clone()
@@ -489,6 +525,7 @@ class PushEnv(IsaacEnv):
         if not self.cfg.pre_train:
             ########### lift the gripper above the start position
             if torch.sum(self.check_reaching)>0:
+                self.pushing_policy_result[self.env_i_tmp][2] += 1
                 for i in range(25):
                     self.robot.update_buffers(self.dt)
                     
@@ -634,8 +671,8 @@ class PushEnv(IsaacEnv):
                         vec_tmp[0] = 0.035*np.cos(2*np.pi*self.actions[i,2].cpu().numpy())
                         vec_tmp[1] = 0.035*np.sin(2*np.pi*self.actions[i,2].cpu().numpy())
                     else:
-                        vec_tmp[0] = 0.1*np.cos(2*np.pi*self.actions[i,2].cpu().numpy())
-                        vec_tmp[1] = 0.1*np.sin(2*np.pi*self.actions[i,2].cpu().numpy())
+                        vec_tmp[0] = 0.035*np.cos(2*np.pi*self.actions[i,2].cpu().numpy())
+                        vec_tmp[1] = 0.035*np.sin(2*np.pi*self.actions[i,2].cpu().numpy())
                     actions_tmp[i,:2] = actions_tmp[i,:2] + torch.from_numpy(vec_tmp).to(self.device)
                 for i in range(6):
                     self.robot.update_buffers(self.dt)
@@ -671,8 +708,8 @@ class PushEnv(IsaacEnv):
                         vec_tmp[0] = 0.035*np.cos(2*np.pi*self.actions[i,2].cpu().numpy())
                         vec_tmp[1] = 0.035*np.sin(2*np.pi*self.actions[i,2].cpu().numpy())
                     else:
-                        vec_tmp[0] = 0.1*np.cos(2*np.pi*self.actions[i,2].cpu().numpy())
-                        vec_tmp[1] = 0.1*np.sin(2*np.pi*self.actions[i,2].cpu().numpy())
+                        vec_tmp[0] = 0.035*np.cos(2*np.pi*self.actions[i,2].cpu().numpy())
+                        vec_tmp[1] = 0.035*np.sin(2*np.pi*self.actions[i,2].cpu().numpy())
                     # vec_tmp[0] = 0.035*np.cos(2*np.pi*self.actions[i,2].cpu().numpy())
                     # vec_tmp[1] = 0.035*np.sin(2*np.pi*self.actions[i,2].cpu().numpy())
                     # vec_tmp[0] = 0.1*np.cos(2*np.pi*self.actions[i,2].cpu().numpy())
@@ -952,6 +989,8 @@ class PushEnv(IsaacEnv):
             obj_t.update_buffers(self.dt)
         for i,obj_t in enumerate(self.obj4):
             obj_t.update_buffers(self.dt)
+        for i,obj_t in enumerate(self.obj5):
+            obj_t.update_buffers(self.dt)
         ''' modified for toy example
             self._check_fallen_objs(env_ids)
             # check_placing
@@ -969,8 +1008,11 @@ class PushEnv(IsaacEnv):
         if not self.cfg.pre_train:
             self._check_fallen_objs(env_ids)
             ############## TODO: changed in Feb 1
-            self._check_placing() #delete this condition in Feb 1
+            flag_placed = self._check_placing() #delete this condition in Feb 1
             #self._update_table_og() # add this condition at Feb 1
+            if flag_placed:
+                self.no_place_step = 0
+            self._update_table_og()
         else: 
             self._update_table_og()
         # self._check_fallen_objs(env_ids)
@@ -1098,6 +1140,8 @@ class PushEnv(IsaacEnv):
             obj_t.initialize(self.env_ns + "/.*"+ f"/Objs/obj3/obj_{i}")
         for i,obj_t in enumerate(self.obj4):
             obj_t.initialize(self.env_ns + "/.*"+ f"/Objs/obj4/obj_{i}")
+        for i,obj_t in enumerate(self.obj5):
+            obj_t.initialize(self.env_ns + "/.*"+ f"/Objs/obj5/obj_{i}")
         self.new_obj_vertices = [i for i in range(self.num_envs)]
         
         for _ in range(15):
@@ -1427,10 +1471,18 @@ class PushEnv(IsaacEnv):
                     root_state[:, 0:3] += self.envs_positions[env_ids_tmp]
                     self.obj4[_].set_root_state(root_state, env_ids=env_ids_tmp)
                     self.obj_on_table[k].append(self.obj4[_])
+                elif obj_type == self.cfg.YCBdata.ycb_name[4]:
+                    root_state = self.obj5[_].get_default_root_state(env_ids_tmp)
+                    root_state[:,0:3] = torch.from_numpy(np.array(pos)).to(self.device)
+                    root_state[:, 3:7] = torch.from_numpy(np.array(rot)).to(self.device)
+                    root_state[:, 0:3] += self.envs_positions[env_ids_tmp]
+                    self.obj5[_].set_root_state(root_state, env_ids=env_ids_tmp)
+                    self.obj_on_table[k].append(self.obj5[_])
             self.obj_on_table_name[k][obj_type] +=1
         for _ in range(30):
             self.sim.step()
         self.pushing_policy_result[self.env_i_tmp][0] += 1
+        self.pushing_policy_result[self.env_i_tmp][6] = self.pushing_policy_result[self.env_i_tmp][2]
         print(self.pushing_policy_result)
         pass
     def _check_fallen_objs(self,env_ids:VecEnvIndices):
@@ -1441,6 +1493,15 @@ class PushEnv(IsaacEnv):
                 # print(obj.data.root_pos_w[1, :3])
                 # if obj != 0:
                     torch_fallen[k] += torch.where(obj.data.root_pos_w[k, 2] < -0.05, 1, 0)
+                    if obj.data.root_pos_w[k, 2] >= -0.05:
+                        if obj.data.root_pos_w[k, 1]>=0.233:
+                            torch_fallen[k] += 1
+                        elif obj.data.root_pos_w[k, 1]<=-0.233:
+                            torch_fallen[k] += 1
+                        elif obj.data.root_pos_w[k, 0]<=-0.233:
+                            torch_fallen[k] += 1
+                        elif obj.data.root_pos_w[k, 0]>=0.233:
+                            torch_fallen[k] += 1
         # print(torch_fallen)
         # print(self.falling_obj_all)
         self.falling_obj[env_ids] = torch_fallen[env_ids] - self.falling_obj_all[env_ids]
@@ -1448,8 +1509,8 @@ class PushEnv(IsaacEnv):
         self.pushing_policy_result[self.env_i_tmp][0] -= int(self.falling_obj[0])
         self.falling_obj_all[env_ids] = torch_fallen[env_ids]
         self.fallen_all += float(torch.sum(self.falling_obj))
-        # print('fallen')
-        # print(self.fallen_all)
+        print('fallen')
+        print(self.fallen_all)
         
     def _update_table_og(self):
         if self.reset_f:
@@ -1469,6 +1530,7 @@ class PushEnv(IsaacEnv):
     def _check_placing(self):
         
         env_ids=torch.from_numpy(np.arange(self.num_envs)).to(self.device)
+        env_ids=torch.from_numpy(np.arange(self.num_envs)).to(self.device)
         self._update_table_og()
         # for i in range(self.num_envs):
         #     plt.imshow()
@@ -1477,10 +1539,11 @@ class PushEnv(IsaacEnv):
         for i in range(self.num_envs):
             occupancy = self.table_og[i].cpu().numpy()
             vertices_new_obj = self.new_obj_vertices[i]
-            # print(vertices_new_obj)
+            # print('vertices',vertices_new_obj)
             flag_found, new_poly_vetices,occu_tmp,new_obj_pos = place_new_obj_fun(occupancy,vertices_new_obj)  
             # plt.imshow(occu_tmp)
             # plt.show()
+            # flag_found = False
             if flag_found:
                 self.place_success[i] = 1
                 pos = [(self.cfg.og_resolution.tabletop[0]/2-new_obj_pos[1])*1./100.,(new_obj_pos[0]-self.cfg.og_resolution.tabletop[1]/2)*1./100.,0.05]
@@ -1497,14 +1560,48 @@ class PushEnv(IsaacEnv):
                     if len(self.obj_on_table[i])<len(self.obj_list):
                         self.new_obj_mask[i] = self.cfg.obj_mask.mask[self.cfg.YCBdata.ycb_name[self.obj_list[len(self.obj_on_table[i])]]]
                         self.new_obj_type[int(i)] = self.cfg.YCBdata.ycb_name[self.obj_list[len(self.obj_on_table[i])]] 
+                        print(self.new_obj_type[int(i)])
                         # self.pushing_policy_result[self.env_i_tmp][0] = len(self.obj_on_table[i])
+                        self._get_obj_mask(env_ids=env_ids_tmp)
+                        self._get_obj_info(env_ids=env_ids_tmp)
+                        # plt.imshow(self.new_obj_mask[i])
+                        # plt.show()
                     else:
                         self.stop_pushing[i] = 1
+                        print('stop')
                 # print('place_success',env_ids_tmp)
                 # plt.imshow(self.obj_masks[i].cpu().numpy())
                 # plt.show()
                 ############## visulaize placing
                 self.place_success_all +=1.0
+                return True
+            else:
+                    flag_found,new_obj_pos = placing_compare_fun_2(occupancy,self.obj_masks[i].clone().cpu().numpy())
+                    if flag_found:
+                        self.place_success[i] = 1
+                        self.place_success_all +=1.0
+                        pos = [(self.cfg.og_resolution.tabletop[0]/2-new_obj_pos[1])*1./100.,(new_obj_pos[0]-self.cfg.og_resolution.tabletop[1]/2)*1./100.,0.05]
+                        obj_name_i=self.new_obj_type[i]
+                        # rot = convert_quat(tf.Rotation.from_euler("XYZ", (0,0,-np.rad2deg(new_obj_pos[2])), degrees=True).as_quat(), to="wxyz")
+                        if obj_name_i in ["mug","tomatoSoupCan","pitcherBase","tunaFishCan","bowl","banana"]:
+                            rot = convert_quat(tf.Rotation.from_euler("XYZ", (-90,np.rad2deg(new_obj_pos[2]),0), degrees=True).as_quat(), to="wxyz")
+                        else:
+                            rot = convert_quat(tf.Rotation.from_euler("XYZ", (0,0,-np.rad2deg(new_obj_pos[2])), degrees=True).as_quat(), to="wxyz")
+                        
+                        env_ids_tmp = torch.from_numpy(np.array([i])).to(self.device)
+                        self._place_obj(pos,rot,env_ids_tmp,obj_name_i)
+                        for i in env_ids.tolist():
+                            if len(self.obj_on_table[i])<len(self.obj_list):
+                                self.new_obj_mask[i] = self.cfg.obj_mask.mask[self.cfg.YCBdata.ycb_name[self.obj_list[len(self.obj_on_table[i])]]]
+                                self.new_obj_type[int(i)] = self.cfg.YCBdata.ycb_name[self.obj_list[len(self.obj_on_table[i])]] 
+                                print(self.new_obj_type[int(i)])
+                                # self.pushing_policy_result[self.env_i_tmp][0] = len(self.obj_on_table[i])
+                                self._get_obj_mask(env_ids=env_ids_tmp)
+                                self._get_obj_info(env_ids=env_ids_tmp)
+                            else:
+                                self.stop_pushing[i] = 1
+                                print('stop')
+                        return True
                 # print('place')
                 # print(env_ids_tmp)
                 # self.un_satisfied_scenes.append(self.table_scenes[i])
@@ -1512,6 +1609,8 @@ class PushEnv(IsaacEnv):
                 # print(self.un_satisfied_scenes)
                 # print('steps') 
                 # print(self.step_all)
+        # self.check_placing = False
+        return False
     '''
     only for toy example
     '''            
@@ -1560,10 +1659,12 @@ class PushEnv(IsaacEnv):
                 end_ind_x = min(self.actions_origin[i][0]+1,self.cfg.og_resolution.tabletop[0])
                 start_ind_y = max(self.actions_origin[i][1]-1,0)
                 end_ind_y = min(self.actions_origin[i][1]+2,self.cfg.og_resolution.tabletop[1])
-            image_tmp[start_ind_x:end_ind_x,start_ind_y:end_ind_y] = 2
+            image_tmp[start_ind_x:end_ind_x,start_ind_y:end_ind_y] = 4
             if torch.sum(table_og_tmp[start_ind_x:end_ind_x,start_ind_y:end_ind_y])==0:
                 if self.actions_origin[i,2] == 0:
                     start_ind_y = max(self.actions_origin[i][1]-5,0)
+                    if self.cfg.flag_compare:
+                        start_ind_y = max(self.actions_origin[i][1]-20,0)
                     end_ind_y = min(self.actions_origin[i][1],self.cfg.og_resolution.tabletop[1])
                     if torch.sum(table_og_tmp[self.actions_origin[i][0],start_ind_y:end_ind_y])>=1:
                         self.check_reaching[i] = 1 
@@ -1593,6 +1694,16 @@ class PushEnv(IsaacEnv):
             # fig, (ax1,ax2) = plt.subplots(1, 2, figsize=(15, 10))
             # ax1.imshow(image_tmp)
             # ax2.imshow(image_tmp_ori)
+            # plt.show()
+            # if self.cfg.flag_compare:
+            #     for k in range(16):
+            #         idx_t = int(48-3*k)
+            #         if idx_t != self.actions_origin[i][0]:
+            #             start_ind_y = max(self.actions_origin[i][1]-20,0)
+            #             end_ind_y = min(self.actions_origin[i][1],self.cfg.og_resolution.tabletop[1])
+            #             image_tmp[idx_t,start_ind_y:50]=2
+
+            # plt.imshow(image_tmp)
             # plt.show()
             if self.check_reaching[i] == 1:
                 self.reaching_all += 1.0
@@ -1654,8 +1765,11 @@ class PushEnv(IsaacEnv):
         # compute resets
         # -- when stop pushing
         if self.cfg.terminations.stop_pushing:
-            self.reset_buf = torch.where(self.check_reaching == 0, 1, self.reset_buf)
+            # if not self.cfg.flag_compare:
+            #     self.reset_buf = torch.where(self.check_reaching == 0, 1, self.reset_buf)
             self.reset_buf = torch.where(self.stop_pushing >=0.5,1,self.reset_buf)
+            if self.no_place_step>18:
+                self.reset_buf[:] = 1
         # -- when task is successful
         if self.cfg.terminations.is_success:
             ''' modified because of toy example'''
@@ -1668,7 +1782,7 @@ class PushEnv(IsaacEnv):
         # -- episode length
         if self.cfg.terminations.episode_timeout:
             self.reset_buf = torch.where(self.episode_length_buf >= self.max_episode_length, 1, self.reset_buf)
-    
+        print('terminated',self.reset_buf)
     def reset_objs(self,env_ids: torch.Tensor):
         for i,obj_t in enumerate(self.obj1):
             root_state = obj_t.get_default_root_state(env_ids)
@@ -1694,6 +1808,12 @@ class PushEnv(IsaacEnv):
             root_state[:, 0:3] += self.envs_positions[env_ids]
             # set the root state
             obj_t.set_root_state(root_state, env_ids=env_ids)
+        for i,obj_t in enumerate(self.obj5):
+            root_state = obj_t.get_default_root_state(env_ids)
+            # transform command from local env to world
+            root_state[:, 0:3] += self.envs_positions[env_ids]
+            # set the root state
+            obj_t.set_root_state(root_state, env_ids=env_ids)
         
     def _randomize_table_scene(self,env_ids: torch.Tensor):
         
@@ -1714,18 +1834,20 @@ class PushEnv(IsaacEnv):
         # print(file_name[choosen_env_id],env_ids,self.env_i_tmp,choosen_env_id)
         # env_path = "generated_table2/"+file_name[choosen_env_id]
         f_name = 'dict_pose_'+str(self.env_i_tmp)+'.pkl'
+        # f_name = 'dict_pose_'+str(1)+'.pkl'
         print(f_name)
         if self.env_i_tmp>1:
-            file_path = "./placing_test/pushing_policy_com_"+str(self.env_i_tmp-1)+".pkl"
+            file_path = "./placing_test/pushing_compare2_"+str(self.env_i_tmp-1)+".pkl"
+            # file_path = "./placing_test/pushing_policy_"+str(1)+".pkl"
             f_save = open(file_path,'wb')
             
             pkl.dump(self.pushing_policy_result[self.env_i_tmp-1],f_save)
             f_save.close()
         if f_name in file_name:
             env_path = "placing_test/"+f_name
-            self.pushing_policy_result[self.env_i_tmp] = [0,0,0,0,0,0] ### item be on table, fallen item, pushing steps, occu_table, original number of item
+            self.pushing_policy_result[self.env_i_tmp] = [0,0,0,0,0,0,0] ### item be on table, fallen item, pushing steps, occu_table, original number of item ## last last steps num for item placed
         else:
-            file_path = "./placing_test/pushing_policy_com.pkl"
+            file_path = "./placing_test/pushing_compare2.pkl"
             f_save = open(file_path,'wb')
             
             pkl.dump(self.pushing_policy_result,f_save)
@@ -1764,7 +1886,7 @@ class PushEnv(IsaacEnv):
         # obj_pos_rot = []
         # print(env)
         # self.new_obj_mask = self.cfg.obj_mask.mask["tomatoSoupCan"
-        ycb_name = ['sugarBox','mustardBottle','tomatoSoupCan','Cube']
+        ycb_name = ['sugarBox','mustardBottle','tomatoSoupCan','Cube3','Cube2']
         
         
             # print('get new mask')
@@ -1828,6 +1950,19 @@ class PushEnv(IsaacEnv):
                     self.obj4[_].set_root_state(root_state, env_ids=env_ids)
                     for j in env_ids.tolist():
                         self.obj_on_table[j].append(self.obj4[_])
+                        self.obj_on_table_name[j][i] +=1     
+            elif i == ycb_name[4]:
+                for _,pos_rot in enumerate(obj_pos_rot[i]):
+                    if _ > 16:
+                        break
+                    root_state = self.obj5[_].get_default_root_state(env_ids)
+                    for j in range(len(root_state)):
+                        root_state[j, 0:3] = torch.from_numpy(np.array(pos_rot[0])).to(self.device)
+                        root_state[j, 3:7] = torch.from_numpy(np.array(pos_rot[1])).to(self.device)
+                    root_state[:, 0:3] += self.envs_positions[env_ids]
+                    self.obj5[_].set_root_state(root_state, env_ids=env_ids)
+                    for j in env_ids.tolist():
+                        self.obj_on_table[j].append(self.obj5[_])
                         self.obj_on_table_name[j][i] +=1     
         
         for i in env_ids.tolist():
@@ -1961,8 +2096,8 @@ class PushObservationManager(ObservationManager):
 
             # obs_ta=obs_ta.rot90(1,[2,1])
             # fig, (ax1,ax2) = plt.subplots(1, 2, figsize=(15, 10))
-            # ax1.imshow(np.squeeze(obs_ta[i,:,:,1].cpu().numpy()))
-            # ax2.imshow(np.squeeze(obs_ta[i,:,:,0].cpu().numpy()))
+            # ax1.imshow(np.squeeze(obs_ta[i,:,:,0].cpu().numpy()))
+            # ax2.imshow(np.squeeze(obs_ta[i,:,:,1].cpu().numpy()))
             # plt.show()
             # fig, (ax1,ax2) = plt.subplots(1, 2, figsize=(15, 10))
             # ax1.imshow(env.table_tsdf[i].cpu().numpy()*255)

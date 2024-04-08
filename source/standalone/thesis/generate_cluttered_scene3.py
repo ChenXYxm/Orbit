@@ -201,12 +201,14 @@ def main():
     # ycb_name = ['crackerBox','sugarBox','mustardBottle']
     ycb_usd_paths = {
         # "crackerBox": f"{ISAAC_NUCLEUS_DIR}/Props/YCB/Axis_Aligned_Physics/003_cracker_box.usd",
+        "Cube3": f"{ISAAC_NUCLEUS_DIR}/Props/YCB/Axis_Aligned_Physics/004_sugar_box.usd",
+        "Cube2": f"{ISAAC_NUCLEUS_DIR}/Props/YCB/Axis_Aligned_Physics/004_sugar_box.usd",
         "sugarBox": f"{ISAAC_NUCLEUS_DIR}/Props/YCB/Axis_Aligned_Physics/004_sugar_box.usd",
         "mustardBottle": f"{ISAAC_NUCLEUS_DIR}/Props/YCB/Axis_Aligned_Physics/006_mustard_bottle.usd",
         "tomatoSoupCan": f"{ISAAC_NUCLEUS_DIR}/Props/YCB/Axis_Aligned_Physics/005_tomato_soup_can.usd",
         
     }
-    ycb_name = ['sugarBox','mustardBottle','tomatoSoupCan']
+    ycb_name = ['sugarBox','mustardBottle','tomatoSoupCan','Cube3','Cube2']
     obj1 = []
     obj_name_list = []
     for i in range(8):
@@ -268,6 +270,46 @@ def main():
         )
         obj3.append(RigidObject(obj_cfg3))
         obj_name_list.append(ycb_name[2]+str(i))
+    obj4 = []
+    for i in range(16):
+        obj_cfg4 = RigidObjectCfg()
+        obj_cfg4.meta_info = RigidObjectCfg.MetaInfoCfg(usd_path=ycb_usd_paths[ycb_name[3]],scale=(0.5,1,1.2),)
+        obj_cfg4.init_state = RigidObjectCfg.InitialStateCfg(
+        pos=(2-0.25*i, 1.4, -0.4), rot=(1.0, 0.0, 0.0, 0.0), lin_vel=(0.0, 0.0, 0.0), ang_vel=(0.0, 0.0, 0.0)
+        )
+        obj_cfg4.rigid_props = RigidObjectCfg.RigidBodyPropertiesCfg(
+            solver_position_iteration_count=16,
+            solver_velocity_iteration_count=1,
+            max_angular_velocity=0.5,
+            max_linear_velocity=0.5,
+            max_depenetration_velocity=0.5,
+            disable_gravity=False,
+        )
+        obj_cfg4.physics_material = RigidObjectCfg.PhysicsMaterialCfg(
+            static_friction=0.5, dynamic_friction=0.5, restitution=0.0, prim_path="/World/Materials/cubeMaterial"
+        )
+        obj4.append(RigidObject(obj_cfg4))
+        obj_name_list.append(ycb_name[3]+str(i))
+    obj5 = []
+    for i in range(16):
+        obj_cfg5 = RigidObjectCfg()
+        obj_cfg5.meta_info = RigidObjectCfg.MetaInfoCfg(usd_path=ycb_usd_paths[ycb_name[4]],scale=(0.5,0.6,1.2),)
+        obj_cfg5.init_state = RigidObjectCfg.InitialStateCfg(
+        pos=(2-0.25*i, 1.6, -0.4), rot=(1.0, 0.0, 0.0, 0.0), lin_vel=(0.0, 0.0, 0.0), ang_vel=(0.0, 0.0, 0.0)
+        )
+        obj_cfg5.rigid_props = RigidObjectCfg.RigidBodyPropertiesCfg(
+            solver_position_iteration_count=16,
+            solver_velocity_iteration_count=1,
+            max_angular_velocity=0.5,
+            max_linear_velocity=0.5,
+            max_depenetration_velocity=0.5,
+            disable_gravity=False,
+        )
+        obj_cfg5.physics_material = RigidObjectCfg.PhysicsMaterialCfg(
+            static_friction=0.5, dynamic_friction=0.5, restitution=0.0, prim_path="/World/Materials/cubeMaterial"
+        )
+        obj5.append(RigidObject(obj_cfg5))
+        obj_name_list.append(ycb_name[4]+str(i))
     # obj3 = []
     # for i in range(9):
     #     obj_cfg3 = RigidObjectCfg()
@@ -310,6 +352,10 @@ def main():
         obj_t.spawn(f"/World/Objs/obj2/obj_{i}")
     for i,obj_t in enumerate(obj3):
         obj_t.spawn(f"/World/Objs/obj3/obj_{i}")
+    for i,obj_t in enumerate(obj4):
+        obj_t.spawn(f"/World/Objs/obj4/obj_{i}")
+    for i,obj_t in enumerate(obj5):
+        obj_t.spawn(f"/World/Objs/obj5/obj_{i}")
     ###################################### sensor extension camera
     
     camera_cfg = PinholeCameraCfg(
@@ -342,6 +388,10 @@ def main():
             obj_t.initialize(f"/World/Objs/obj2/obj_{i}")
     for i,obj_t in enumerate(obj3):
             obj_t.initialize(f"/World/Objs/obj3/obj_{i}")
+    for i,obj_t in enumerate(obj4):
+            obj_t.initialize(f"/World/Objs/obj4/obj_{i}")
+    for i,obj_t in enumerate(obj5):
+            obj_t.initialize(f"/World/Objs/obj5/obj_{i}")
     # Reset states
     robot.reset_buffers()
     ik_controller.reset_idx()
@@ -357,8 +407,12 @@ def main():
             obj_t.update_buffers(0.01)
     for i,obj_t in enumerate(obj2):
             obj_t.update_buffers(0.01)
-    # for i,obj_t in enumerate(obj3):
-    #         obj_t.update_buffers(0.01)
+    for i,obj_t in enumerate(obj3):
+            obj_t.update_buffers(0.01)
+    for i,obj_t in enumerate(obj4):
+            obj_t.update_buffers(0.01)
+    for i,obj_t in enumerate(obj5):
+            obj_t.update_buffers(0.01)
     for _ in range(10):
         sim.render()
     ##################################################################### get plane model of the table
@@ -407,6 +461,18 @@ def main():
             root_state[:,3:7] = torch.tensor(rot).cuda()
             obj3[0].set_root_state(root_state)
             obj3[0].update_buffers(0.01)
+        elif randi == 3:
+            root_state = obj4[0].get_default_root_state()
+            root_state[:,:3] = torch.tensor(translation).cuda()
+            root_state[:,3:7] = torch.tensor(rot).cuda()
+            obj4[0].set_root_state(root_state)
+            obj4[0].update_buffers(0.01)
+        elif randi == 4:
+            root_state = obj5[0].get_default_root_state()
+            root_state[:,:3] = torch.tensor(translation).cuda()
+            root_state[:,3:7] = torch.tensor(rot).cuda()
+            obj5[0].set_root_state(root_state)
+            obj5[0].update_buffers(0.01)
         table_obj_pos_rot[obj_name_i] = [(translation,rot)]
         
         print('new obj to be placed, obj_id,current_num')
@@ -415,7 +481,7 @@ def main():
             sim.step()
         obj_dict[obj_name_i] += 1 
         #################### start the loop to drop item iteratively
-        while obj_dict[ycb_name[0]] < 8 or obj_dict[ycb_name[1]] < 8 or obj_dict[ycb_name[2]] < 8:
+        while obj_dict[ycb_name[0]] < 8 or obj_dict[ycb_name[1]] < 8 or obj_dict[ycb_name[2]] < 8 or obj_dict[ycb_name[3]] < 8 or obj_dict[ycb_name[2]] < 8:
             # print(j)
             if simulation_app.is_running():
                 print('running')
@@ -533,6 +599,28 @@ def main():
                     obj3[j].update_buffers(0.01)
                     print('current state,obj_num')
                     print(obj3[j].data.root_pos_w,j)
+                elif randi == 3:
+                    j = int(obj_dict[obj_name_i]-1)
+                    root_state = obj4[j].get_default_root_state()
+                    root_state[:,:3] = torch.tensor(translation).cuda()
+                    root_state[:,3:7] = torch.tensor(rot).cuda()
+                    obj4[j].set_root_state(root_state)
+                    for k in range(30):
+                        sim.step()
+                    obj4[j].update_buffers(0.01)
+                    print('current state,obj_num')
+                    print(obj4[j].data.root_pos_w,j)
+                elif randi == 4:
+                    j = int(obj_dict[obj_name_i]-1)
+                    root_state = obj5[j].get_default_root_state()
+                    root_state[:,:3] = torch.tensor(translation).cuda()
+                    root_state[:,3:7] = torch.tensor(rot).cuda()
+                    obj5[j].set_root_state(root_state)
+                    for k in range(30):
+                        sim.step()
+                    obj5[j].update_buffers(0.01)
+                    print('current state,obj_num')
+                    print(obj5[j].data.root_pos_w,j)
                 if obj_name_i not in table_obj_pos_rot:
                     table_obj_pos_rot[obj_name_i] = [(translation,rot)]
                 else:
@@ -544,8 +632,8 @@ def main():
                 # print('current state')
                 # print(obj1[j].data.root_pos_w)
             else:
-                file_name_ori = "dict_"
-                file_list = os.listdir("test_table2/")
+                file_name_ori = "new_t_dict_"
+                file_list = os.listdir("new_table/")
                 print('done')
                 print(table_obj_pos_rot)
                 for k in table_obj_pos_rot:
@@ -556,7 +644,7 @@ def main():
                     if file_name in file_list:
                         num_file +=1
                     else:
-                        file_path = "test_table2/"+file_name
+                        file_path = "new_table/"+file_name
                         f_save = open(file_path,'wb')
                         table_obj_pos_rot = [table_obj_pos_rot,obj_name_i]
                         pickle.dump(table_obj_pos_rot,f_save)
@@ -574,6 +662,12 @@ def main():
             root_state = obj_t.get_default_root_state()
             obj_t.set_root_state(root_state)
         for i,obj_t in enumerate(obj3):
+            root_state = obj_t.get_default_root_state()
+            obj_t.set_root_state(root_state)
+        for i,obj_t in enumerate(obj4):
+            root_state = obj_t.get_default_root_state()
+            obj_t.set_root_state(root_state)
+        for i,obj_t in enumerate(obj5):
             root_state = obj_t.get_default_root_state()
             obj_t.set_root_state(root_state)
         for j in range(30):

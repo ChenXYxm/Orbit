@@ -19,11 +19,11 @@ class Push_Agent():
         self.env = env
         self.obs_shape = [2,64,64]
         self.num_envs = num_envs
-        learning_rate=0.001
+        learning_rate=0.0001
         mem_size=500
-        self.eps_start=0.1
-        self.eps_end=0.1
-        self.eps_decay=24000
+        self.eps_start=0.3
+        self.eps_end=0.25
+        self.eps_decay=30000
         depth_only=False
         load_path=None
         self.training=True
@@ -34,17 +34,17 @@ class Push_Agent():
         torch.cuda.manual_seed(seed)
         np.random.seed(seed)
         random.seed(seed)
-        self.Orient = 8
+        self.Orient = 1
         self.WIDTH = 64
         self.HEIGHT = 64
-        self.BATCH_SIZE = 8
+        self.BATCH_SIZE = 12
         self.GAMMA = 0.9
         self.policy_net = MULTIDISCRETE_RESNET_Rotate(number_actions_dim_2=1)
         # Only need a target network if gamma is not zero
         self.target_net = MULTIDISCRETE_RESNET_Rotate(number_actions_dim_2=1)
-        checkpoint = torch.load('/home/cxy/Downloads/Feb27_model_env/new_network_pretrainweight48000.pth')
-        # checkpoint = torch.load('/home/cxy/Downloads/Feb27_model_env/weight30000.pth')
-        # # checkpoint = torch.load('/home/cxy/Thesis/orbit/Orbit/FCN_regression/weight12000.pth')
+        # checkpoint = torch.load('/home/cxy/Downloads/Feb27_model_env/new_network_pretrainweight48000.pth')
+        # # checkpoint = torch.load('/home/cxy/Downloads/Feb27_model_env/weight30000.pth')
+        checkpoint = torch.load('/home/cxy/Thesis/orbit/Orbit/FCN_regression/weight6000.pth')
         self.policy_net.load_state_dict(checkpoint)
         self.target_net.load_state_dict(checkpoint)
         # print('load weight',checkpoint)
@@ -203,7 +203,7 @@ class Push_Agent():
                     env_action = self.transform_action(action)
                     #print(int(i*len(self._last_obs)+j),i,j,len(self._last_obs))
                     actions[j,:3] = env_action.flatten()
-                    actions[j,2] = actions[j,2]*int(np.ceil(8.0/self.Orient))
+                    # actions[j,2] = actions[j,2]*int(np.ceil(8.0/self.Orient))
                     # print('action:',actions)
                     obs_tensor_list.append(obs_tensor)
                     action_list.append(action)
@@ -249,7 +249,7 @@ class Push_Agent():
                 self.writer.add_scalar("mean rewards", np.mean(rewards.flatten()), global_step=self.steps_done)
                 print("mean rewards: ", np.mean(rewards.flatten()*10))
             self.learn()
-            if self.steps_done>=6000*self.save_i:
+            if self.steps_done>=3000*self.save_i:
                 self.save_i += 1
                 print('num model to be saved: ',self.save_i)
                 torch.save(self.policy_net.state_dict(),'FCN_regression/weight'+str(self.steps_done)+'.pth')
@@ -281,14 +281,14 @@ class Push_Agent():
         batch = Transition(*zip(*transitions))
 
         # Gradient accumulation to bypass GPU memory restrictions
-        for i in range(1):
+        for i in range(2):
             # Transfer weights every TARGET_NETWORK_UPDATE steps
-            if self.steps_done % 64 == 0:
+            if self.steps_done % 128 == 0:
                 self.target_net.load_state_dict(self.policy_net.state_dict())
                 print('load the weight of policy net to target')
-            start_idx = i * self.BATCH_SIZE
-            end_idx = (i + 1) * self.BATCH_SIZE
-
+            start_idx = i * (self.BATCH_SIZE//2)
+            end_idx = (i + 1) * (self.BATCH_SIZE//2)
+            print('start idx', start_idx, 'end_idx',end_idx)
             state_batch = torch.cat(batch.state[start_idx:end_idx]).to(self.device)
             action_batch = torch.cat(batch.action[start_idx:end_idx]).to(self.device)
             next_state_batch = torch.cat(batch.next_state[start_idx:end_idx]).to(self.device)
@@ -296,14 +296,14 @@ class Push_Agent():
 
             # Current Q prediction of our policy net, for the actions we took
             q_pred = (
-                self.policy_net(state_batch).view(self.BATCH_SIZE, -1).gather(1, action_batch)
+                self.policy_net(state_batch).view(self.BATCH_SIZE//2, -1).gather(1, action_batch)
             )
             # print('q_pred')
             # print(self.policy_net(state_batch).size())
             # q_pred = self.policy_net(state_batch).gather(1, action_batch)
             # print('q_pred',q_pred)
 
-            q_next_state = self.target_net(next_state_batch).view(self.BATCH_SIZE, -1).max(1)[0].unsqueeze(1).detach()
+            q_next_state = self.target_net(next_state_batch).view(self.BATCH_SIZE//2, -1).max(1)[0].unsqueeze(1).detach()
             # print('q_pred')
             # print(self.target_net(next_state_batch).size())
                 # Calulate expected Q value using Bellmann: Q_t = r + gamma*Q_t+1

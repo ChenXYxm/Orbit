@@ -5,7 +5,7 @@ import torch.nn.functional as F
 import torch.optim as optim
 import torch.nn as nn
 from torch.utils.tensorboard import SummaryWriter
-from Modules import ReplayBuffer, Transition, simple_Transition,MULTIDISCRETE_RESNET,MULTIDISCRETE_RESNET_Rotate
+from Modules_UNet import ReplayBuffer, Transition, simple_Transition,MULTIDISCRETE_RESNET_Rotate
 import numpy as np
 import pickle
 import random
@@ -21,7 +21,7 @@ class Push_Agent():
         self.num_envs = num_envs
         learning_rate=0.0001
         mem_size=500
-        self.eps_start=0.52
+        self.eps_start=0.3
         self.eps_end=0.2
         self.eps_decay=30000
         depth_only=False
@@ -38,15 +38,16 @@ class Push_Agent():
         self.Orient = 1
         self.WIDTH = 64
         self.HEIGHT = 64
-        self.BATCH_SIZE = 20
+        self.BATCH_SIZE = 10
         self.GAMMA = 0.9
         self.policy_net = MULTIDISCRETE_RESNET_Rotate(number_actions_dim_2=1)
         # Only need a target network if gamma is not zero
         self.target_net = MULTIDISCRETE_RESNET_Rotate(number_actions_dim_2=1)
         # checkpoint = torch.load('/home/cxy/Downloads/Feb28_env_42_8/Feb23_rotate_8_42_3_maxpweight48000.pth')
-        checkpoint = torch.load('/home/cxy/Thesis/orbit/Orbit/FCN_regression/weight50_18000.pth')
-        self.policy_net.load_state_dict(checkpoint)
-        self.target_net.load_state_dict(checkpoint)
+        # checkpoint = torch.load('/home/cxy/Thesis/orbit/Orbit/FCN_regression/weight50_15010.pth')
+        # # # checkpoint = torch.load('/home/cxy/Downloads/modelMar13/weight50_42009.pth')
+        # self.policy_net.load_state_dict(checkpoint)
+        # self.target_net.load_state_dict(checkpoint)
         # print('load weight',checkpoint)
         self.target_net.eval()
         self.negative_reward = 0
@@ -232,7 +233,7 @@ class Push_Agent():
                 for j in range(len(self._last_obs)):
                     obs_tmp = self._last_obs[j].copy()
                     obs_tmp = np.moveaxis(obs_tmp, -1, 0)
-                    #print('obs shape',obs_tmp.shape)
+                    # print('obs shape',obs_tmp.shape)
                     obs_tensor = self.transform_observation(obs_tmp)
                     action = self.epsilon_greedy(obs_tensor,j)
                     # print("action: ",action)
@@ -240,7 +241,7 @@ class Push_Agent():
                     #print(int(i*len(self._last_obs)+j),i,j,len(self._last_obs))
                     actions[j,:3] = env_action.flatten()
                     # actions[j,2] = actions[j,2]*int(np.ceil(8.0/self.Orient))
-                    # actions[j,2] = 0
+                    # actions[j,2] = 1
                     ########### TODO:test ##################
                     # actions = np.array([27., 38.,  3.]).reshape((1,3))
                     ########################################
@@ -314,8 +315,8 @@ class Push_Agent():
             self.new_data = 0
             flag = self.learn()
             if flag:
-                if self.steps_done>=3000*self.save_i:
-                    self.save_i = np.ceil(self.steps_done/3000.0)
+                if self.steps_done>=5000*self.save_i:
+                    self.save_i = np.ceil(self.steps_done/5000.0)
                     print('num model to be saved: ',self.save_i)
                     torch.save(self.policy_net.state_dict(),'FCN_regression/weight50_'+str(self.steps_done)+'.pth')
                     # torch.save(agent.policy_net.state_dict(), WEIGHT_PATH)
@@ -336,7 +337,7 @@ class Push_Agent():
         """
 
         # Make sure we have collected enough data for at least one batch
-        if len(self.memory) < 2 * self.BATCH_SIZE:
+        if len(self.memory) < 3 * self.BATCH_SIZE:
             print("Filling the replay buffer ...")
             return False
 
@@ -348,7 +349,7 @@ class Push_Agent():
         # Gradient accumulation to bypass GPU memory restrictions
         for i in range(1):
             # Transfer weights every TARGET_NETWORK_UPDATE steps
-            if self.steps_done % 64 == 0:
+            if self.steps_done % 128 == 0:
                 self.target_net.load_state_dict(self.policy_net.state_dict())
                 print('load the weight of policy net to target')
             start_idx = i * self.BATCH_SIZE

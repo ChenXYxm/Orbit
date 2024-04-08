@@ -85,7 +85,7 @@ def main():
     stop_pushing = 0
     # simulate environment
     print('using stop pushing method')
-    x_start = 49
+    x_start = 48
     flag_compare = True
     while simulation_app.is_running():
         # agent stepping
@@ -156,8 +156,8 @@ def main():
 
         ################# TODO:only for comparision method
         if flag_compare:
-            x_start = x_start -2
-            if x_start <0:
+            x_start = x_start -3
+            if x_start <2:
                 x_start = 49
             for idx, done in enumerate(dones):
                 if done:

@@ -2,7 +2,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 import cv2
 from shapely import Polygon, STRtree, area, contains, buffer, intersection,get_coordinates, concave_hull
-from scipy.ndimage import rotate
 # from shapely.geometry import 
 ################## get the centers of the bboxes for objects on table 
 def get_center_range(occu:np.array):
@@ -19,7 +18,7 @@ def get_center_range(occu:np.array):
     shape_dict = dict()
     i = 0
     polygons = []
-    # occu_tmp = occu.copy()
+    occu_tmp = occu.copy()
     for cnt in contours:
         i += 1
         approx = cv2.minAreaRect(cnt)
@@ -62,7 +61,7 @@ def get_center_range(occu:np.array):
                             del_ind.append(int(j_tmp))
         #################### get centers of the masks
         polygons = []
-        # occu_tmp = occu.copy()
+        occu_tmp = occu.copy()
         centers = []
         for i in shape_dict:
             poly_tmp = Polygon(shape_dict[i])
@@ -207,125 +206,7 @@ def draw_bbox(occu_ori):
                 occu_tmp[int(np.round(p_s[0]+tmp_delta[0])),int(np.round(p_s[1]+tmp_delta[1]))] = 3
                     
     return occu_tmp
-def rotate_45(matrix,degree=45):
-    # Get dimensions of the matrix
-    rows, cols = matrix.shape
 
-    # Create a rotated matrix with zeros
-    rotated_matrix = np.zeros((rows, cols), dtype=matrix.dtype)
-
-    # Rotate by -45 degrees (to simulate a 45-degree clockwise rotation)
-    rotated = rotate(matrix, -degree, reshape=False, order=1, mode='constant', cval=0, prefilter=False)
-
-    # Extract the center part of the rotated matrix
-    center = (rotated.shape[0] - rows) // 2
-    rotated_matrix = rotated[center:center + rows, center:center + cols]
-    rotated_matrix[np.where(rotated_matrix<0.5)] = 0
-    rotated_matrix[np.where(rotated_matrix>=0.5)] = 1
-    return rotated_matrix
-def placing_compare_fun(occu_ori,mask):
-    # mask = np.zeros((40,40))
-    # w_m = np.random.randint(2,10)
-    # l_m = np.random.randint(2,10)
-    # mask[20-w_m:20+w_m,20-l_m:20+l_m] = 1
-    # plt.imshow(mask)
-    # plt.show()
-    # occu = np.zeros((50,50))
-    occu = occu_ori.copy()
-    occu_w,occu_l = occu_ori.shape
-    # print("shape: ", occu_l,occu_w)
-    target_pos = [0,0,0]
-    flag_found = False
-    # plt.imshow(mask)
-    # plt.show()
-    mask_tmp = mask.copy()
-    mask_diff_x = np.diff(mask_tmp)
-    ind_xy = np.where(mask_diff_x==1)
-    ind_x = ind_xy[0]
-    ind_y = ind_xy[1]
-    ind_x = np.array(ind_x).reshape(-1)
-    ind_y = np.array(ind_y).reshape(-1)
-    for i in range(len(ind_x)):
-        mask[ind_x[i],ind_y[i]-2:ind_y[i]+1] = 1
-    # plt.imshow(mask)
-    # plt.show()
-    ind_xy = np.where(mask_diff_x==-1)
-    ind_x = ind_xy[0]
-    ind_y = ind_xy[1]
-    ind_x = np.array(ind_x).reshape(-1)
-    ind_y = np.array(ind_y).reshape(-1)
-    for i in range(len(ind_x)):
-        mask[ind_x[i],ind_y[i]+1:ind_y[i]+5] = 1
-    # plt.imshow(mask)
-    # plt.show()
-    mask_tmp = mask.copy()
-    mask_diff_x = np.diff(mask_tmp, axis=0)
-    ind_xy = np.where(mask_diff_x==1)
-    ind_x = ind_xy[0]
-    ind_y = ind_xy[1]
-    ind_x = np.array(ind_x).reshape(-1)
-    ind_y = np.array(ind_y).reshape(-1)
-    for i in range(len(ind_x)):
-        mask[ind_x[i]-2:ind_x[i]+1,ind_y[i]] = 1
-    # plt.imshow(mask)
-    # plt.show()
-    ind_xy = np.where(mask_diff_x==-1)
-    ind_x = ind_xy[0]
-    ind_y = ind_xy[1]
-    ind_x = np.array(ind_x).reshape(-1)
-    ind_y = np.array(ind_y).reshape(-1)
-    for i in range(len(ind_x)):
-       mask[ind_x[i]+1:ind_x[i]+5,ind_y[i]] = 1
-    # plt.imshow(mask)
-    # plt.show()
-    # ind_xy = np.where(mask>0)
-    # s_x = int(np.min(np.array(ind_xy[0]).astype(int)))-3
-    # e_x = int(np.max(np.array(ind_xy[0]).astype(int))+4)
-    # s_y = int(np.min(np.array(ind_xy[1]).astype(int)))-3
-    # e_y = int(np.max(np.array(ind_xy[1]).astype(int))+4)
-    # mask[s_x:e_x,s_y:e_y] = 1
-    # plt.imshow(mask)
-    # plt.show()
-    for i in range(360):
-        occu_tmp = occu.copy()
-        mask_tmp = mask.copy()
-        theta = 1*i
-        mask_tmp = rotate_45(mask,degree=theta)
-        # plt.imshow(mask_tmp)
-        # plt.show()
-        ind_xy = np.where(mask_tmp>0)
-        s_x = int(np.min(np.array(ind_xy[0]).astype(int)))-3
-        e_x = int(np.max(np.array(ind_xy[0]).astype(int))+4)
-        s_y = int(np.min(np.array(ind_xy[1]).astype(int)))-3
-        e_y = int(np.max(np.array(ind_xy[1]).astype(int))+4)
-        mask_tmp = mask_tmp[s_x:e_x,s_y:e_y]
-        l_m_tmp = -s_y+e_y
-        w_m_tmp = -s_x+e_x
-        # image_name = "./data/point_cloud/rotatemask_"+str(i)+".png"
-        # cv2.imwrite(image_name,mask_tmp*255)
-        # print(l_m_tmp,w_m_tmp)
-        # plt.imshow(mask_tmp)
-        # plt.show()
-        for j in range(occu_w-w_m_tmp):
-            
-            for k in range(occu_l-l_m_tmp):
-                # print(i,j,k)
-                result = np.max(mask_tmp+occu_tmp[j:j+w_m_tmp,k:k+l_m_tmp])
-                if result ==1:
-                    occu_tmp[j:j+w_m_tmp,k:k+l_m_tmp] = mask_tmp*2
-                    flag_found = True
-                    # print(occu_tmp)
-                    # plt.imshow(occu_tmp)
-                    # plt.show()
-                    
-                    target_pos = [int(j+w_m_tmp/2),int(k+l_m_tmp/2),np.deg2rad(theta)]
-                    return(flag_found,target_pos) 
-                    break
-            if flag_found:
-                break
-        if flag_found:
-            break
-    return flag_found,target_pos
 def place_new_obj_fun(occu_ori,new_obj):
     ######################## input format
     # occu_ori: numpy 2d array: binary 0,1
@@ -361,14 +242,15 @@ def place_new_obj_fun(occu_ori,new_obj):
         # approx = cv2.minAreaRect(cnt)
         # box = cv2.boxPoints(approx)
         # approx = np.int0(box)
-        # occu_tmp = occu_ori.copy()
+        occu_tmp = occu_ori.copy()
         # occu_tmp2 = occu_ori.copy()
         # occu_tmp1 = occu_ori.copy()
         cnt_tmp = cnt.copy()
         cnt_tmp = cnt_tmp.reshape(-1,2)
-        polygon_tmp = Polygon(cnt_tmp)
-        if polygon_tmp.area>3:
-            ori_polygons.append(polygon_tmp)
+        if len(cnt_tmp)>=3:
+            polygon_tmp = Polygon(cnt_tmp)
+            if polygon_tmp.area>3:
+                ori_polygons.append(polygon_tmp)
         ############################# get extract lines ################
         hull = cv2.convexHull(cnt,returnPoints = True)
         # print(hull)
@@ -523,7 +405,7 @@ def place_new_obj_fun(occu_ori,new_obj):
         #     if i not in del_ind:
         #         polygons.append(polygons_tmp[i])
         # print('number of polygon after filter: ',len(polygons))
-        occu_tmp = occu_ori.copy()
+        # occu_tmp = occu_ori.copy()
         for i in range(len(polygons)):
             # print(polygons[i])
             
@@ -539,11 +421,11 @@ def place_new_obj_fun(occu_ori,new_obj):
             # print(shape_dict)
             for j in range(len(shape_dict[i])):
                 ## TODO
-                if shape_dict[i][j][1] >= occu_tmp.shape[0]:
-                    shape_dict[i][j][1] = occu_tmp.shape[0]-1
+                if shape_dict[i][j][1] >= Nx:
+                    shape_dict[i][j][1] = Nx-1
                     # print(shape_dict[i][j][1])
-                if shape_dict[i][j][0] >= occu_tmp.shape[1]:
-                    shape_dict[i][j][0] = occu_tmp.shape[1]-1
+                if shape_dict[i][j][0] >= Ny:
+                    shape_dict[i][j][0] = Ny-1
                     # print(shape_dict[i][j][0])
                 if shape_dict[i][j][1] < 0:
                     shape_dict[i][j][1] = 0
@@ -573,12 +455,13 @@ def place_new_obj_fun(occu_ori,new_obj):
                 p_e = points_tmp[j+1]
                 line = p_e - p_s
                 length = np.linalg.norm(line)
-                if length not in length_dict:
-                    length_dict[length] = [p_s,p_e]
-                    length_list.append(length)
-                else:
-                    length_dict[length].append(p_s)
-                    length_dict[length].append(p_e)
+                if length>1:
+                    if length not in length_dict:
+                        length_dict[length] = [p_s,p_e]
+                        length_list.append(length)
+                    else:
+                        length_dict[length].append(p_s)
+                        length_dict[length].append(p_e)
                 # print(p_s,p_e,length)
                 # for k in range(int(np.ceil(length))):
                 #     tmp_delta = [k*line[0]/length,k*line[1]/length]
@@ -588,7 +471,7 @@ def place_new_obj_fun(occu_ori,new_obj):
                 #         else:
                 #             tmp_delta[_] = np.floor(l)
                 #     occu_tmp[int(np.round(p_s[0]+tmp_delta[0])),int(np.round(p_s[1]+tmp_delta[1]))] = 3
-                    # occu_tmp[int(np.round(p_s[0]+k*line[0]/length)),int(np.round(p_s[1]+k*line[1]/length))] = 2
+                #     # occu_tmp[int(np.round(p_s[0]+k*line[0]/length)),int(np.round(p_s[1]+k*line[1]/length))] = 2
         for _ in new_lines:
             points_tmp = _.copy()
             points_tmp[:,0] = points_tmp[:,1]
@@ -598,12 +481,13 @@ def place_new_obj_fun(occu_ori,new_obj):
                 p_e = points_tmp[j+1]
                 line = p_e - p_s
                 length = np.linalg.norm(line)
-                if length not in length_dict:
-                    length_dict[length] = [p_s,p_e]
-                    length_list.append(length)
-                else:
-                    length_dict[length].append(p_s)
-                    length_dict[length].append(p_e)
+                if length>1:
+                    if length not in length_dict:
+                        length_dict[length] = [p_s,p_e]
+                        length_list.append(length)
+                    else:
+                        length_dict[length].append(p_s)
+                        length_dict[length].append(p_e)
                 # print(p_s,p_e,length)
                 # for k in range(int(np.ceil(length))):
                 #     tmp_delta = [k*line[0]/length,k*line[1]/length]
@@ -649,7 +533,7 @@ def place_new_obj_fun(occu_ori,new_obj):
         flag_found = False
         dila_polygons = []
         for i in ori_polygons:
-            dila_polygons.append(i.buffer(2))
+            dila_polygons.append(i.buffer(2.5))
         tree = STRtree(dila_polygons)
         # print("new obj shape")
         # print([num_grid_l,num_grid_s])
@@ -678,25 +562,30 @@ def place_new_obj_fun(occu_ori,new_obj):
                     line = np.array(p_e_first) - np.array(p_s_first)
                     line = line.astype(np.float32)
                     length = np.linalg.norm(line)
-                    offset_l = [0,-1,1,2,-2,3.,-3.,4.,-4.,5.,-5.,6.,-6.,7.,-7.]
+                    offset_l = [0,1,-1,2,-2,3.,-3.,4.,-4.,5.,-5.,6.,-6.,7.,-7.,8.,-8.,9.,-9.,10.,-10.]
                     # offset_l = [5.,-5.,6.,-6.,7.,-7.,8.,-8.,9.,-9.,10.,-10.,11.,-11.,12.,-12.,13.,-13.,14.,-14.,15.,-15.]
                     if length < 1:
                         length_arr[ind_tmp] = 1000
-                        continue
+                        break
                     for p in offset_l:
                         # p_s = length_dict[length_list[ind_tmp]][2*m]
                         # p_e = length_dict[length_list[ind_tmp]][2*m+1]
                         # p_s = [p_s[1],p_s[0]]
                         # p_e = [p_e[1],p_e[0]]
-                        # # print("points")
-                        # # print(p_s,p_e)
+                        # print("points")
+                        # print(p_s,p_e)
                         # line = np.array(p_e) - np.array(p_s)
                         # length = np.linalg.norm(line)
                         delta_l = length_ori-length
                         # print(length,line,p_s_first,p_e_first)
                         p_s_ori = np.array(p_s_first).copy() + p*line.copy()/length
                         p_e_ori = (np.array(p_e_first).copy() + delta_l*line.copy()/length).copy() + p*line.copy()/length
+                        
                         # print(p_s_ori,p_e_ori,line,length_ori,length,delta_l,p_s_first,p_e_first)
+                        # occu_tmp[int(round(p_s_ori[1])),int(round(p_s_ori[0]))] = 2
+                        # occu_tmp[int(round(p_e_ori[1])),int(round(p_e_ori[0]))] = 2
+                        # plt.imshow(occu_tmp)
+                        # plt.show()
                         if p == 0:
                             # print("ordinary")
                             range_o = int(np.ceil(abs(delta_l)))
@@ -707,7 +596,7 @@ def place_new_obj_fun(occu_ori,new_obj):
                             p_e = p_e_ori - np.sign(delta_l)*o*line.copy()/length
                             # print("check original points")
                             # print(p_s,p_e,p,o)
-                            for gap in range(3,8):
+                            for gap in range(3,10):
                                 for n in range(2):
                                     sign = (-1)**n
                                     tmp_delta = gap*line.copy()/length
@@ -717,13 +606,20 @@ def place_new_obj_fun(occu_ori,new_obj):
                                     tmp_delta = np.array([(tmp_delta[1]*sign),(tmp_delta[0]*sign*(-1))])
                                     p_s_new = p_s + tmp_delta
                                     p_e_new = p_e + tmp_delta
+                                    if np.max(p_s_new)>Nx-1 or np.max(p_e_new)>Nx-1 or np.min(p_s_new)<1 or np.min(p_e_new)<1:
+                                        break
+                                    if (occu_ori[int(round(p_s_new[1])),int(round(p_s_new[0]))] >0 or 
+                                        occu_ori[int(round(p_e_new[1])),int(round(p_e_new[0]))]>0):
+                                        break
                                     p_s_next = tmp_delta*length_other/gap + p_s_new
-                                    # p_s_next = np.array(p_s_next,dtype=int)
+                                    
                                     p_e_next = tmp_delta*length_other/gap + p_e_new
-                                    # p_e_next = np.array(p_e_next,dtype=int)
-                                    # bound_box = Polygon([[0,0],[0,60],[100,0],[100,60]])
-                                    # print(bound_box)
-                                    # print(gap,tmp_delta,length_other)
+                                    
+                                    if np.max(p_s_next)>Nx-1 or np.max(p_e_next)>Nx-1 or np.min(p_s_next)<1 or np.min(p_e_next)<1:
+                                        break
+                                    if (occu_ori[int(round(p_s_next[1])),int(round(p_s_next[0]))] >0 or 
+                                        occu_ori[int(round(p_e_next[1])),int(round(p_e_next[0]))]>0):
+                                        break
                                     new_poly_vetices = [p_s_new,p_e_new,p_e_next,p_s_next]
                                     # print(new_poly_vetices)
                                     new_poly_vetices = np.array(new_poly_vetices,dtype=np.int16).reshape((-1,2))
@@ -741,9 +637,9 @@ def place_new_obj_fun(occu_ori,new_obj):
                                             continue
                                         indices = tree.nearest(poly)
                                         nearest_poly = tree.geometries.take(indices)
-                                        indices_2 = tree.query(poly)
+                                        # indices_2 = tree.query(poly)
                                         # print(poly,nearest_poly)
-                                        if nearest_poly.is_valid and poly.disjoint(nearest_poly) and area(intersection(poly,nearest_poly))==0 and len(indices_2)==0:
+                                        if nearest_poly.is_valid and poly.disjoint(nearest_poly) and area(intersection(poly,nearest_poly))==0:
                                             # print("find the position")
                                             # print(poly)
                                             # for j in range(len(new_poly_vetices)):
@@ -754,20 +650,20 @@ def place_new_obj_fun(occu_ori,new_obj):
                                             #         p_e_1 = points_tmp[j+1]
                                             #     else:
                                             #         p_e_1 = points_tmp[0]
-                                                # line_1 = p_e_1 - p_s_1
-                                                # length_1 = np.linalg.norm(line_1)
-                                                # for k in range(int(np.ceil(length_1))):
-                                                #     tmp_delta_1 = [k*line_1[0]/length_1,k*line_1[1]/length_1]
-                                                #     for _,l in enumerate(tmp_delta_1):
-                                                #         if l >=0:
-                                                #             tmp_delta_1[_] = np.ceil(l)
-                                                #         else:
-                                                #             tmp_delta_1[_] = np.floor(l)
-                                                #     if np.round(p_s_1[0]+tmp_delta_1[0])>=Ny:
-                                                #         tmp_delta_1[0]=Ny-1-p_s_1[0]
-                                                #     if np.round(p_s_1[1]+tmp_delta_1[1])>=Nx:
-                                                #         tmp_delta_1[1] = Nx-1 - p_s_1[1]
-                                                #     occu_tmp[int(np.round(p_s_1[0]+tmp_delta_1[0])),int(np.round(p_s_1[1]+tmp_delta_1[1]))] = 3
+                                            #     line_1 = p_e_1 - p_s_1
+                                            #     length_1 = np.linalg.norm(line_1)
+                                            #     for k in range(int(np.ceil(length_1))):
+                                            #         tmp_delta_1 = [k*line_1[0]/length_1,k*line_1[1]/length_1]
+                                            #         for _,l in enumerate(tmp_delta_1):
+                                            #             if l >=0:
+                                            #                 tmp_delta_1[_] = np.ceil(l)
+                                            #             else:
+                                            #                 tmp_delta_1[_] = np.floor(l)
+                                            #         if np.round(p_s_1[0]+tmp_delta_1[0])>=Ny:
+                                            #             tmp_delta_1[0]=Ny-1-p_s_1[0]
+                                            #         if np.round(p_s_1[1]+tmp_delta_1[1])>=Nx:
+                                            #             tmp_delta_1[1] = Nx-1 - p_s_1[1]
+                                            #         occu_tmp[int(np.round(p_s_1[0]+tmp_delta_1[0])),int(np.round(p_s_1[1]+tmp_delta_1[1]))] = 3
                                             flag_found = True
                                             # print(new_obj,new_poly_vetices)
                                             new_obj_pos = get_pos(new_obj,new_poly_vetices)
@@ -801,8 +697,8 @@ def place_new_obj_fun(occu_ori,new_obj):
         w = int(np.ceil(bbox[1]))
         new_poly_vetices = [[0,Ny-w-1],[l,Ny-1-w],[l,Ny-1],[0,Ny-1]]
         new_poly_vetices = np.array(new_poly_vetices).reshape((-1,2))
-        # for j in range(len(new_poly_vetices)):
-        #     occu_tmp[new_poly_vetices[j][1],new_poly_vetices[j][0]] = 3
+        for j in range(len(new_poly_vetices)):
+            occu_tmp[new_poly_vetices[j][1],new_poly_vetices[j][0]] = 3
         new_obj_pos = get_pos(new_obj,new_poly_vetices)
         return True,new_poly_vetices,occu_tmp,new_obj_pos
 def get_pos(new_obj,new_poly_vetices):

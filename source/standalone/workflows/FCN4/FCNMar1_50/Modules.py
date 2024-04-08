@@ -107,7 +107,8 @@ class BasicBlock(nn.Module):
         self.conv1 = conv3x3(inplanes, planes, stride)
         
         self.bn1 = norm_layer(planes)
-        self.relu = nn.ReLU(inplace=True)
+        self.relu = nn.ReLU(inplace=True) ## before Mar13
+        # self.relu = nn.LeakyReLU() ## after Mar13
         self.conv2 = conv3x3(planes, planes)
         self.bn2 = norm_layer(planes)
         self.downsample = downsample
@@ -675,33 +676,33 @@ class MULTIDISCRETE_RESNET_Rotate(nn.Module):
         # self.interm_feat = []
         # obs_tmp = x.clone().cpu()
         # print("network obs size",obs_tmp.size())
-        rotate_num = 1
+        rotate_num = 2
         self.output = torch.zeros((len(state),rotate_num,64,64),device='cuda')
         for rotate_idx in range(rotate_num):
-            # rotate_theta = -np.radians(rotate_idx*(45))
-
-            # # Compute sample grid for rotation BEFORE neural network
-            # affine_mat_before = np.asarray([[np.cos(-rotate_theta), np.sin(-rotate_theta), 0],[-np.sin(-rotate_theta), np.cos(-rotate_theta), 0]])
-            # affine_mat_before.shape = (2,3)
-            # affine_mat_before_tmp = np.zeros((2,3,len(state)))
-            # for i in range(len(state)):
-            #     affine_mat_before_tmp[:,:,i] = affine_mat_before
-            # affine_mat_before = affine_mat_before_tmp
-            # affine_mat_before = torch.from_numpy(affine_mat_before).permute(2,0,1).float()
-            # # print(obs_tmp.size())
-            # if torch.cuda.is_available():
-            #     flow_grid_before = F.affine_grid(Variable(affine_mat_before, requires_grad=False).cuda(), state.size(),align_corners = False)
-            # else:
-            #     flow_grid_before = F.affine_grid(Variable(affine_mat_before, requires_grad=False), state.size(),align_corners = False)
-            # if self.use_cuda:
-            #     rotate_obs = F.grid_sample(Variable(state, requires_grad=False).cuda(), flow_grid_before, mode='nearest',align_corners = False)
+            rotate_theta = -np.radians(rotate_idx*(45))
+            # rotate_theta = -np.radians(45)
+            # Compute sample grid for rotation BEFORE neural network
+            affine_mat_before = np.asarray([[np.cos(-rotate_theta), np.sin(-rotate_theta), 0],[-np.sin(-rotate_theta), np.cos(-rotate_theta), 0]])
+            affine_mat_before.shape = (2,3)
+            affine_mat_before_tmp = np.zeros((2,3,len(state)))
+            for i in range(len(state)):
+                affine_mat_before_tmp[:,:,i] = affine_mat_before
+            affine_mat_before = affine_mat_before_tmp
+            affine_mat_before = torch.from_numpy(affine_mat_before).permute(2,0,1).float()
+            # print(obs_tmp.size())
+            if torch.cuda.is_available():
+                flow_grid_before = F.affine_grid(Variable(affine_mat_before, requires_grad=False).cuda(), state.size(),align_corners = False)
+            else:
+                flow_grid_before = F.affine_grid(Variable(affine_mat_before, requires_grad=False), state.size(),align_corners = False)
+            if self.use_cuda:
+                rotate_obs = F.grid_sample(Variable(state, requires_grad=False).cuda(), flow_grid_before, mode='nearest',align_corners = False)
                 
-            # else:
-            #     rotate_obs = F.grid_sample(Variable(state, requires_grad=False), flow_grid_before, mode='nearest',align_corners = False)
-            # # plt.imshow(np.array(rotate_obs[0,0].cpu()))
-            # # plt.show()   
-            # obs_feature = self.net(rotate_obs)
-            obs_feature = self.net(state)
+            else:
+                rotate_obs = F.grid_sample(Variable(state, requires_grad=False), flow_grid_before, mode='nearest',align_corners = False)
+            # plt.imshow(np.array(rotate_obs[0,0].cpu()))
+            # plt.show()   
+            obs_feature = self.net(rotate_obs)
+            # obs_feature = self.net(state)
             if obs_feature.dim() == 2:
                 tmp_tensor = torch.zeros((1,1,64,64),device='cuda')
                 tmp_tensor[0,0,:,:] = obs_feature
@@ -709,45 +710,45 @@ class MULTIDISCRETE_RESNET_Rotate(nn.Module):
                 tmp_tensor = torch.zeros((1,len(obs_feature),64,64),device='cuda')
                 tmp_tensor[0,:,:,:] = obs_feature
                 tmp_tensor=tmp_tensor.permute(1,0,2,3)
-            # affine_mat_after = np.asarray([[np.cos(rotate_theta), np.sin(rotate_theta), 0],[-np.sin(rotate_theta), np.cos(rotate_theta), 0]])
-            # affine_mat_after.shape = (2,3)
+            affine_mat_after = np.asarray([[np.cos(rotate_theta), np.sin(rotate_theta), 0],[-np.sin(rotate_theta), np.cos(rotate_theta), 0]])
+            affine_mat_after.shape = (2,3)
         
-            # affine_mat_after_tmp = np.zeros((2,3,len(state)))
-            # for i in range(len(state)):
-            #     affine_mat_after_tmp[:,:,i] = affine_mat_after
-            # affine_mat_after = affine_mat_after_tmp
-            # affine_mat_after = torch.from_numpy(affine_mat_after).permute(2,0,1).float()
-            # if self.use_cuda:
-            #     flow_grid_after = F.affine_grid(Variable(affine_mat_after, requires_grad=False).cuda(), tmp_tensor.size(),align_corners = False)
-            # else:
-            #     flow_grid_after = F.affine_grid(Variable(affine_mat_after, requires_grad=False), tmp_tensor.size(),align_corners = False)
-            # obs_feature_rotated_back = F.grid_sample(tmp_tensor, flow_grid_after, mode='nearest',align_corners = False)
+            affine_mat_after_tmp = np.zeros((2,3,len(state)))
+            for i in range(len(state)):
+                affine_mat_after_tmp[:,:,i] = affine_mat_after
+            affine_mat_after = affine_mat_after_tmp
+            affine_mat_after = torch.from_numpy(affine_mat_after).permute(2,0,1).float()
+            if self.use_cuda:
+                flow_grid_after = F.affine_grid(Variable(affine_mat_after, requires_grad=False).cuda(), tmp_tensor.size(),align_corners = False)
+            else:
+                flow_grid_after = F.affine_grid(Variable(affine_mat_after, requires_grad=False), tmp_tensor.size(),align_corners = False)
+            obs_feature_rotated_back = F.grid_sample(tmp_tensor, flow_grid_after, mode='nearest',align_corners = False)
             # print('obs_rotate_bask_size: ',obs_feature_rotated_back.size())
             # self.output_prob.append(obs_feature_rotated_back)
             
-            # self.output[:,rotate_idx,:,:] = obs_feature_rotated_back[:,0,:,:]
-            self.output[:,rotate_idx,:,:] = tmp_tensor[:,0,:,:]
+            self.output[:,rotate_idx,:,:] = obs_feature_rotated_back[:,0,:,:]
+            # self.output[:,rotate_idx,:,:] = tmp_tensor[:,0,:,:]
             
             # max_ind = tmp_tensor[0,0].view(-1).max(0)[1]
             # print('ori max',max_ind)
-            # state[0,0,int(max_ind//64),int(max_ind%64)] = 2
+            # rotate_obs[0,0,int(max_ind//64),int(max_ind%64)] = 2
             # fig, (ax1,ax2,ax3) = plt.subplots(1, 3, figsize=(7, 4))
-            # ax1.imshow(np.array(state[0,0,:,:].clone().cpu()))
+            # ax1.imshow(np.array(rotate_obs[0,0,:,:].clone().cpu()))
             # ax2.imshow(np.array(tmp_tensor[0,0,:,:].clone().detach().cpu()))
-            # ax3.imshow(np.array(tmp_tensor[0,0,:,:].clone().detach().cpu()))
+            # ax3.imshow(np.array(obs_feature_rotated_back[0,0,:,:].clone().detach().cpu()))
             # plt.show()
             # img_tmp = np.zeros((64,64,3))
             # img_tmp[:,:,1] = 100
-            # img_tmp[:,:,0] = state[0,0,:,:].clone().cpu().numpy()
+            # img_tmp[:,:,0] = rotate_obs[0,0,:,:].clone().cpu().numpy()
             # img_tmp[:,:,0] = img_tmp[:,:,0]*255/np.max(img_tmp[:,:,0])
             # img_tmp[:,:,2] = np.array(tmp_tensor[0,0,:,:].clone().detach().cpu())
             # img_tmp[:,:,2] = (img_tmp[:,:,2]-np.min(img_tmp[:,:,2]))*255/(np.max(img_tmp[:,:,2])-np.min(img_tmp[:,:,2]))
             # img_tmp = img_tmp.astype(np.uint8)
             # plt.imshow(img_tmp)
             # plt.show()
-            del obs_feature
-            # del flow_grid_after,flow_grid_before, obs_feature_rotated_back,obs_feature,rotate_obs,affine_mat_after,affine_mat_before
-            # del affine_mat_after_tmp,affine_mat_before_tmp
+            # del obs_feature
+            del flow_grid_after,flow_grid_before, obs_feature_rotated_back,obs_feature,rotate_obs,affine_mat_after,affine_mat_before
+            del affine_mat_after_tmp,affine_mat_before_tmp
         return self.output
 
 

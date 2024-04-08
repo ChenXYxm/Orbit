@@ -60,7 +60,7 @@ from omni.isaac.orbit_envs.isaac_env_cfg import EnvCfg, IsaacEnvCfg, PhysxCfg, S
 
 import carb
 #################
-from source.standalone.thesis.place_new_obj_Feb16 import place_new_obj_fun
+from source.standalone.thesis.place_new_obj import place_new_obj_fun
 """
 Main
 """
@@ -198,10 +198,10 @@ def main():
     # ycb_name = ['crackerBox','sugarBox','mustardBottle']
     ycb_usd_paths = {
         # "crackerBox": f"{ISAAC_NUCLEUS_DIR}/Props/YCB/Axis_Aligned_Physics/003_cracker_box.usd",
-        "Cube": f"{ISAAC_NUCLEUS_DIR}/Props/YCB/Axis_Aligned_Physics/004_sugar_box.usd",
+        "Cube3": f"{ISAAC_NUCLEUS_DIR}/Props/YCB/Axis_Aligned_Physics/004_sugar_box.usd",
         
     }
-    ycb_name = ['Cube']
+    ycb_name = ['Cube3']
     ################################ robot setting
     robot_cfg = FRANKA_PANDA_ARM_WITH_PANDA_HAND_CFG
     robot_cfg.data_info.enable_jacobian = True
@@ -285,7 +285,7 @@ def main():
         if key_ori in ["tomatoSoupCan"]:
             prim_utils.create_prim(f"/World/Objects/{key}", usd_path=usd_path, translation=translation,orientation=rot,scale=(1.35,0.33,1.35))
         else:
-            prim_utils.create_prim(f"/World/Objects/{key}", usd_path=usd_path, translation=translation,orientation=rot,scale=(0.42,0.28,1.35))
+            prim_utils.create_prim(f"/World/Objects/{key}", usd_path=usd_path, translation=translation,orientation=rot,scale=(0.5,1,1.2))
         
         GeometryPrim(f"/World/Objects/{key}",collision=True)
         RigidPrim(f"/World/Objects/{key}",mass=0.3)
@@ -315,7 +315,7 @@ def main():
             if key_ori in ["tomatoSoupCan"]:
                 prim_utils.create_prim(f"/World/Objects/{key}", usd_path=usd_path, translation=translation,orientation=rot,scale=(1.35,0.33,1.35))
             else:
-                prim_utils.create_prim(f"/World/Objects/{key}", usd_path=usd_path, translation=translation,orientation=rot,scale=(0.42,0.28,1.35))
+                prim_utils.create_prim(f"/World/Objects/{key}", usd_path=usd_path, translation=translation,orientation=rot,scale=(0.5,1,1.2))
             
             GeometryPrim(f"/World/Objects/{key}",collision=True)
             RigidPrim(f"/World/Objects/{key}",mass=0.3)
@@ -440,7 +440,7 @@ def main():
             pcd.points = o3d.utility.Vector3dVector(inliers)
             # o3d.visualization.draw_geometries([pcd])
             pts_tab = np.array(pcd.points)
-            Nx,Ny = 100,100
+            Nx,Ny = 50,50
             x = np.linspace(np.min(pts_tab[:,0]), np.max(pts_tab[:,0]), Nx)
             y = np.linspace(np.min(pts_tab[:,1]), np.max(pts_tab[:,1]), Ny)
             xv, yv = np.meshgrid(x, y)
@@ -505,7 +505,7 @@ def main():
             
             # if num_new>=1:
                 # aabb_points = get_new_obj_pcd(hand_camera,(40,40),hand_plane_model)
-            aabb_points,_,vertices_new_obj = get_new_obj_info(hand_camera,(80,80),hand_plane_model,obj_type)
+            aabb_points,_,vertices_new_obj = get_new_obj_info(hand_camera,(40,40),hand_plane_model,obj_type)
             print(occupancy.shape)
             flag_found, new_poly_vetices,occu_tmp,new_obj_pos = place_new_obj_fun(occupancy,vertices_new_obj)
             if flag_found:
@@ -531,7 +531,7 @@ def main():
                 if obj_type in ["tomatoSoupCan"]:
                     prim_utils.create_prim(new_obj_path, usd_path=usd_path, translation=translation,orientation=rot,scale=(1.35,0.33,1.35))
                 else:
-                    prim_utils.create_prim(new_obj_path, usd_path=usd_path, translation=translation,orientation=rot,scale=(0.42,0.28,1.35))
+                    prim_utils.create_prim(new_obj_path, usd_path=usd_path, translation=translation,orientation=rot,scale=(0.5,1,1.2))
             
                 new_obj = GeometryPrim(new_obj_path,collision=True)
                 RigidPrim(new_obj_path,mass=0.3)
@@ -666,10 +666,10 @@ def get_new_obj_info(camera,size,hand_plane_model,obj_type):
     v = v[v_ind]
     occupancy[v,u] = 1
     occupancy = np.fliplr(occupancy)
-    file_list = os.listdir("obj_mask_2_80_80/")
+    file_list = os.listdir("obj_mask/")
     file_name = obj_type +"_mask.pkl"
     if file_name not in file_list:
-        file_path = "obj_mask_2_80_80/"+file_name
+        file_path = "obj_mask/"+file_name
         f_save = open(file_path,'wb')
         pickle.dump(occupancy,f_save)
         f_save.close()
@@ -782,7 +782,7 @@ def place_new_object(occu,ycb_list,ycb_path,num_new,obj_dict):
     if key_ori in ["tomatoSoupCan"]:
         prim_utils.create_prim(f"/World/newObjects/{key}", usd_path=usd_path, translation=translation,orientation=rot,scale=(1.35,0.33,1.35))
     else:
-        prim_utils.create_prim(f"/World/newObjects/{key}", usd_path=usd_path, translation=translation,orientation=rot,scale=(0.42,0.28,1.35))
+        prim_utils.create_prim(f"/World/newObjects/{key}", usd_path=usd_path, translation=translation,orientation=rot,scale=(0.5,1,1.2))
         
     # prim_utils.create_prim(f"/World/newObjects/{key}", usd_path=usd_path, translation=translation,orientation=rot)
     new_obj = GeometryPrim(f"/World/newObjects/{key}",collision=True)

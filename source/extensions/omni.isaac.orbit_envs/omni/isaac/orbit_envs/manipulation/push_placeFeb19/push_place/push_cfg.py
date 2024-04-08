@@ -376,5 +376,5 @@ class PushEnvCfg(IsaacEnvCfg):
     og_resolution: occupancy_grid_resolution = occupancy_grid_resolution()
     obj_mask: ObjMask = ObjMask()
     env_name: env_name = env_name().file_list
-    pre_train: bool=False
+    pre_train: bool=True
     

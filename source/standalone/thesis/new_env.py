@@ -441,7 +441,7 @@ def main():
             pcd.points = o3d.utility.Vector3dVector(inliers)
             # o3d.visualization.draw_geometries([pcd])
             pts_tab = np.array(pcd.points)
-            Nx,Ny = 150,150
+            Nx,Ny = 50,50
             x = np.linspace(np.min(pts_tab[:,0]), np.max(pts_tab[:,0]), Nx)
             y = np.linspace(np.min(pts_tab[:,1]), np.max(pts_tab[:,1]), Ny)
             xv, yv = np.meshgrid(x, y)
@@ -499,14 +499,15 @@ def main():
             # plt.imshow(hand_img)
             # plt.show()
             obj_dict, new_obj,obj_type,new_obj_path = place_new_object(occupancy,ycb_name,ycb_usd_paths,num_new,obj_dict)
-            
+            # while simulation_app.is_running():
+            #     pass
             num_new +=1
             for _ in range(50):
                 sim.step()
             
             # if num_new>=1:
                 # aabb_points = get_new_obj_pcd(hand_camera,(40,40),hand_plane_model)
-            aabb_points,_,vertices_new_obj = get_new_obj_info(hand_camera,(120,120),hand_plane_model,obj_type)
+            aabb_points,_,vertices_new_obj = get_new_obj_info(hand_camera,(40,40),hand_plane_model,obj_type)
             print(occupancy.shape)
             flag_found, new_poly_vetices,occu_tmp,new_obj_pos = place_new_obj_fun(occupancy,vertices_new_obj)
             if flag_found:
@@ -541,7 +542,7 @@ def main():
                 else:
                     table_obj_pos_rot[obj_type].append((translation,rot))
                 for _ in range(50):
-                    sim.step
+                    sim.step()
             else:
                 file_name_ori = "dict_"
                 file_list = os.listdir("generated_table3/")
@@ -752,7 +753,7 @@ def place_new_object(occu,ycb_list,ycb_path,num_new,obj_dict):
             if obj_dict[key_ori]<9:
                 obj_dict[key_ori] +=1
                 break
-            
+    key_ori = "tomatoSoupCan"        
     print(obj_dict)
     key = key_ori+str(obj_dict[key_ori])
     translation = 0

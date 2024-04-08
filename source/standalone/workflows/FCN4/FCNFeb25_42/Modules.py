@@ -391,7 +391,27 @@ class MULTIDISCRETE_RESNET_Rotate(nn.Module):
         # self.interm_feat = []
         # obs_tmp = x.clone().cpu()
         # print("network obs size",obs_tmp.size())
-        rotate_num = 8
+        obs_feature = self.net(state)
+        if obs_feature.dim() == 2:
+            max_ind = obs_feature.view(-1).max(0)[1]
+            state[0,1,max_ind//64,max_ind%64] = 2
+            fig, (ax1,ax2) = plt.subplots(1, 2, figsize=(7, 4))
+            ax1.imshow(np.array(state[0,1,:,:].clone().cpu()))
+            ax2.imshow(np.array(obs_feature.clone().detach().cpu()))
+            plt.show()
+            img_tmp = np.zeros((64,64,3))
+            img_tmp[:,:,1] = 100
+            img_tmp[:,:,0] = state[0,0,:,:].clone().cpu().numpy()
+            img_tmp[:,:,0] = img_tmp[:,:,0]*255/np.max(img_tmp[:,:,0])
+            img_tmp[:,:,2] = np.array(obs_feature.clone().detach().cpu())
+            img_tmp[:,:,2] = (img_tmp[:,:,2]-np.min(img_tmp[:,:,2]))*255/(np.max(img_tmp[:,:,2])-np.min(img_tmp[:,:,2]))
+            img_tmp = img_tmp.astype(np.uint8)
+            plt.imshow(img_tmp)
+            plt.show()
+
+        return obs_feature
+        '''
+        rotate_num = 1
         self.output = torch.zeros((len(state),rotate_num,64,64),device='cuda')
         for rotate_idx in range(rotate_num):
             rotate_theta = -np.radians(rotate_idx*(360/rotate_num))
@@ -440,22 +460,24 @@ class MULTIDISCRETE_RESNET_Rotate(nn.Module):
             # print('obs_rotate_bask_size: ',obs_feature_rotated_back.size())
             # self.output_prob.append(obs_feature_rotated_back)
             self.output[:,rotate_idx,:,:] = obs_feature_rotated_back[:,0,:,:]
-            img_tmp = np.zeros((64,64,3))
-            img_tmp[:,:,1] = 100
-            img_tmp[:,:,0] = rotate_obs[0,0,:,:].clone().cpu().numpy()
-            img_tmp[:,:,0] = img_tmp[:,:,0]*255/np.max(img_tmp[:,:,0])
-            img_tmp[:,:,2] = np.array(tmp_tensor[0,0,:,:].clone().detach().cpu())
-            img_tmp[:,:,2] = (img_tmp[:,:,2]-np.min(img_tmp[:,:,2]))*255/(np.max(img_tmp[:,:,2])-np.min(img_tmp[:,:,2]))
-            img_tmp = img_tmp.astype(np.uint8)
-            fig, (ax1,ax2,ax3) = plt.subplots(1, 3, figsize=(7, 4))
-            ax1.imshow(np.array(rotate_obs[0,1,:,:].clone().cpu()))
-            ax2.imshow(np.array(tmp_tensor[0,0,:,:].clone().detach().cpu()))
-            ax3.imshow(np.array(obs_feature_rotated_back[0,0,:,:].clone().detach().cpu()))
-            plt.show()
-            plt.imshow(img_tmp)
-            plt.show()
+            # img_tmp = np.zeros((64,64,3))
+            # img_tmp[:,:,1] = 100
+            # img_tmp[:,:,0] = rotate_obs[0,0,:,:].clone().cpu().numpy()
+            # img_tmp[:,:,0] = img_tmp[:,:,0]*255/np.max(img_tmp[:,:,0])
+            # img_tmp[:,:,2] = np.array(tmp_tensor[0,0,:,:].clone().detach().cpu())
+            # img_tmp[:,:,2] = (img_tmp[:,:,2]-np.min(img_tmp[:,:,2]))*255/(np.max(img_tmp[:,:,2])-np.min(img_tmp[:,:,2]))
+            # img_tmp = img_tmp.astype(np.uint8)
+            # fig, (ax1,ax2,ax3) = plt.subplots(1, 3, figsize=(7, 4))
+            # ax1.imshow(np.array(rotate_obs[0,1,:,:].clone().cpu()))
+            # ax2.imshow(np.array(tmp_tensor[0,0,:,:].clone().detach().cpu()))
+            # ax3.imshow(np.array(obs_feature_rotated_back[0,0,:,:].clone().detach().cpu()))
+            # plt.show()
+            # plt.imshow(img_tmp)
+            # plt.show()
+            
         return self.output
-
+        '''
+nn.LeakyReLU(negative_slope=0.02)
 
 def count_parameters(model):
     table = PrettyTable(["Modules", "Parameters"])

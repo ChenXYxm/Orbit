@@ -139,6 +139,7 @@ class IsaacEnv(gym.Env):
         self.reset_buf = torch.ones(self.num_envs, device=self.device, dtype=torch.long)
         self.episode_length_buf = torch.zeros(self.num_envs, device=self.device, dtype=torch.long)
         self.reward_buf_tmp = torch.zeros(self.num_envs, device=self.device, dtype=torch.float)
+        self.place_success = torch.zeros(self.num_envs, device=self.device, dtype=torch.float)
         self.extras_tmp = {}
         self.reset_buf_tmp = torch.ones(self.num_envs, device=self.device, dtype=torch.long)
         # allocate dictionary to store metrics
@@ -303,6 +304,8 @@ class IsaacEnv(gym.Env):
                 ##############################################
                 ##################### ONLY FOR PUSH
                 self._reset_idx(reset_env_ids)
+                # while True:
+                #     self._check_placing()
             #########################
                 if not self.sim.is_stopped():
                     self._last_obs_buf = self._get_observations()
@@ -420,6 +423,9 @@ class IsaacEnv(gym.Env):
         Args:
             actions (torch.Tensor): Actions to apply on the environment.
         """
+        raise NotImplementedError
+    @abc.abstractmethod
+    def _check_placing(self):
         raise NotImplementedError
 
     @abc.abstractmethod

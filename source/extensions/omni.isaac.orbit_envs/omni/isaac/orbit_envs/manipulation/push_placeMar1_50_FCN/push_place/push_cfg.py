@@ -241,17 +241,17 @@ class RewardsCfg:
     #reward_for_toy_example = {"weight": 1}
     '''reward for toy example v2'''
     # check_placing = {"weight": 2} ##Feb 1 do not terminate
-    reward_og_change = {"weight": 1}
+    reward_og_change = {"weight": 0.25}
     # reward_near_obj = {"weight": 1}
-    reward_reaching = {"weight": 0.25}
-    outside_zone = {"weight": 0.25}
-    penaltizing_falling = {"weight": 1.5} ## DEc20_00-56-30
+    # reward_reaching = {"weight": 0.25}
+    outside_zone = {"weight": 0.1}
+    penaltizing_falling = {"weight": 0.35} ## DEc20_00-56-30
     # penaltizing_falling = {"weight": 2} ## Dec24_16-21-23 before
     # penaltizing_falling = {"weight": 3} ## Dec24_16-21-23 before
     # penaltizing_steps = {"weight": 0.1}
     # penaltizing_repeat_actions = {"weight": 0.5}
-    penaltizing_pushing_outside = {"weight":1.5} ## Dec22_20-44-43 before
-    # penaltizing_pushing_outside = {"weight":0.5} ## Dec24_16-21-23 before
+    # penaltizing_pushing_outside = {"weight":1.5} ## Dec22_20-44-43 before
+    penaltizing_pushing_outside = {"weight":0.35} ## Dec24_16-21-23 before
     #penaltizing_pushing_outside = {"weight":0.9}
     reward_max_tsdf_increase = {"weight": 1}
     # penaltizing_stop = {"weight": 2} ## Dec26 after
@@ -327,7 +327,7 @@ class PushEnvCfg(IsaacEnvCfg):
     """Configuration for the push environment."""
 
     # General Settings
-    env: EnvCfg = EnvCfg(num_envs=4096, env_spacing=2.5, episode_length_s=0.06)
+    env: EnvCfg = EnvCfg(num_envs=4096, env_spacing=2.5, episode_length_s=0.09)
     viewer: ViewerCfg = ViewerCfg(debug_vis=False, eye=(0.1, 7.5, 5.5), lookat=(0.0, 0.0, 0.0))
     # Physics settings
     sim: SimCfg = SimCfg(
@@ -378,5 +378,5 @@ class PushEnvCfg(IsaacEnvCfg):
     og_resolution: occupancy_grid_resolution = occupancy_grid_resolution()
     obj_mask: ObjMask = ObjMask()
     env_name: env_name = env_name().file_list
-    pre_train: bool=True
+    pre_train: bool=False
     
