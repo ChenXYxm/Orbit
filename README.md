@@ -9,8 +9,10 @@
 [![Python](https://img.shields.io/badge/python-3.7-blue.svg)](https://docs.python.org/3/whatsnew/3.7.html)
 [![Linux platform](https://img.shields.io/badge/platform-linux--64-lightgrey.svg)](https://releases.ubuntu.com/20.04/)
 
+
 In this project, we aim to train a pushing policy for a Franka Emika Panda arm to facilitate 2D dense object placement.
 The network accepts a 2D Truncated Signed Distance Function (TSDF) and an occupancy grid of the desktop and outputs a pixel coordinate and a pushing direction for a pushing action to make space on the desktop. Models for this project are trained using Omniverse Isaac Sim 2022.2.1 and Isaac Orbit v0.1.0.
+![image](https://github.com/ChenXYxm/Orbit/blob/main/picture/introduction.png)
 
 ## Installation
 
