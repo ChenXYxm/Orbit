@@ -12,7 +12,7 @@ import argparse
 import numpy as np
 import torch
 from omni.isaac.kit import SimulationApp
-import matplotlib.pyplot as plt
+
 # add argparse arguments
 parser = argparse.ArgumentParser("Welcome to Orbit: Omniverse Robotics Environments!")
 parser.add_argument("--headless", action="store_true", default=False, help="Force display off at all times.")
@@ -30,7 +30,7 @@ simulation_app = SimulationApp(config)
 
 
 import gym
-import pickle as pkl
+
 from stable_baselines3 import PPO
 from stable_baselines3.common.vec_env import VecNormalize
 
@@ -40,11 +40,7 @@ from omni.isaac.orbit_envs.utils.parse_cfg import parse_env_cfg
 from omni.isaac.orbit_envs.utils.wrappers.sb3 import Sb3VecEnvWrapper
 
 from config import parse_sb3_cfg
-import cv2
-import matplotlib.pyplot as plt
-import os
-import numpy as np
-from place_new_obj import place_new_obj_fun
+
 
 def main():
     """Play with stable-baselines agent."""
@@ -74,49 +70,27 @@ def main():
         raise ValueError("Checkpoint path is not valid.")
     # create agent from stable baselines
     print(f"Loading checkpoint from: {args_cli.checkpoint}")
-    # agent = PPO.load(args_cli.checkpoint, env, print_system_info=True)
-    agent = PPO.load(args_cli.checkpoint)
-    # agent.policy.to('cpu')
-    #agent.policy.eval()
-    # agent.save('/home/cxy/Thesis/orbit/Orbit/logs/sb3/Isaac-Toy-Franka-v0/Jan08_12-43-18/cpu_model.zip')
-    # print(agent.policy)
+    # agent_cfg = parse_sb3_cfg(args_cli.task)
+    # override configuration with command line arguments
+    # if args_cli.seed is not None:
+    #     agent_cfg["seed"] = args_cli.seed
+    # policy_arch = agent_cfg.pop("policy")
+    agent = PPO.load(args_cli.checkpoint, env, print_system_info=True)
+    # agent = PPO(policy_arch, env, verbose=1, **agent_cfg)
+    # state_dict = torch.load('/home/cxy/Downloads/weight758080.pth')
+    # agent.policy.load_state_dict(state_dict)
     # torch.save(agent.policy.state_dict(),'/home/cxy/Downloads/436800weight.pth')
     # reset environment
-    # fileObject2 = open('images/tmp_data.pkl', 'rb')
-    # data_real=  pkl.load(fileObject2)
-    # fileObject2.close()
     obs = env.reset()
-    for name, param in agent.policy.named_parameters():
-        print(name)
-        print(param)
-    # plt.imshow(data_real[0,:,:,1])
-    # plt.show()
-    fileObject2 = open('images/tmp_data2.pkl', 'wb')
-    pkl.dump(obs, fileObject2)
-    
-    fileObject2.close()
-    # obs[0,:,:,:] = data_real
-    # obs = data_real
     stop_pushing = 0
-    data_real_tmp = obs.copy()/255
-    # print(data_real[0,:,:,0])
-    # print(data_real[0,:,:,1])
     # simulate environment
     print('using stop pushing method')
-    file_list = os.listdir("images/")
+    x_start = 48
+    flag_compare = False
     while simulation_app.is_running():
         # agent stepping
         act_app = np.zeros(len(obs))
         actions, _ = agent.predict(obs, deterministic=True)
-        print('action')
-        print(actions)
-        data_real_tmp = obs.copy()/255
-        plt.imshow(data_real_tmp[0,:,:,0])
-        plt.show()
-        data_real_tmp[0,actions.flatten()[0],actions.flatten()[1],0] = 2
-        # data_real_tmp[0,32,39,0] = 2
-        plt.imshow(data_real_tmp[0,:,:,0])
-        plt.show()
         obs_tensor = torch.from_numpy(obs).cuda()
         # print(obs_tensor.size())
         obs_tensor = obs_tensor.permute(0,3,1,2)
@@ -132,13 +106,6 @@ def main():
             obs_tmp = obs_tmp.copy()
             obs_tensor_tmp = obs_tensor_tmp.rot90(1,[3,2])
             actions_tmp, _ = agent.predict(obs_tmp, deterministic=True)
-            print('action')
-            print(actions_tmp)
-            data_real_tmp = obs_tmp.copy()/255
-            data_real_tmp[0,actions_tmp.flatten()[0],actions_tmp.flatten()[1],0] = 2
-            # data_real_tmp[0,32,39,0] = 2
-            plt.imshow(data_real_tmp[0,:,:,0])
-            plt.show()
             actions_tensor_tmp =  torch.from_numpy(actions_tmp).cuda()
             value_tmp,log_prob_tmp,entropy_tmp = agent.policy.evaluate_actions(obs_tensor_tmp,actions_tensor_tmp)
             for i in range(len(obs_tensor)):
@@ -160,15 +127,23 @@ def main():
                 actions[_,0] = actions[_,1]
                 actions[_,1] = 49-actions_origin[_,0]
         for _ in range(len(value)):
-            if float(value[_]) <=-0.1:
-                act_app[_] = 10
+            print('value',value)
+            if not flag_compare:
+                if float(value[_]) <=-0.12:
+                    act_app[_] = 10
+        ################# TODO:only for comparision method
+            if flag_compare:
+                act_app[_] = 0
+                actions[_,0] = x_start
+                actions[_,1] = 49
+        #######################################
         actions_new = np.c_[actions,act_app.T]    
         for _ in env.env.stop_pushing.tolist():
             if _ >= 0.5:
                 stop_pushing +=1
-                # print('stop pushing')
-                # print(stop_pushing)
-        print(actions_new)
+                print('stop pushing')
+                print(stop_pushing)
+        # print(actions_new)
         # print(_)
         # print(obs)
         # print(obs.shape)
@@ -176,8 +151,18 @@ def main():
         # value,log_prob,entropy = agent.policy.evaluate_actions()
         #######################################
         # env stepping
-        obs, _, _, _ = env.step(actions_new)
-        # obs[0,:,:,:] = data_real
+        # print(actions_new)
+        obs, _, dones, _ = env.step(actions_new)
+
+        ################# TODO:only for comparision method
+        if flag_compare:
+            x_start = x_start -3
+            if x_start <2:
+                x_start = 49
+            for idx, done in enumerate(dones):
+                if done:
+                    x_start = 49
+        ############################
         # check if simulator is stopped
         if env.unwrapped.sim.is_stopped():
             break
