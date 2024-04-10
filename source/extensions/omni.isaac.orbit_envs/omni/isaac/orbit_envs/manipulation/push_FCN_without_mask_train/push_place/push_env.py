@@ -36,7 +36,7 @@ from omni.isaac.core.prims import RigidPrim,GeometryPrim
 # from omni.isaac.orbit.utils.math import 
 from omni.isaac.orbit.utils.array import convert_to_torch
 import scipy.spatial.transform as tf
-from .place_new_obj import place_new_obj_fun,get_new_obj_contour_bbox,draw_bbox,placing_compare_fun_2,rotate_45
+from .place_new_obj import place_new_obj_fun,get_new_obj_contour_bbox,draw_bbox
 from omni.isaac.dynamic_control import _dynamic_control
 from omni.isaac.orbit.objects import RigidObjectCfg
 import torchvision
@@ -376,7 +376,6 @@ class PushEnv(IsaacEnv):
         self.previous_actions[env_ids] = 0
         # -- MDP reset
         self.actions_origin[env_ids] = 0
-        self.actions_origin_2[env_ids] = 0
         self.actions_ori[env_ids] = 0
         self.actions[env_ids] = 0
         # self.falling_obj[env_ids] = 0
@@ -395,12 +394,12 @@ class PushEnv(IsaacEnv):
         self._get_obj_info(env_ids=env_ids)
         for i in env_ids.tolist():
             self.max_tsdf[i] = np.max(self.table_tsdf[i])
-        print('initial max tsdf',self.max_tsdf)
+        # print('initial max tsdf',self.max_tsdf)
         
 
     def _get_obj_mask(self,env_ids: VecEnvIndices):
         if np.sum(self.new_obj_mask[env_ids.tolist()]) ==0:
-            print('no mask')
+            # print('no mask')
             self.new_obj_mask[env_ids.tolist()] = self.cfg.obj_mask.mask['sugarBox'] 
         # print(self.new_obj_mask.shape)
         mask = np.zeros((self.num_envs,self.cfg.og_resolution.tabletop[1],self.cfg.og_resolution.tabletop[0]))
@@ -422,7 +421,6 @@ class PushEnv(IsaacEnv):
     def _step_impl(self, actions: torch.Tensor):
         # pre-step: set actions into buffer
         self.stop_pushing[:] = 0
-        self.try_placing[:] = 0
         self.step_all += 1.0
         self.previous_actions = self.actions_origin.clone()
         self.table_og_pre = self.table_og.copy()
@@ -442,9 +440,8 @@ class PushEnv(IsaacEnv):
         '''
         ''' modified for toy example'''
         # print('actions')
-        print(actions)
+        # print(actions)
         self.actions_origin = actions.detach().clone().long()
-        self.actions_origin_2 = actions.detach().clone().long()
         # print('actions')
         # print(self.actions_origin)
         self.action_ori = actions.detach().clone()
@@ -491,24 +488,21 @@ class PushEnv(IsaacEnv):
         #                 self.actions[i,0] = 0.5
         #                 self.actions[i,2] = 0
         # self.check_reaching = torch.ones((self.num_envs,),device=self.device)
-        # self.try_placing[:] = 1
-        # print('try placing',self.try_placing)
+
         for i in range(self.num_envs):
-            if self.actions[i,2]>=1.0:
+            if self.actions[i,2]>1.0:
                 # print('stop action')
                 # print(self.actions[i],i,actions[i])
                 # print(actions[i])
                 self.actions[i,1] = -0.5
                 self.actions[i,0] = 0.5
                 self.actions[i,2] = 0
-                # self.stop_pushing[i] = 1
-                self.try_placing[i] = 1
+                self.stop_pushing[i] = 1
             elif self.check_reaching[i] == 0:
                         
                 self.actions[i,1] = -0.5
                 self.actions[i,0] = 0.5
                 self.actions[i,2] = 0
-        print('reaching',self.check_reaching,'placing',self.try_placing)
         # print('self.transform action', self.actions)
         actions_tmp = torch.zeros((self.num_envs,self._ik_controller.num_actions),device=self.device)
         actions_tmp[:,:2] = self.actions[:,:2].clone()
@@ -561,7 +555,7 @@ class PushEnv(IsaacEnv):
                             return
                     if self.cfg.viewer.debug_vis and self.enable_render:
                         self._debug_vis()
-                for i in range(20):
+                for i in range(27):
                     self.robot.update_buffers(self.dt)
                     
                     if self.cfg.control.control_type == "inverse_kinematics":
@@ -632,7 +626,7 @@ class PushEnv(IsaacEnv):
                 #     self._debug_vis()
                 ############ let the gripper go down to the start position
                 
-                for i in range(19):
+                for i in range(20):
                     self.robot.update_buffers(self.dt)
                     
                     if self.cfg.control.control_type == "inverse_kinematics":
@@ -669,8 +663,8 @@ class PushEnv(IsaacEnv):
                 ################# perform pushing
                 for i in range(self.num_envs):
                     vec_tmp = np.zeros(2)
-                    vec_tmp[0] = 0.035*np.cos(2*np.pi*self.actions[i,2].cpu().numpy())
-                    vec_tmp[1] = 0.035*np.sin(2*np.pi*self.actions[i,2].cpu().numpy())
+                    vec_tmp[0] = 0.03*np.cos(2*np.pi*self.actions[i,2].cpu().numpy())
+                    vec_tmp[1] = 0.03*np.sin(2*np.pi*self.actions[i,2].cpu().numpy())
                     
                     actions_tmp[i,:2] = actions_tmp[i,:2] + torch.from_numpy(vec_tmp).to(self.device)
                 for i in range(6):
@@ -703,8 +697,8 @@ class PushEnv(IsaacEnv):
                         self._debug_vis()
                 for i in range(self.num_envs):
                     vec_tmp = np.zeros(2)
-                    vec_tmp[0] = 0.035*np.cos(2*np.pi*self.actions[i,2].cpu().numpy())
-                    vec_tmp[1] = 0.035*np.sin(2*np.pi*self.actions[i,2].cpu().numpy())
+                    vec_tmp[0] = 0.03*np.cos(2*np.pi*self.actions[i,2].cpu().numpy())
+                    vec_tmp[1] = 0.03*np.sin(2*np.pi*self.actions[i,2].cpu().numpy())
                     # vec_tmp[0] = 0.1*np.cos(2*np.pi*self.actions[i,2].cpu().numpy())
                     # vec_tmp[1] = 0.1*np.sin(2*np.pi*self.actions[i,2].cpu().numpy())
                     actions_tmp[i,:2] = actions_tmp[i,:2] + torch.from_numpy(vec_tmp).to(self.device)
@@ -1005,14 +999,13 @@ class PushEnv(IsaacEnv):
             self._update_table_og()
             self._check_pushing_outside()
             ############## TODO: changed in Feb 1
-            # self._check_placing() #delete this condition in Feb 1
+            self._check_placing() #delete this condition in Feb 1
             self.tabletop_scene_tmp = self.tabletop_scene()
             
             
             # add this condition at Feb 1
         else: 
             self._update_table_og()
-        
         # self._check_fallen_objs(env_ids)
         # self._update_table_og()
         # for i in range(self.num_envs):
@@ -1022,7 +1015,7 @@ class PushEnv(IsaacEnv):
         self.reward_buf = self._reward_manager.compute()
         # print("reward")
         # # print(self._reward_manager.compute())
-        print('rewards',self.reward_buf)
+        # print('rewards',self.reward_buf)
         ##################### terminations #######################
         ''' only for toy example'''
         # self._check_reaching_toy_v2()
@@ -1068,8 +1061,6 @@ class PushEnv(IsaacEnv):
         ''' modified for toy example'''
         # -- update USD visualization
         # self._update_table_og()
-        if torch.sum(self.try_placing)>0:
-            self._try_placing()
         if self.cfg.viewer.debug_vis and self.enable_render:
             self._debug_vis()
         self._update_table_og()
@@ -1077,94 +1068,6 @@ class PushEnv(IsaacEnv):
             if self.place_success[i]>0.5:
                 self.max_tsdf[i] = np.max(self.table_tsdf[i])
         print('place success',self.place_success)
-    def _try_placing(self):
-        self.place_success[:] = 0
-        start_t = int((self.cfg.og_resolution.expand_obs[0]-self.cfg.og_resolution.tabletop[0])/2)
-        for i in range(self.num_envs):
-            if self.try_placing[i]>0.5:
-                if (self.actions_origin_2[i][0] >=start_t and 
-                self.actions_origin_2[i][0]<self.cfg.og_resolution.tabletop[0]+start_t and 
-                self.actions_origin_2[i][1]>=start_t and 
-                self.actions_origin_2[i][1]<self.cfg.og_resolution.tabletop[0]+start_t and self.actions_origin_2[i][2]>=8):
-                    action_tmp = self.actions_origin_2[i].clone().cpu().numpy()
-                    action_tmp[0] -=start_t
-                    action_tmp[1] -=start_t
-                    
-                    action_tmp[2] -=8
-                    occupancy = self.table_og[i].copy()
-                    occu_tmp = np.zeros((100,100))
-                    occu_tmp[25:75,25:75] = occupancy.copy()
-                    # vertices_new_obj = self.new_obj_vertices[i]
-                    mask_tmp = self.obj_masks[i].copy()
-                    # plt.imshow(mask_tmp)
-                    # plt.show()
-                    # ind_x,ind_y = np.where(mask_tmp==1)
-                    # print('min x',min(ind_x),'max x',max(ind_x))
-                    mask_tmp_t = rotate_45(mask_tmp,-45)
-                    # plt.imshow(mask_tmp_t)
-                    # plt.show()
-                    structuring_element = np.ones((5, 5), dtype=np.uint8)
-
-                    # Perform dilation
-                    dilated_matrix = cv2.dilate(mask_tmp, structuring_element)
-                    # ind_x,ind_y = np.where(dilated_matrix==1)
-                    # print('min x',min(ind_x),'max x',max(ind_x))
-                    mask_tmp_t = rotate_45(dilated_matrix,-action_tmp[2]*45)
-                    # print(rotation)
-                    occu_tmp[action_tmp[0]:action_tmp[0]+50,action_tmp[1]:action_tmp[1]+50] += mask_tmp_t.copy()
-                    # occu_tmp[:,:] = 0
-                    # occu_tmp[25,25] = 1
-                    if np.max(occu_tmp) == 1:
-                        print('not overlap')
-                        occu_tmp[25:75,25:75] = 0
-                        # plt.imshow(occu_tmp)
-                        # plt.show()
-                        obj_name_i=self.new_obj_type[i]
-                        if np.max(occu_tmp) < 0.5:
-                            print('place detected')
-                            self.place_success[i] = 1
-                            self.place_success_all +=1.0
-                            pos = [(self.cfg.og_resolution.tabletop[0]/2-action_tmp[1])*1./100.,(action_tmp[0]-self.cfg.og_resolution.tabletop[1]/2)*1./100.,0.05]
-                            if obj_name_i in ["mug","tomatoSoupCan","pitcherBase","tunaFishCan","bowl","banana"]:
-                                rot = convert_quat(tf.Rotation.from_euler("XYZ", (-90,-action_tmp[2]*45,0), degrees=True).as_quat(), to="wxyz")
-                            else:
-                                rot = convert_quat(tf.Rotation.from_euler("XYZ", (0,0,-(-action_tmp[2]*45)), degrees=True).as_quat(), to="wxyz")
-                            env_ids_tmp = torch.from_numpy(np.array([i])).to(self.device)
-                            self._place_obj(pos,rot,env_ids_tmp,obj_name_i)
-                            # for i in env_ids.tolist():
-                        else:
-                            print('out')
-                                            
-                    else:
-                        print('overlap')
-                    # plt.imshow(occu_tmp)
-                    # plt.show()
-                    # occu_tmp[25:75,25:75] = 0
-                    # plt.imshow(occu_tmp)
-                    # plt.show()
-                    # fig, (ax1,ax2,ax3) = plt.subplots(1, 3, figsize=(15, 10))
-
-                    # ax1.imshow(mask_tmp)
-                    # ax2.imshow(dilated_matrix)
-                    # ax3.imshow(mask_tmp_t)
-                    # plt.show()
-                    # flag_found,new_obj_pos = placing_compare_fun_2(occupancy,self.obj_masks[i].copy())
-                    # if flag_found:
-                    #     self.place_success[i] = 1
-                    #     pos = [(self.cfg.og_resolution.tabletop[0]/2-new_obj_pos[1])*1./100.,(new_obj_pos[0]-self.cfg.og_resolution.tabletop[1]/2)*1./100.,0.05]
-                    #     obj_name_i=self.new_obj_type[i]
-                    #     # rot = convert_quat(tf.Rotation.from_euler("XYZ", (0,0,-np.rad2deg(new_obj_pos[2])), degrees=True).as_quat(), to="wxyz")
-                    #     if obj_name_i in ["mug","tomatoSoupCan","pitcherBase","tunaFishCan","bowl","banana"]:
-                    #         rot = convert_quat(tf.Rotation.from_euler("XYZ", (-90,np.rad2deg(new_obj_pos[2]),0), degrees=True).as_quat(), to="wxyz")
-                    #     else:
-                    #         rot = convert_quat(tf.Rotation.from_euler("XYZ", (0,0,-np.rad2deg(new_obj_pos[2])), degrees=True).as_quat(), to="wxyz")
-                        
-                    #     env_ids_tmp = torch.from_numpy(np.array([i])).to(self.device)
-                    #     self._place_obj(pos,rot,env_ids_tmp,obj_name_i)
-                    #     # plt.imshow(self.obj_masks[i].cpu().numpy())
-                    #     # plt.show()
-                    #     ############## visulaize placing
-                    #     self.place_success_all +=1.0
     def _get_observations(self) -> VecEnvObs:
         # compute observations
         # print("obser")
@@ -1262,7 +1165,6 @@ class PushEnv(IsaacEnv):
         self.actions = torch.zeros((self.num_envs, self.num_actions), device=self.device)
         self.previous_actions = torch.zeros((self.num_envs, self.num_actions), device=self.device)
         self.actions_origin = torch.zeros((self.num_envs, self.num_actions), device=self.device)
-        self.actions_origin_2 = torch.zeros((self.num_envs, self.num_actions), device=self.device)
         self.actions_ori = torch.zeros((self.num_envs, self.num_actions), device=self.device)
         # robot joint actions
         self.robot_actions = torch.zeros((self.num_envs, self.robot.num_actions), device=self.device)
@@ -1316,7 +1218,6 @@ class PushEnv(IsaacEnv):
         self.falling_obj_all = torch.zeros((self.num_envs,),device=self.device)
         self.step_count = torch.zeros((self.num_envs,),device=self.device)
         self.stop_pushing = torch.zeros((self.num_envs,),device=self.device)
-        self.try_placing = torch.zeros((self.num_envs,),device=self.device)
         self.delta_same_action = torch.zeros((self.num_envs,),device=self.device)
         self.done_obs = np.zeros((self.num_envs,self.cfg.og_resolution.tabletop[1],
                                      self.cfg.og_resolution.tabletop[0]))
@@ -1598,7 +1499,6 @@ class PushEnv(IsaacEnv):
             if k in self.obj_on_table:
                 env_ids_tmp = torch.from_numpy(np.array([k])).to(self.device)
                 _ = self.obj_on_table_name[k][obj_type]
-                print('placed success',k,_,obj_type)
                 if obj_type == self.cfg.YCBdata.ycb_name[0]:
                     root_state = self.obj1[_].get_default_root_state(env_ids_tmp)
                     root_state[:,0:3] = torch.from_numpy(np.array(pos)).to(self.device)
@@ -1642,9 +1542,6 @@ class PushEnv(IsaacEnv):
                     self.obj6[_].set_root_state(root_state, env_ids=env_ids_tmp)
                     self.obj_on_table[k].append(self.obj6[_])
                 self.obj_on_table_name[k][obj_type] += 1
-                randi = np.random.randint(3)
-                self.new_obj_type[k] = self.cfg.YCBdata.ycb_name[randi]
-                self.new_obj_mask[k] = self.cfg.obj_mask.mask[self.cfg.YCBdata.ycb_name[randi]][4:36,4:36]
         for _ in range(20):
             self.sim.step()
 
@@ -1724,7 +1621,6 @@ class PushEnv(IsaacEnv):
             flag_found, new_poly_vetices,occu_tmp,new_obj_pos = place_new_obj_fun(occupancy,vertices_new_obj)  
             # plt.imshow(occu_tmp)
             # plt.show()
-            # flag_found = False
             if flag_found:
                 self.place_success[i] = 1
                 pos = [(self.cfg.og_resolution.tabletop[0]/2-new_obj_pos[1])*1./100.,(new_obj_pos[0]-self.cfg.og_resolution.tabletop[1]/2)*1./100.,0.05]
@@ -1746,25 +1642,6 @@ class PushEnv(IsaacEnv):
                 # print(self.place_success_all)
                 # print('steps') 
                 # print(self.step_all)
-            else:
-                flag_found,new_obj_pos = placing_compare_fun_2(occupancy,self.obj_masks[i].copy())
-                if flag_found:
-                    self.place_success[i] = 1
-                    pos = [(self.cfg.og_resolution.tabletop[0]/2-new_obj_pos[1])*1./100.,(new_obj_pos[0]-self.cfg.og_resolution.tabletop[1]/2)*1./100.,0.05]
-                    obj_name_i=self.new_obj_type[i]
-                    # rot = convert_quat(tf.Rotation.from_euler("XYZ", (0,0,-np.rad2deg(new_obj_pos[2])), degrees=True).as_quat(), to="wxyz")
-                    if obj_name_i in ["mug","tomatoSoupCan","pitcherBase","tunaFishCan","bowl","banana"]:
-                        rot = convert_quat(tf.Rotation.from_euler("XYZ", (-90,np.rad2deg(new_obj_pos[2]),0), degrees=True).as_quat(), to="wxyz")
-                    else:
-                        rot = convert_quat(tf.Rotation.from_euler("XYZ", (0,0,-np.rad2deg(new_obj_pos[2])), degrees=True).as_quat(), to="wxyz")
-                    
-                    env_ids_tmp = torch.from_numpy(np.array([i])).to(self.device)
-                    self._place_obj(pos,rot,env_ids_tmp,obj_name_i)
-                    # plt.imshow(self.obj_masks[i].cpu().numpy())
-                    # plt.show()
-                    ############## visulaize placing
-                    self.place_success_all +=1.0
-
     '''
     only for toy example
     '''            
@@ -1808,7 +1685,7 @@ class PushEnv(IsaacEnv):
             if (self.actions_origin[i][0] >=start_t and 
                 self.actions_origin[i][0]<self.cfg.og_resolution.tabletop[0]+start_t and 
                 self.actions_origin[i][1]>=start_t and 
-                self.actions_origin[i][1]<self.cfg.og_resolution.tabletop[0]+start_t) and self.actions_origin[i,2]<8:
+                self.actions_origin[i][1]<self.cfg.og_resolution.tabletop[0]+start_t):
                 self.actions_origin[i][0] -=start_t
                 self.actions_origin[i][1] -=start_t
                 # print(i,self.actions_origin[i])
@@ -2076,7 +1953,7 @@ class PushEnv(IsaacEnv):
         if self.cfg.terminations.episode_timeout:
             self.reset_buf = torch.where(self.episode_length_buf >= self.max_episode_length, 1, self.reset_buf)
             self.reset_buf = torch.where(self.falling_obj>=0.5, 1, self.reset_buf)
-        print('reset',self.reset_buf)
+        # print('reset',self.reset_buf)
     def reset_objs(self,env_ids: torch.Tensor):
         for i,obj_t in enumerate(self.obj1):
             root_state = obj_t.get_default_root_state(env_ids)
@@ -2114,249 +1991,139 @@ class PushEnv(IsaacEnv):
             root_state[:, 0:3] += self.envs_positions[env_ids]
             # set the root state
             obj_t.set_root_state(root_state, env_ids=env_ids)
+        
     def _randomize_table_scene(self,env_ids: torch.Tensor):
+        file_name = self.cfg.env_name
+        # ycb_usd_paths = self.cfg.YCBdata.ycb_usd_paths
         ycb_name = self.cfg.YCBdata.ycb_name
+        # self.obj_dict = dict()
         for i in env_ids.tolist():
             self.obj_on_table[i] = []
             self.obj_on_table_name[i] = dict()
             for j in self.cfg.YCBdata.ycb_name:
                 self.obj_on_table_name[i][j] = 0
-        for i in env_ids.tolist():
-            randi = np.random.randint(3)
-            self.new_obj_type[int(i)] = ycb_name[randi]
-            self.new_obj_mask[i] = self.cfg.obj_mask.mask[ycb_name[randi]][4:36,4:36]
-        for k in range(2):
-            randi = np.random.randint(4)
-            if randi == 3:
-                randi = 4
-            i = ycb_name[randi]
-            angle = np.random.randint(0,180)
-            translation = torch.rand(2).tolist()
-            translation = [0.3*translation[0]-0.15,0.3*translation[1]-0.15,0.07]
-            first_transform = translation.copy()
-            # print('first transform',first_transform)
-            if i in ["mug","tomatoSoupCan","pitcherBase","tunaFishCan","bowl","banana"]:
-                rot = convert_quat(tf.Rotation.from_euler("XYZ", (-90,0,0), degrees=True).as_quat(), to="wxyz")
-            else:
-                rot = convert_quat(tf.Rotation.from_euler("XYZ", (0,0,angle), degrees=True).as_quat(), to="wxyz")
-            if i == ycb_name[0]:
-
-                for j in env_ids.tolist():
-                    _ = self.obj_on_table_name[j][i]
-                if _ > 8:
-                    break
-                root_state = self.obj1[_].get_default_root_state(env_ids)
-                for j in range(len(root_state)):
-                    root_state[j, 0:3] = torch.from_numpy(np.array(translation)).to(self.device)
-                    root_state[j, 3:7] = torch.from_numpy(np.array(rot)).to(self.device)
-                root_state[:, 0:3] += self.envs_positions[env_ids]
-                self.obj1[_].set_root_state(root_state, env_ids=env_ids)
-                for j in env_ids.tolist():
-                    self.obj_on_table[j].append(self.obj1[_])
-                    self.obj_on_table_name[j][i] +=1
-            elif i == ycb_name[1]:
-                for j in env_ids.tolist():
-                    _ = self.obj_on_table_name[j][i]
-                if _ > 8:
-                    break
-                root_state = self.obj2[_].get_default_root_state(env_ids)
-                for j in range(len(root_state)):
-                    root_state[j, 0:3] = torch.from_numpy(np.array(translation)).to(self.device)
-                    root_state[j, 3:7] = torch.from_numpy(np.array(rot)).to(self.device)
-                root_state[:, 0:3] += self.envs_positions[env_ids]
-                self.obj2[_].set_root_state(root_state, env_ids=env_ids)
-                for j in env_ids.tolist():
-                    self.obj_on_table[j].append(self.obj2[_])
-                    self.obj_on_table_name[j][i] +=1
-            elif i == ycb_name[2]:
-                for j in env_ids.tolist():
-                    _ = self.obj_on_table_name[j][i]
-                if _ > 8:
-                    break
-                root_state = self.obj3[_].get_default_root_state(env_ids)
-                for j in range(len(root_state)):
-                    root_state[j, 0:3] = torch.from_numpy(np.array(translation)).to(self.device)
-                    root_state[j, 3:7] = torch.from_numpy(np.array(rot)).to(self.device)
-                root_state[:, 0:3] += self.envs_positions[env_ids]
-                self.obj3[_].set_root_state(root_state, env_ids=env_ids)
-                for j in env_ids.tolist():
-                    self.obj_on_table[j].append(self.obj3[_])
-                    self.obj_on_table_name[j][i] +=1
-            elif i == ycb_name[3]:
-                for j in env_ids.tolist():
-                    _ = self.obj_on_table_name[j][i]
-                if _ > 8:
-                    break
-                root_state = self.obj4[_].get_default_root_state(env_ids)
-                for j in range(len(root_state)):
-                    root_state[j, 0:3] = torch.from_numpy(np.array(translation)).to(self.device)
-                    root_state[j, 3:7] = torch.from_numpy(np.array(rot)).to(self.device)
-                root_state[:, 0:3] += self.envs_positions[env_ids]
-                self.obj4[_].set_root_state(root_state, env_ids=env_ids)
-                for j in env_ids.tolist():
-                    self.obj_on_table[j].append(self.obj4[_])
-                    self.obj_on_table_name[j][i] +=1  
-            elif i == ycb_name[4]:
-                for j in env_ids.tolist():
-                    _ = self.obj_on_table_name[j][i]
-                if _ > 8:
-                    break
-                root_state = self.obj5[_].get_default_root_state(env_ids)
-                for j in range(len(root_state)):
-                    root_state[j, 0:3] = torch.from_numpy(np.array(translation)).to(self.device)
-                    root_state[j, 3:7] = torch.from_numpy(np.array(rot)).to(self.device)
-                root_state[:, 0:3] += self.envs_positions[env_ids]
-                self.obj5[_].set_root_state(root_state, env_ids=env_ids)
-                for j in env_ids.tolist():
-                    self.obj_on_table[j].append(self.obj5[_])
-                    self.obj_on_table_name[j][i] +=1  
-            elif i == ycb_name[5]:
-                for j in env_ids.tolist():
-                    _ = self.obj_on_table_name[j][i]
-                if _ > 8:
-                    break
-                root_state = self.obj6[_].get_default_root_state(env_ids)
-                for j in range(len(root_state)):
-                    root_state[j, 0:3] = torch.from_numpy(np.array(translation)).to(self.device)
-                    root_state[j, 3:7] = torch.from_numpy(np.array(rot)).to(self.device)
-                root_state[:, 0:3] += self.envs_positions[env_ids]
-                self.obj6[_].set_root_state(root_state, env_ids=env_ids)
-                for j in env_ids.tolist():
-                    self.obj_on_table[j].append(self.obj6[_])
-                    self.obj_on_table_name[j][i] +=1    
-
-    # def _randomize_table_scene(self,env_ids: torch.Tensor):
-    #     file_name = self.cfg.env_name
-    #     # ycb_usd_paths = self.cfg.YCBdata.ycb_usd_paths
-    #     ycb_name = self.cfg.YCBdata.ycb_name
-    #     # self.obj_dict = dict()
-    #     for i in env_ids.tolist():
-    #         self.obj_on_table[i] = []
-    #         self.obj_on_table_name[i] = dict()
-    #         for j in self.cfg.YCBdata.ycb_name:
-    #             self.obj_on_table_name[i][j] = 0
-    #     # self.obj_on_table = []
-    #     num_env = len(file_name)
-    #     choosen_env_id = np.random.randint(0,num_env)
-    #     #choosen_env_id = self.env_i_tmp
-    #     # print(file_name[choosen_env_id],env_ids,self.env_i_tmp,choosen_env_id)
-    #     # env_path = "generated_table2/"+file_name[choosen_env_id]
-    #     env_path = "train_table4/"+file_name[choosen_env_id]
-    #     # env_path = 'train_table4/dict_1193.pkl'
-    #     # print(env_path)
-    #     # env_path = "generated_table2/dict_478.pkl"
-    #     if self.env_i_tmp <num_env-1:
-    #         self.env_i_tmp +=1
-    #     # else:
-    #     #     print('steps')
-    #     #     print(self.step_all)
-    #     #     print('place')
-    #     #     print(self.place_success_all)
-    #     #     print('reach')
-    #     #     print(self.reaching_all)
-    #     #     print('fallen')
-    #     #     print(self.fallen_all)
-    #     #     self.close()
+        # self.obj_on_table = []
+        num_env = len(file_name)
+        choosen_env_id = np.random.randint(0,num_env)
+        #choosen_env_id = self.env_i_tmp
+        # print(file_name[choosen_env_id],env_ids,self.env_i_tmp,choosen_env_id)
+        # env_path = "generated_table2/"+file_name[choosen_env_id]
+        env_path = "train_table4/"+file_name[choosen_env_id]
+        # env_path = 'train_table4/dict_1193.pkl'
+        # print(env_path)
+        # env_path = "generated_table2/dict_478.pkl"
+        if self.env_i_tmp <num_env-1:
+            self.env_i_tmp +=1
+        # else:
+        #     print('steps')
+        #     print(self.step_all)
+        #     print('place')
+        #     print(self.place_success_all)
+        #     print('reach')
+        #     print(self.reaching_all)
+        #     print('fallen')
+        #     print(self.fallen_all)
+        #     self.close()
             
-    #     fileObject2 = open(env_path, 'rb')
-    #     env =  pkl.load(fileObject2)
-    #     obj_pos_rot = env[0]
-    #     # print(env)
-    #     # self.new_obj_mask = self.cfg.obj_mask.mask["tomatoSoupCan"]
-    #     # print('new env',env_ids.tolist(),env[1])
-    #     self.new_obj_mask[env_ids.tolist()] = self.cfg.obj_mask.mask[env[1]][4:36,4:36]
+        fileObject2 = open(env_path, 'rb')
+        env =  pkl.load(fileObject2)
+        obj_pos_rot = env[0]
+        # print(env)
+        # self.new_obj_mask = self.cfg.obj_mask.mask["tomatoSoupCan"]
+        # print('new env',env_ids.tolist(),env[1])
+        self.new_obj_mask[env_ids.tolist()] = self.cfg.obj_mask.mask[env[1]][4:36,4:36]
         
-    #     for i in env_ids.tolist():
-    #         self.new_obj_type[int(i)] = env[1]
-    #         # print('get new mask')
-    #         # plt.imshow(self.new_obj_mask[i])
-    #         # plt.show()
-    #         # print(self.new_obj_type)
-    #     # self.new_obj_type = "tomatoSoupCan"
-    #     fileObject2.close()
-    #     # print(env_ids)
-    #     for i in obj_pos_rot:
-    #         if i == ycb_name[0]:
-    #             for _,pos_rot in enumerate(obj_pos_rot[i]):
-    #                 if _ > 8:
-    #                     break
-    #                 root_state = self.obj1[_].get_default_root_state(env_ids)
-    #                 for j in range(len(root_state)):
-    #                     root_state[j, 0:3] = torch.from_numpy(np.array(pos_rot[0])).to(self.device)
-    #                     root_state[j, 3:7] = torch.from_numpy(np.array(pos_rot[1])).to(self.device)
-    #                 root_state[:, 0:3] += self.envs_positions[env_ids]
-    #                 self.obj1[_].set_root_state(root_state, env_ids=env_ids)
-    #                 for j in env_ids.tolist():
-    #                     self.obj_on_table[j].append(self.obj1[_])
-    #                     self.obj_on_table_name[j][i] +=1
-    #         elif i == ycb_name[1]:
-    #             for _,pos_rot in enumerate(obj_pos_rot[i]):
-    #                 if _ > 9:
-    #                     break
-    #                 root_state = self.obj2[_].get_default_root_state(env_ids)
-    #                 for j in range(len(root_state)):
-    #                     root_state[j, 0:3] = torch.from_numpy(np.array(pos_rot[0])).to(self.device)
-    #                     root_state[j, 3:7] = torch.from_numpy(np.array(pos_rot[1])).to(self.device)
-    #                 root_state[:, 0:3] += self.envs_positions[env_ids]
-    #                 self.obj2[_].set_root_state(root_state, env_ids=env_ids)
-    #                 for j in env_ids.tolist():
-    #                     self.obj_on_table[j].append(self.obj2[_])
-    #                     self.obj_on_table_name[j][i] +=1
-    #         elif i == ycb_name[2]:
-    #             for _,pos_rot in enumerate(obj_pos_rot[i]):
-    #                 if _ > 9:
-    #                     break
-    #                 root_state = self.obj3[_].get_default_root_state(env_ids)
-    #                 for j in range(len(root_state)):
-    #                     root_state[j, 0:3] = torch.from_numpy(np.array(pos_rot[0])).to(self.device)
-    #                     root_state[j, 3:7] = torch.from_numpy(np.array(pos_rot[1])).to(self.device)
-    #                 root_state[:, 0:3] += self.envs_positions[env_ids]
-    #                 self.obj3[_].set_root_state(root_state, env_ids=env_ids)
-    #                 for j in env_ids.tolist():
-    #                     self.obj_on_table[j].append(self.obj3[_])
-    #                     self.obj_on_table_name[j][i] +=1    
-    #         elif i == ycb_name[3]:
-    #             for _,pos_rot in enumerate(obj_pos_rot[i]):
-    #                 if _ > 16:
-    #                     break
-    #                 root_state = self.obj4[_].get_default_root_state(env_ids)
-    #                 for j in range(len(root_state)):
-    #                     root_state[j, 0:3] = torch.from_numpy(np.array(pos_rot[0])).to(self.device)
-    #                     root_state[j, 3:7] = torch.from_numpy(np.array(pos_rot[1])).to(self.device)
-    #                 root_state[:, 0:3] += self.envs_positions[env_ids]
-    #                 self.obj4[_].set_root_state(root_state, env_ids=env_ids)
-    #                 for j in env_ids.tolist():
-    #                     self.obj_on_table[j].append(self.obj4[_])
-    #                     self.obj_on_table_name[j][i] +=1    
-    #         elif i == ycb_name[4]:
-    #             for _,pos_rot in enumerate(obj_pos_rot[i]):
-    #                 if _ > 10:
-    #                     break
-    #                 root_state = self.obj5[_].get_default_root_state(env_ids)
-    #                 for j in range(len(root_state)):
-    #                     root_state[j, 0:3] = torch.from_numpy(np.array(pos_rot[0])).to(self.device)
-    #                     root_state[j, 3:7] = torch.from_numpy(np.array(pos_rot[1])).to(self.device)
-    #                 root_state[:, 0:3] += self.envs_positions[env_ids]
-    #                 self.obj5[_].set_root_state(root_state, env_ids=env_ids)
-    #                 for j in env_ids.tolist():
-    #                     self.obj_on_table[j].append(self.obj5[_])
-    #                     self.obj_on_table_name[j][i] +=1 
-    #         elif i == ycb_name[5]:
-    #             for _,pos_rot in enumerate(obj_pos_rot[i]):
-    #                 if _ > 10:
-    #                     break
-    #                 root_state = self.obj6[_].get_default_root_state(env_ids)
-    #                 for j in range(len(root_state)):
-    #                     root_state[j, 0:3] = torch.from_numpy(np.array(pos_rot[0])).to(self.device)
-    #                     root_state[j, 3:7] = torch.from_numpy(np.array(pos_rot[1])).to(self.device)
-    #                 root_state[:, 0:3] += self.envs_positions[env_ids]
-    #                 self.obj6[_].set_root_state(root_state, env_ids=env_ids)
-    #                 for j in env_ids.tolist():
-    #                     self.obj_on_table[j].append(self.obj6[_])
-    #                     self.obj_on_table_name[j][i] +=1  
-    #     for j in range(10):
-    #         self.sim.step() 
-    #     del root_state
+        for i in env_ids.tolist():
+            self.new_obj_type[int(i)] = env[1]
+            # print('get new mask')
+            # plt.imshow(self.new_obj_mask[i])
+            # plt.show()
+            # print(self.new_obj_type)
+        # self.new_obj_type = "tomatoSoupCan"
+        fileObject2.close()
+        # print(env_ids)
+        for i in obj_pos_rot:
+            if i == ycb_name[0]:
+                for _,pos_rot in enumerate(obj_pos_rot[i]):
+                    if _ > 8:
+                        break
+                    root_state = self.obj1[_].get_default_root_state(env_ids)
+                    for j in range(len(root_state)):
+                        root_state[j, 0:3] = torch.from_numpy(np.array(pos_rot[0])).to(self.device)
+                        root_state[j, 3:7] = torch.from_numpy(np.array(pos_rot[1])).to(self.device)
+                    root_state[:, 0:3] += self.envs_positions[env_ids]
+                    self.obj1[_].set_root_state(root_state, env_ids=env_ids)
+                    for j in env_ids.tolist():
+                        self.obj_on_table[j].append(self.obj1[_])
+                        self.obj_on_table_name[j][i] +=1
+            elif i == ycb_name[1]:
+                for _,pos_rot in enumerate(obj_pos_rot[i]):
+                    if _ > 9:
+                        break
+                    root_state = self.obj2[_].get_default_root_state(env_ids)
+                    for j in range(len(root_state)):
+                        root_state[j, 0:3] = torch.from_numpy(np.array(pos_rot[0])).to(self.device)
+                        root_state[j, 3:7] = torch.from_numpy(np.array(pos_rot[1])).to(self.device)
+                    root_state[:, 0:3] += self.envs_positions[env_ids]
+                    self.obj2[_].set_root_state(root_state, env_ids=env_ids)
+                    for j in env_ids.tolist():
+                        self.obj_on_table[j].append(self.obj2[_])
+                        self.obj_on_table_name[j][i] +=1
+            elif i == ycb_name[2]:
+                for _,pos_rot in enumerate(obj_pos_rot[i]):
+                    if _ > 9:
+                        break
+                    root_state = self.obj3[_].get_default_root_state(env_ids)
+                    for j in range(len(root_state)):
+                        root_state[j, 0:3] = torch.from_numpy(np.array(pos_rot[0])).to(self.device)
+                        root_state[j, 3:7] = torch.from_numpy(np.array(pos_rot[1])).to(self.device)
+                    root_state[:, 0:3] += self.envs_positions[env_ids]
+                    self.obj3[_].set_root_state(root_state, env_ids=env_ids)
+                    for j in env_ids.tolist():
+                        self.obj_on_table[j].append(self.obj3[_])
+                        self.obj_on_table_name[j][i] +=1    
+            elif i == ycb_name[3]:
+                for _,pos_rot in enumerate(obj_pos_rot[i]):
+                    if _ > 16:
+                        break
+                    root_state = self.obj4[_].get_default_root_state(env_ids)
+                    for j in range(len(root_state)):
+                        root_state[j, 0:3] = torch.from_numpy(np.array(pos_rot[0])).to(self.device)
+                        root_state[j, 3:7] = torch.from_numpy(np.array(pos_rot[1])).to(self.device)
+                    root_state[:, 0:3] += self.envs_positions[env_ids]
+                    self.obj4[_].set_root_state(root_state, env_ids=env_ids)
+                    for j in env_ids.tolist():
+                        self.obj_on_table[j].append(self.obj4[_])
+                        self.obj_on_table_name[j][i] +=1    
+            elif i == ycb_name[4]:
+                for _,pos_rot in enumerate(obj_pos_rot[i]):
+                    if _ > 10:
+                        break
+                    root_state = self.obj5[_].get_default_root_state(env_ids)
+                    for j in range(len(root_state)):
+                        root_state[j, 0:3] = torch.from_numpy(np.array(pos_rot[0])).to(self.device)
+                        root_state[j, 3:7] = torch.from_numpy(np.array(pos_rot[1])).to(self.device)
+                    root_state[:, 0:3] += self.envs_positions[env_ids]
+                    self.obj5[_].set_root_state(root_state, env_ids=env_ids)
+                    for j in env_ids.tolist():
+                        self.obj_on_table[j].append(self.obj5[_])
+                        self.obj_on_table_name[j][i] +=1 
+            elif i == ycb_name[5]:
+                for _,pos_rot in enumerate(obj_pos_rot[i]):
+                    if _ > 10:
+                        break
+                    root_state = self.obj6[_].get_default_root_state(env_ids)
+                    for j in range(len(root_state)):
+                        root_state[j, 0:3] = torch.from_numpy(np.array(pos_rot[0])).to(self.device)
+                        root_state[j, 3:7] = torch.from_numpy(np.array(pos_rot[1])).to(self.device)
+                    root_state[:, 0:3] += self.envs_positions[env_ids]
+                    self.obj6[_].set_root_state(root_state, env_ids=env_ids)
+                    for j in env_ids.tolist():
+                        self.obj_on_table[j].append(self.obj6[_])
+                        self.obj_on_table_name[j][i] +=1  
+        for j in range(10):
+            self.sim.step() 
+        del root_state
     def _randomize_object_initial_pose(self, env_ids: torch.Tensor, cfg: RandomizationCfg.ObjectInitialPoseCfg):
         """Randomize the initial pose of the object."""
         
@@ -2538,7 +2305,7 @@ class PushRewardManager(RewardManager):
                 # plt.show()
                 # plt.imshow(env.table_tsdf_pre[i])
                 # plt.show()
-        print('max_tsdf_increase',env.max_tsdf)
+        # print('max_tsdf_increase',env.max_tsdf)
         # print(max_tsdf_increase)
         
         return max_tsdf_increase
@@ -2614,7 +2381,7 @@ class PushRewardManager(RewardManager):
         """try to place new object"""
         # print("reawrd success")
         # print(env.place_success)
-        print('reward placing',placed)
+        # print('reward placing',placed)
         # print(env.place_success)
         # print(env.place_success)
         return placed

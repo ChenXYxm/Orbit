@@ -62,3 +62,8 @@ To visualize the performance of the trained model of the DQN with FCN method wit
 ```
 ./orbit.sh -p source/standalone/workflows/FCN_method/FCN_with_mask/play.py --num_envs 1 --task Isaac-Push-50-FCN-val-Franka-v0 --checkpoint /path # checkpoint indicates the path to the trained model weight
 ```
+
+To generate clutter table scenes and save them under the train_table4 directory, please run:
+```
+./orbit.sh -p source/standalone/thesis/generate_cluttered_scene3.py --headless
+```

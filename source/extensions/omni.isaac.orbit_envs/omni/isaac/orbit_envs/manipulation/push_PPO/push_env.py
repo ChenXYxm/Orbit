@@ -161,7 +161,7 @@ class PushEnv(IsaacEnv):
         self.new_obj_mask = np.zeros((self.num_envs,self.cfg.og_resolution.new_obj[1],self.cfg.og_resolution.new_obj[0]))
         
         # print information about MDP
-        print('this is toy v12')
+        # print('this is toy v12')
         print("[INFO] Observation Manager:", self._observation_manager)
         print("[INFO] Reward Manager: ", self._reward_manager)
 
@@ -349,7 +349,7 @@ class PushEnv(IsaacEnv):
 
     def _get_obj_mask(self,env_ids: VecEnvIndices):
         if np.sum(self.new_obj_mask) ==0:
-            print('no mask')
+            # print('no mask')
             self.new_obj_mask[env_ids.tolist()] = self.cfg.obj_mask.mask['sugarBox'] 
         # print(self.new_obj_mask.shape)
         mask = np.zeros((self.num_envs,self.cfg.og_resolution.tabletop[1],self.cfg.og_resolution.tabletop[0]))
@@ -953,7 +953,7 @@ class PushEnv(IsaacEnv):
         if not self.cfg.pre_train:
             self._check_fallen_objs(env_ids)
             ############## TODO: changed in Feb 1
-            # self._check_placing() #delete this condition in Feb 1
+            self._check_placing() #delete this condition in Feb 1
             self._update_table_og() # add this condition at Feb 1
         else: 
             self._update_table_og()

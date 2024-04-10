@@ -186,7 +186,7 @@ class PushEnv(IsaacEnv):
         self.new_obj_mask = np.zeros((self.num_envs,self.cfg.og_resolution.new_obj[1],self.cfg.og_resolution.new_obj[0]))
         
         # print information about MDP
-        print('this is toy v12')
+        # print('this is toy v12')
         print("[INFO] Observation Manager:", self._observation_manager)
         print("[INFO] Reward Manager: ", self._reward_manager)
 
@@ -380,7 +380,7 @@ class PushEnv(IsaacEnv):
 
     def _get_obj_mask(self,env_ids: VecEnvIndices):
         if np.sum(self.new_obj_mask) ==0:
-            print('no mask')
+            # print('no mask')
             self.new_obj_mask[env_ids.tolist()] = self.cfg.obj_mask.mask['sugarBox'] 
         # print(self.new_obj_mask.shape)
         mask = np.zeros((self.num_envs,self.cfg.og_resolution.tabletop[1],self.cfg.og_resolution.tabletop[0]))
@@ -457,14 +457,14 @@ class PushEnv(IsaacEnv):
         #     self.actions_origin[i,1] = min(self.cfg.og_resolution.tabletop[1]-1,int(self.actions_origin[i,1]))
         '''
         ###################### transform discrete actions into start positions and pushing directions
-        print(self.new_obj_type)
+        # print(self.new_obj_type)
         self._check_reaching_toy_v2()
         flag_placed = self._check_placing()
         self._update_table_og()
-        print(flag_placed,self.new_obj_type,self.check_reaching)
+        # print(flag_placed,self.new_obj_type,self.check_reaching)
         # print('action')
         # print(actions)
-        print(self.check_reaching,flag_placed)
+        # print(self.check_reaching,flag_placed)
         # print(self.actions_origin)
         
         ''' modified for toy example'''
@@ -1699,7 +1699,7 @@ class PushEnv(IsaacEnv):
             self.sim.step()
         self.pushing_policy_result[self.env_i_tmp][0] += 1
         self.pushing_policy_result[self.env_i_tmp][6] = self.pushing_policy_result[self.env_i_tmp][2]
-        print(self.pushing_policy_result)
+        # print(self.pushing_policy_result)
         pass
     def _check_fallen_objs(self,env_ids:VecEnvIndices):
         torch_fallen = torch.zeros((self.num_envs,),device=self.device)
@@ -1725,8 +1725,8 @@ class PushEnv(IsaacEnv):
         self.pushing_policy_result[self.env_i_tmp][0] -= int(self.falling_obj[0])
         self.falling_obj_all[env_ids] = torch_fallen[env_ids]
         self.fallen_all += float(torch.sum(self.falling_obj))
-        print('fallen')
-        print(self.fallen_all)
+        # print('fallen')
+        # print(self.fallen_all)
         
     def _update_table_og(self):
         if self.reset_f:
@@ -1775,7 +1775,7 @@ class PushEnv(IsaacEnv):
                     if len(self.obj_on_table[i])<len(self.obj_list):
                         self.new_obj_mask[i] = self.cfg.obj_mask.mask[self.cfg.YCBdata.ycb_name[self.obj_list[len(self.obj_on_table[i])]]]
                         self.new_obj_type[int(i)] = self.cfg.YCBdata.ycb_name[self.obj_list[len(self.obj_on_table[i])]] 
-                        print(self.new_obj_type[int(i)])
+                        # print(self.new_obj_type[int(i)])
                         # self.pushing_policy_result[self.env_i_tmp][0] = len(self.obj_on_table[i])
                         self._get_obj_mask(env_ids=env_ids_tmp)
                         self._get_obj_info(env_ids=env_ids_tmp)
@@ -1783,7 +1783,7 @@ class PushEnv(IsaacEnv):
                         # plt.show()
                     else:
                         self.stop_pushing[i] = 1
-                        print('stop')
+                        # print('stop')
                 # print('place_success',env_ids_tmp)
                 # plt.imshow(self.obj_masks[i].cpu().numpy())
                 # plt.show()
@@ -1809,13 +1809,13 @@ class PushEnv(IsaacEnv):
                             if len(self.obj_on_table[i])<len(self.obj_list):
                                 self.new_obj_mask[i] = self.cfg.obj_mask.mask[self.cfg.YCBdata.ycb_name[self.obj_list[len(self.obj_on_table[i])]]]
                                 self.new_obj_type[int(i)] = self.cfg.YCBdata.ycb_name[self.obj_list[len(self.obj_on_table[i])]] 
-                                print(self.new_obj_type[int(i)])
+                                # print(self.new_obj_type[int(i)])
                                 # self.pushing_policy_result[self.env_i_tmp][0] = len(self.obj_on_table[i])
                                 self._get_obj_mask(env_ids=env_ids_tmp)
                                 self._get_obj_info(env_ids=env_ids_tmp)
                             else:
                                 self.stop_pushing[i] = 1
-                                print('stop')
+                                # print('stop')
                         return True
                 # print('place')
                 # print(env_ids_tmp)
@@ -1998,7 +1998,7 @@ class PushEnv(IsaacEnv):
         # -- episode length
         if self.cfg.terminations.episode_timeout:
             self.reset_buf = torch.where(self.episode_length_buf >= self.max_episode_length, 1, self.reset_buf)
-        print('terminated',self.reset_buf)
+        # print('terminated',self.reset_buf)
     def reset_objs(self,env_ids: torch.Tensor):
         for i,obj_t in enumerate(self.obj1):
             root_state = obj_t.get_default_root_state(env_ids)
@@ -2051,7 +2051,7 @@ class PushEnv(IsaacEnv):
         # env_path = "generated_table2/"+file_name[choosen_env_id]
         f_name = 'dict_pose_'+str(self.env_i_tmp)+'.pkl'
         # f_name = 'dict_pose_'+str(52)+'.pkl'
-        print('env name',f_name)
+        # print('env name',f_name)
         if self.env_i_tmp>50:
             file_path = "./placing_test/pushing_FCN_withoutmask_"+str(self.env_i_tmp-1)+".pkl"
             # file_path = "./placing_test/pushing_FCN_"+str(52)+".pkl"
@@ -2071,7 +2071,7 @@ class PushEnv(IsaacEnv):
             self.close()
         
             
-        print(env_path)
+        # print(env_path)
         # env_path = "generated_table2/dict_478.pkl"
         for i in env_ids.tolist():
             self.table_scenes[i] = file_name[choosen_env_id]
@@ -2097,8 +2097,8 @@ class PushEnv(IsaacEnv):
         env =  pkl.load(fileObject2)
         self.obj_list = env[0]
         obj_pos_rot = env[1]
-        print('new obj list', self.obj_list)
-        print('old pos',obj_pos_rot)
+        # print('new obj list', self.obj_list)
+        # print('old pos',obj_pos_rot)
         # obj_pos_rot = []
         # print(env)
         # self.new_obj_mask = self.cfg.obj_mask.mask["tomatoSoupCan"
@@ -2858,102 +2858,7 @@ class PushRewardManager(RewardManager):
     def reward_reaching(self,env:PushEnv):
         reward_near = torch.zeros((env.num_envs,),device=self.device)
         reward_near = torch.where(env.check_reaching>0.5,0,-1)
-        '''
-        action_tmp_reward = env.actions_origin.clone().cpu().numpy().astype(np.uint8)
-        for i in range(env.num_envs):
-            table_og_tmp = env.table_og_pre[i].clone()
-            # plt.imshow(table_og_tmp.cpu().numpy())
-            # plt.show()
-            # print('action')
-            # print(env.actions[i,2])
-            # for j_r in range(int(env.actions_origin[i,2]/2)):
-            #     print('rotate')
-            #     table_og_tmp = table_og_tmp.rot90(1,[0, 1])
-            #     plt.imshow(table_og_tmp.cpu().numpy())
-            #     plt.show()
-            if (env.actions_origin[i,2]%4) == 0:
-                start_ind_x = max(env.actions_origin[i][0]-1,0)
-                end_ind_x = min(env.actions_origin[i][0]+2,env.cfg.og_resolution.tabletop[0])
-                start_ind_y = max(env.actions_origin[i][1]-1,0)
-                end_ind_y = min(env.actions_origin[i][1]+1,env.cfg.og_resolution.tabletop[1])
-            else:
-                start_ind_x = max(env.actions_origin[i][0]-1,0)
-                end_ind_x = min(env.actions_origin[i][0]+1,env.cfg.og_resolution.tabletop[0])
-                start_ind_y = max(env.actions_origin[i][1]-1,0)
-                end_ind_y = min(env.actions_origin[i][1]+2,env.cfg.og_resolution.tabletop[1])
-
-            if torch.sum(table_og_tmp[start_ind_x:end_ind_x,start_ind_y:end_ind_y])>0:
-                reward_near[i] = -2
-            else:
-                # print('no overlap')
-                if env.actions_origin[i,2] == 0:
-                    start_ind_y = max(env.actions_origin[i][1]-5,0)
-                    end_ind_y = min(env.actions_origin[i][1],env.cfg.og_resolution.tabletop[1])
-                    if torch.sum(table_og_tmp[env.actions_origin[i][0],start_ind_y:end_ind_y]) == 0:
-                        reward_near[i] = -2
-                elif env.actions_origin[i,2] == 2:
-                    start_ind_x = max(env.actions_origin[i][0],0)
-                    end_ind_x = min(env.actions_origin[i][0]+5,env.cfg.og_resolution.tabletop[0])
-                    if torch.sum(table_og_tmp[start_ind_x:end_ind_x,env.actions_origin[i][1]]) == 0:
-                        reward_near[i] = -2
-                elif env.actions_origin[i,2] == 4:
-                    start_ind_y = max(env.actions_origin[i][1],0)
-                    end_ind_y = min(env.actions_origin[i][1]+5,env.cfg.og_resolution.tabletop[1])
-                    if torch.sum(table_og_tmp[env.actions_origin[i][0],start_ind_y:end_ind_y]) == 0:
-                        reward_near[i] = -2
-                elif env.actions_origin[i,2] == 6:
-                    start_ind_x = max(env.actions_origin[i][0]-5,0)
-                    end_ind_x = min(env.actions_origin[i][0],env.cfg.og_resolution.tabletop[0])
-                    if torch.sum(table_og_tmp[start_ind_x:end_ind_x,env.actions_origin[i][1]]) == 0:
-                        reward_near[i] = -2
-            '''
-            # if reward_near[i]==0 and env.stop_pushing[i]==0:
-            #     if env.actions_origin[i][0] >= env.cfg.og_resolution.tabletop[0]-3 or env.actions_origin[i][0]<=2:
-            #         # print(env.actions_origin[i])
-            #         reward_near[i] = -2
-                # elif env.actions_origin[i][1] >= env.cfg.og_resolution.tabletop[1]-3 or env.actions_origin[i][1]<=2:
-                #     # print(env.actions_origin[i])
-                #     reward_near[i] = -2     
-            ################################ only for visualization
-            
-            # if env.actions_origin[i,2] == 0:
-            #     start_ind_y = max(env.actions_origin[i][1]-5,0)
-            #     end_ind_y = min(env.actions_origin[i][1],env.cfg.og_resolution.tabletop[1])
-            # elif env.actions_origin[i,2] == 2:
-            #     start_ind_x = max(env.actions_origin[i][0],0)
-            #     end_ind_x = min(env.actions_origin[i][0]+5,env.cfg.og_resolution.tabletop[0])
-            # elif env.actions_origin[i,2] == 4:
-            #     start_ind_y = max(env.actions_origin[i][1],0)
-            #     end_ind_y = min(env.actions_origin[i][1]+5,env.cfg.og_resolution.tabletop[1])
-            # elif env.actions_origin[i,2] == 6:
-            #     start_ind_x = max(env.actions_origin[i][0]-5,0)
-            #     end_ind_x = min(env.actions_origin[i][0],env.cfg.og_resolution.tabletop[0])
-            # table_og_tmp[start_ind_x:end_ind_x,start_ind_y:end_ind_y] = 3
-            # if (env.actions_origin[i,2]%4) == 0:
-            #     start_ind_x = max(env.actions_origin[i][0]-1,0)
-            #     end_ind_x = min(env.actions_origin[i][0]+2,env.cfg.og_resolution.tabletop[0])
-            #     start_ind_y = max(env.actions_origin[i][1]-1,0)
-            #     end_ind_y = min(env.actions_origin[i][1]+1,env.cfg.og_resolution.tabletop[1])
-            # else:
-            #     start_ind_x = max(env.actions_origin[i][0]-1,0)
-            #     end_ind_x = min(env.actions_origin[i][0]+1,env.cfg.og_resolution.tabletop[0])
-            #     start_ind_y = max(env.actions_origin[i][1]-1,0)
-            #     end_ind_y = min(env.actions_origin[i][1]+2,env.cfg.og_resolution.tabletop[1])
-            # table_og_tmp[start_ind_x:end_ind_x,start_ind_y:end_ind_y] = 4
-            # plt.imshow(table_og_tmp.cpu().numpy())
-            # plt.show()
-            # for j_r in range(int(env.actions_origin[i,2]/2)):
-            #     print('rotate')
-            #     table_og_tmp = table_og_tmp.rot90(1,[1,0])
-            #     plt.imshow(table_og_tmp.cpu().numpy())
-            #     plt.show()
-            #############################################################
-        # print('rewards')
-        # print('reaching')
-        # print(reward_near)
-        # print(env.check_reaching)
-        # print(torch.where(reward_near<0))
-        # print(torch.where(env.check_reaching==0))
+        
                         
         return reward_near
 

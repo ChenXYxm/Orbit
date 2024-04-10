@@ -249,15 +249,15 @@ class RewardsCfg:
     reward_og_change = {"weight": 1}
     # reward_near_obj = {"weight": 1}
     # reward_reaching = {"weight": 1}
-    penaltizing_falling = {"weight": 2} ## DEc20_00-56-30
+    # penaltizing_falling = {"weight": 2} ## DEc20_00-56-30
     # penaltizing_falling = {"weight": 2} ## Dec24_16-21-23 before
     # penaltizing_falling = {"weight": 3} ## Dec24_16-21-23 before
     # penaltizing_steps = {"weight": 0.1}
     # penaltizing_repeat_actions = {"weight": 0.5}
-    penaltizing_pushing_outside = {"weight":1} ## Dec22_20-44-43 before
+    # penaltizing_pushing_outside = {"weight":1} ## Dec22_20-44-43 before
     # penaltizing_pushing_outside = {"weight":0.5} ## Dec24_16-21-23 before
     #penaltizing_pushing_outside = {"weight":0.9}
-    reward_max_tsdf_increase = {"weight": 1}
+    # reward_max_tsdf_increase = {"weight": 1}
     # penaltizing_stop = {"weight": 2} ## Dec26 after
     # penalizing_tool_action_l2 = {"weight": 1e-2}
     # -- object-centric
