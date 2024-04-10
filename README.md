@@ -3,16 +3,17 @@
 
 # Pushing Assisted Placing on a Tabletop
 
-Models for this project are trained using Omniverse Isaac Sim 2022.2.1 and Orbit v0.1.0
 
-In this project, we aim to train a pushing policy for a Franka Emika Panda arm to facilitate 2D dense object placement.
-The network accepts a 2D Truncated Signed Distance Function (TSDF) and an occupancy grid of the desktop and outputs a pixel coordinate and a pushing direction for a pushing action to make space on the desktop.
+
+
 
 [![IsaacSim](https://img.shields.io/badge/Isaac%20Sim-2022.2.1-orange.svg)](https://docs.omniverse.nvidia.com/app_isaacsim/app_isaacsim/overview.html)
 [![IssacOrbit](https://img.shields.io/badge/Isaac%20Orbit-v0.1.0-red.svg)](https://isaac-orbit.github.io/orbit/source/setup/installation.html)
 [![Python](https://img.shields.io/badge/python-3.7-blue.svg)](https://docs.python.org/3/whatsnew/3.7.html)
 [![Linux platform](https://img.shields.io/badge/platform-linux--64-lightgrey.svg)](https://releases.ubuntu.com/20.04/)
 
+In this project, we aim to train a pushing policy for a Franka Emika Panda arm to facilitate 2D dense object placement.
+The network accepts a 2D Truncated Signed Distance Function (TSDF) and an occupancy grid of the desktop and outputs a pixel coordinate and a pushing direction for a pushing action to make space on the desktop. Models for this project are trained using Omniverse Isaac Sim 2022.2.1 and Orbit v0.1.0.
 
 ## Installation
 
