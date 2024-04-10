@@ -27,7 +27,7 @@ The trained models for this project can be downloaded from [trained models](http
 To train the framework of DQN with FCN method without mask, please run:
 
 ```
-./orbit.sh -p source/standalone/workflows/FCN_method/FCN_without_mask/train.py --num_envs 1 --task Isaac-Push-50-FCN-val-Franka-v0 --headless --save_path /logs/ # save_path indicates the path of the directory to save the trained weight
+./orbit.sh -p source/standalone/workflows/FCN_method/FCN_without_mask/train.py --num_envs 1 --task Isaac-Push-50-FCN-without-mask-train-Franka-v0  --headless --save_path /logs/ # save_path indicates the path of the directory to save the trained weight
 ```
 
 
@@ -40,7 +40,7 @@ To visualize the performance of the trained model of DQN with FCN method without
 To train the framework of DQN with FCN method with mask, please run:
 
 ```
-./orbit.sh -p source/standalone/workflows/FCN_method/FCN_with_mask/train.py --num_envs 1 --task Isaac-Push-50-FCN-val-Franka-v0 --headless --save_path /logs/ # save_path indicates the path of the directory to save the trained weight
+./orbit.sh -p source/standalone/workflows/FCN_method/FCN_with_mask/train.py --num_envs 1 --task Isaac-Push-50-FCN-with-mask-train-Franka-v0 --headless --save_path /logs/ # save_path indicates the path of the directory to save the trained weight
 ```
 
 

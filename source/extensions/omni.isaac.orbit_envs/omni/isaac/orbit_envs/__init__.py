@@ -138,46 +138,23 @@ gym.register(
 
 gym.register(
     id="Isaac-Push-50-PPO-val-Franka-v0",
-    entry_point="omni.isaac.orbit_envs.manipulation.validation_envs:PushEnv",
-    kwargs={"cfg_entry_point": "omni.isaac.orbit_envs.manipulation.validation_envs:PushEnvCfg"},
+    entry_point="omni.isaac.orbit_envs.manipulation.validation_envs_PPO:PushEnv",
+    kwargs={"cfg_entry_point": "omni.isaac.orbit_envs.manipulation.validation_envs_PPO:PushEnvCfg"},
 )
 gym.register(
     id="Isaac-Push-50-FCN-val-Franka-v0",
     entry_point="omni.isaac.orbit_envs.manipulation.validation_envs_FCN:PushEnv",
     kwargs={"cfg_entry_point": "omni.isaac.orbit_envs.manipulation.validation_envs_FCN:PushEnvCfg"},
 )
+
 gym.register(
-    id="Isaac-Push-Place-50-mask-Franka-v0",
-    entry_point="omni.isaac.orbit_envs.manipulation.push_placeMar19_50_include_mask.push_place:PushEnv",
-    kwargs={"cfg_entry_point": "omni.isaac.orbit_envs.manipulation.push_placeMar19_50_include_mask.push_place:PushEnvCfg"},
+    id="Isaac-Push-50-FCN-with-mask-train-Franka-v0",
+    entry_point="omni.isaac.orbit_envs.manipulation.push_FCN_with_mask_train.push_place:PushEnv",
+    kwargs={"cfg_entry_point": "omni.isaac.orbit_envs.manipulation.push_FCN_with_mask_train.push_place:PushEnvCfg"},
 )
 
 gym.register(
-    id="Isaac-Push-Place-50-mask-Franka-v1",
-    entry_point="omni.isaac.orbit_envs.manipulation.push_placeMar20_50_include_mask.push_place:PushEnv",
-    kwargs={"cfg_entry_point": "omni.isaac.orbit_envs.manipulation.push_placeMar20_50_include_mask.push_place:PushEnvCfg"},
-)
-
-gym.register(
-    id="Isaac-Push-Place-50-mask-Franka-v2",
-    entry_point="omni.isaac.orbit_envs.manipulation.push_placeMar21_50_include_mask.push_place:PushEnv",
-    kwargs={"cfg_entry_point": "omni.isaac.orbit_envs.manipulation.push_placeMar21_50_include_mask.push_place:PushEnvCfg"},
-)
-
-gym.register(
-    id="Isaac-Push-Place-50-FCN-Franka-v1",
-    entry_point="omni.isaac.orbit_envs.manipulation.push_placeMar24_50_FCN.push_place:PushEnv",
-    kwargs={"cfg_entry_point": "omni.isaac.orbit_envs.manipulation.push_placeMar24_50_FCN.push_place:PushEnvCfg"},
-)
-
-gym.register(
-    id="Isaac-Push-Place-50-Franka-v3",
-    entry_point="omni.isaac.orbit_envs.manipulation.push_placeMar26_50_FCN.push_place:PushEnv",
-    kwargs={"cfg_entry_point": "omni.isaac.orbit_envs.manipulation.push_placeMar26_50_FCN.push_place:PushEnvCfg"},
-)
-
-gym.register(
-    id="Isaac-Push-Place-50-Franka-v4",
-    entry_point="omni.isaac.orbit_envs.manipulation.push_placeMar31_50_FCN.push_place:PushEnv",
-    kwargs={"cfg_entry_point": "omni.isaac.orbit_envs.manipulation.push_placeMar31_50_FCN.push_place:PushEnvCfg"},
+    id="Isaac-Push-50-FCN-without-mask-train-Franka-v0",
+    entry_point="omni.isaac.orbit_envs.manipulation.push_FCN_without_mask_train.push_place:PushEnv",
+    kwargs={"cfg_entry_point": "omni.isaac.orbit_envs.manipulation.push_FCN_without_mask_train.push_place:PushEnvCfg"},
 )

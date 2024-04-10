@@ -38,7 +38,7 @@ class Push_Agent():
         self.Orient = 8
         self.WIDTH = 72
         self.HEIGHT = 72
-        self.BATCH_SIZE = 1
+        self.BATCH_SIZE = 2
         self.GAMMA = 0.75
         self.policy_net = MULTIDISCRETE_RESNET_Rotate(number_actions_dim_2=1)
 
@@ -337,9 +337,9 @@ class Push_Agent():
             loss = criterien(q_pred, q_expected)
             loss.backward()
             print('backpropagate',i)
-        self.last_100_loss.append(loss.item())
-        self.writer.add_scalar('Average loss', loss, global_step=self.steps_done)
-        print('loss: ',loss,'steps',self.steps_done)
-        self.optimizer.step()
+            self.last_100_loss.append(loss.item())
+            self.writer.add_scalar('Average loss', loss, global_step=self.steps_done)
+            print('loss: ',loss,'steps',self.steps_done)
+            self.optimizer.step()
 
-        self.optimizer.zero_grad()
+            self.optimizer.zero_grad()
