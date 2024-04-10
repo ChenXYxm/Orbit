@@ -86,7 +86,7 @@ def main():
     # simulate environment
     print('using stop pushing method')
     x_start = 48
-    flag_compare = True
+    flag_compare = False
     while simulation_app.is_running():
         # agent stepping
         act_app = np.zeros(len(obs))
@@ -151,7 +151,7 @@ def main():
         # value,log_prob,entropy = agent.policy.evaluate_actions()
         #######################################
         # env stepping
-        print(actions_new)
+        # print(actions_new)
         obs, _, dones, _ = env.step(actions_new)
 
         ################# TODO:only for comparision method

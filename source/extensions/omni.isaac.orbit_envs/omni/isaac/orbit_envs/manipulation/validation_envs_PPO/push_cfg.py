@@ -380,4 +380,4 @@ class PushEnvCfg(IsaacEnvCfg):
     obj_mask: ObjMask = ObjMask()
     env_name: env_name = env_name().file_list
     pre_train: bool=False
-    flag_compare = True
+    flag_compare = False
