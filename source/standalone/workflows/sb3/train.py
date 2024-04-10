@@ -111,7 +111,7 @@ def main():
         )
 
     # create agent from stable baselines
-    # agent = PPO(policy_arch, env, verbose=1, **agent_cfg)
+    agent = PPO(policy_arch, env, verbose=1, **agent_cfg)
     # print('/home/cxy/Downloads/436800weight.pth')
     # print(agent.policy)
     # state_dict = torch.load('/home/cxy/Downloads/weight758080.pth')
@@ -126,11 +126,11 @@ def main():
     # print(agent.policy.children())
     # for name, param in agent.policy.named_parameters():
     #     print(name)
-    checkpoint_path = '/home/cxy/Thesis/orbit/Orbit/logs/sb3/Isaac-Push-50-PPO-Franka-v0/Mar10_19-36-54/model_45000_steps'
-    agent = PPO.load(checkpoint_path,env, print_system_info=True)
-    print(checkpoint_path)
+    # checkpoint_path = '/home/cxy/Thesis/orbit/Orbit/logs/sb3/Isaac-Push-50-PPO-Franka-v0/Mar10_19-36-54/model_45000_steps'
+    # agent = PPO.load(checkpoint_path,env, print_system_info=True)
+    # print(checkpoint_path)
     # torch.save(agent.policy.state_dict(),log_dir+'/436800weight.pth')
-    print(agent.policy)
+    # print(agent.policy)
     # configure the logger
     new_logger = configure(log_dir, ["stdout", "tensorboard"])
     agent.set_logger(new_logger)
