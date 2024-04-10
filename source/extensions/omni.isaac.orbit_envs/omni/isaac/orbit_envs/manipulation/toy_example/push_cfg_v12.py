@@ -68,7 +68,7 @@ class ManipulationObjectCfg(RigidObjectCfg):
 class env_name:
     # file_list = os.listdir("generated_table/")
     file_list = os.listdir("generated_table2/")
-    test_file_list = os.listdir("test_table2/")
+    # test_file_list = os.listdir("test_table2/")
 @configclass
 class GoalMarkerCfg:
     """Properties for visualization marker."""
