@@ -105,6 +105,11 @@ gym.register(
     kwargs={"cfg_entry_point": "omni.isaac.orbit_envs.manipulation.push_PPO:PushEnvCfg"},
 )
 
+gym.register(
+    id="Isaac-Push-50-baseline-Franka-v0",
+    entry_point="omni.isaac.orbit_envs.manipulation.baseline:PushEnv",
+    kwargs={"cfg_entry_point": "omni.isaac.orbit_envs.manipulation.baseline:PushEnvCfg"},
+)
 
 
 gym.register(

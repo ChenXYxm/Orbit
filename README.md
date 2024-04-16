@@ -27,16 +27,24 @@ The trained models for this project can be downloaded from [trained models](http
 
 ## Network Training and Performance Visualization
 
+To visualize the performance of the baseline method, please run:
+
+```
+./orbit.sh -p source/standalone/workflows/baseline/play.py --num_envs 1 --task Isaac-Push-50-baseline-Franka-v0
+```
+
+
 To train the framework of the PPO with CNN method, please run:
 
 ```
-./orbit.sh -p source/standalone/workflows/sb3/train.py --num_envs 1 --task Isaac-Push-50-PPO-Franka-v0 --headless # save_path indicates the path of the directory to save the trained weight
+./orbit.sh -p source/standalone/workflows/sb3_customized/train.py --num_envs 1 --task Isaac-Push-50-PPO-Franka-v0 --headless 
+ --save_path ./logs/ # save_path indicates the path of the directory to save the trained weight
 ```
 
 To visualize the performance of the trained model of the PPO with CNN method, please run:
 
 ```
-./orbit.sh -p source/standalone/workflows/sb3/play.py --num_envs 1 --task Isaac-Push-50-PPO-val-Franka-v0 --checkpoint /path # checkpoint indicates the path to the trained model
+./orbit.sh -p source/standalone/workflows/sb3_customized/play.py --num_envs 1 --task Isaac-Push-50-PPO-val-Franka-v0 --checkpoint ./path # checkpoint indicates the path to the trained model
 
 ```
 
@@ -44,27 +52,27 @@ To visualize the performance of the trained model of the PPO with CNN method, pl
 To train the framework of the DQN with FCN method without mask, please run:
 
 ```
-./orbit.sh -p source/standalone/workflows/FCN_method/FCN_without_mask/train.py --num_envs 1 --task Isaac-Push-50-FCN-without-mask-train-Franka-v0  --headless --save_path /logs/ # save_path indicates the path of the directory to save the trained weight
+./orbit.sh -p source/standalone/workflows/FCN_method/FCN_without_mask/train.py --num_envs 1 --task Isaac-Push-50-FCN-without-mask-train-Franka-v0  --headless --save_path ./logs/ # save_path indicates the path of the directory to save the trained weight
 ```
 
 
 To visualize the performance of the trained model of the DQN with FCN method without mask, please run:
 
 ```
-./orbit.sh -p source/standalone/workflows/FCN_method/FCN_without_mask/play.py --num_envs 1 --task Isaac-Push-50-FCN-val-Franka-v0 --checkpoint /path # checkpoint indicates the path to the trained model weight
+./orbit.sh -p source/standalone/workflows/FCN_method/FCN_without_mask/play.py --num_envs 1 --task Isaac-Push-50-FCN-val-Franka-v0 --checkpoint ./path # checkpoint indicates the path to the trained model weight
 ```
 
 To train the framework of the DQN with FCN method with mask, please run:
 
 ```
-./orbit.sh -p source/standalone/workflows/FCN_method/FCN_with_mask/train.py --num_envs 1 --task Isaac-Push-50-FCN-with-mask-train-Franka-v0 --headless --save_path /logs/ # save_path indicates the path of the directory to save the trained weight
+./orbit.sh -p source/standalone/workflows/FCN_method/FCN_with_mask/train.py --num_envs 1 --task Isaac-Push-50-FCN-with-mask-train-Franka-v0 --headless --save_path ./logs/ # save_path indicates the path of the directory to save the trained weight
 ```
 
 
 To visualize the performance of the trained model of the DQN with FCN method with mask, please run:
 
 ```
-./orbit.sh -p source/standalone/workflows/FCN_method/FCN_with_mask/play.py --num_envs 1 --task Isaac-Push-50-FCN-val-Franka-v0 --checkpoint /path # checkpoint indicates the path to the trained model weight
+./orbit.sh -p source/standalone/workflows/FCN_method/FCN_with_mask/play.py --num_envs 1 --task Isaac-Push-50-FCN-val-Franka-v0 --checkpoint ./path # checkpoint indicates the path to the trained model weight
 ```
 
 ## Data Generation

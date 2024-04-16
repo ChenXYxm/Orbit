@@ -671,8 +671,8 @@ class PushEnv(IsaacEnv):
                         vec_tmp[0] = 0.035*np.cos(2*np.pi*self.actions[i,2].cpu().numpy())
                         vec_tmp[1] = 0.035*np.sin(2*np.pi*self.actions[i,2].cpu().numpy())
                     else:
-                        vec_tmp[0] = 0.035*np.cos(2*np.pi*self.actions[i,2].cpu().numpy())
-                        vec_tmp[1] = 0.035*np.sin(2*np.pi*self.actions[i,2].cpu().numpy())
+                        vec_tmp[0] = 0.1*np.cos(2*np.pi*self.actions[i,2].cpu().numpy())
+                        vec_tmp[1] = 0.1*np.sin(2*np.pi*self.actions[i,2].cpu().numpy())
                     actions_tmp[i,:2] = actions_tmp[i,:2] + torch.from_numpy(vec_tmp).to(self.device)
                 for i in range(6):
                     self.robot.update_buffers(self.dt)
@@ -708,8 +708,8 @@ class PushEnv(IsaacEnv):
                         vec_tmp[0] = 0.035*np.cos(2*np.pi*self.actions[i,2].cpu().numpy())
                         vec_tmp[1] = 0.035*np.sin(2*np.pi*self.actions[i,2].cpu().numpy())
                     else:
-                        vec_tmp[0] = 0.035*np.cos(2*np.pi*self.actions[i,2].cpu().numpy())
-                        vec_tmp[1] = 0.035*np.sin(2*np.pi*self.actions[i,2].cpu().numpy())
+                        vec_tmp[0] = 0.1*np.cos(2*np.pi*self.actions[i,2].cpu().numpy())
+                        vec_tmp[1] = 0.1*np.sin(2*np.pi*self.actions[i,2].cpu().numpy())
                     # vec_tmp[0] = 0.035*np.cos(2*np.pi*self.actions[i,2].cpu().numpy())
                     # vec_tmp[1] = 0.035*np.sin(2*np.pi*self.actions[i,2].cpu().numpy())
                     # vec_tmp[0] = 0.1*np.cos(2*np.pi*self.actions[i,2].cpu().numpy())

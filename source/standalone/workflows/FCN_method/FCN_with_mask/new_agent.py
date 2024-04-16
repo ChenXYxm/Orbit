@@ -178,8 +178,8 @@ class Push_Agent():
                     mask_tmp = mask_o.copy()
                     mask_tmp = rotate_45(mask_tmp,-i*30)
                     mask_tmp = mask_tmp[7:43,7:43]
-                    plt.imshow(mask_tmp)
-                    plt.show()
+                    # plt.imshow(mask_tmp)
+                    # plt.show()
                     mask_tmp = mask_tmp[:, :, np.newaxis]
                     mask_tmp = np.moveaxis(mask_tmp, -1, 0)
                     mask_tensor = self.transform_mask(mask_tmp)
@@ -300,7 +300,7 @@ class Push_Agent():
                     obs_tmp = self._last_obs[j].copy()
                     obs_tmp = np.moveaxis(obs_tmp, -1, 0)
                     mask_tmp = self.env.obj_masks[j]
-                    mask_o = mask_tmp.clone().cpu().numpy()
+                    mask_o = mask_tmp.copy()
                     
                         # plt.imshow(mask_t)
                         # plt.show()
