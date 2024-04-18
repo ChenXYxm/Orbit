@@ -20,8 +20,10 @@ please down load the [trained model](https://drive.google.com/drive/folders/1Cs4
 Please calibrate the table following the [instructions](https://github.com/ethz-asl/moma_docs/wiki/Panda-Software-Quickstart#step-1-simulation), before applying the next step.
 
 # Apply pushing methods
+## Create new package
+Please create a ROS package named 'pushing' under the path /src/moma/, and then copy the files in this folder to the newly created 'pushing' ROS package folder.
 
-## start the controllers
+## Start the controllers
 
 run with moveit:
 
@@ -35,7 +37,7 @@ run the sensor:
 roslaunch moma_bringup sensors.launch wrist_camera:=true fixed_camera:=false
 ```
 
-## apply pushing and placing methods:
+## Apply pushing and placing methods:
 
 run proposed placing method without pushing:
 ```
