@@ -27,9 +27,13 @@ When istalling Isaac Orbit, please clone the orbit repository here, instead of [
 
 The trained models for this project can be downloaded from [trained models](https://drive.google.com/drive/folders/1P5K97kQskJ9YJLv1fqWs48eTtYFPR0Nr?usp=drive_link).
 
-## Network Training and Performance Visualization
+## Network Training and Performance Visualization for Pushing
+To visualize the performance of the placing method, please run:
+```
 
-To visualize the performance of the baseline method, please run:
+```
+
+To visualize the performance of the pushing baseline method, please run:
 
 ```
 ./orbit.sh -p source/standalone/workflows/baseline/play.py --num_envs 1 --task Isaac-Push-50-baseline-Franka-v0
@@ -77,9 +81,10 @@ To visualize the performance of the trained model of the DQN with FCN method wit
 ./orbit.sh -p source/standalone/workflows/FCN_method/FCN_with_mask/play.py --num_envs 1 --task Isaac-Push-50-FCN-val-Franka-v0 --checkpoint ./path # checkpoint indicates the path to the trained model weight
 ```
 
-## Data Generation
+## Data Generation & Placing
 
-To generate clutter table scenes and save them under the train_table4 directory, please run:
+To generate clutter table scenes or visualize the proposed placing method, please run:
 ```
-./orbit.sh -p source/standalone/thesis/generate_cluttered_scene3.py --headless
+./orbit.sh -p source/standalone/thesis/generate_cluttered_scene.py --headless ##to vusialize the placing performance please run the code without '--healess'
 ```
+
