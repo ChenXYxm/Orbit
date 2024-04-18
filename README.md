@@ -87,7 +87,7 @@ To generate clutter table scenes or visualize the proposed placing method, pleas
 
 ## Robot pushing and placing
 
-This repository contains [`ROS package`](ROS_package_pushing/pushing/README.md) an example of executing the PPO pushing and placing method with a Franka Emika Panda and a wrist-mounted Intel Realsense D435.
+This repository contains the [`ROS package`](ROS_package_pushing/pushing/README.md) of executing the PPO pushing and placing method with a Franka Emika Panda and a wrist-mounted Intel Realsense D435.
 
 To run the scripts in the ROS package, please configure the workspace following the [instructions](https://github.com/ethz-asl/moma_docs/wiki/Panda-Software-Quickstart#step-1-simulation). Then please check the [`document`](ROS_package_pushing/pushing/README.md) to run the code.
 
