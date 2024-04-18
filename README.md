@@ -10,8 +10,8 @@
 [![Linux platform](https://img.shields.io/badge/platform-linux--64-lightgrey.svg)](https://releases.ubuntu.com/20.04/)
 
 
-In this project, we aim to train a pushing policy for a Franka Emika Panda arm to facilitate 2D dense object placement.
-The network accepts a 2D Truncated Signed Distance Function (TSDF) and an occupancy grid of the desktop and outputs a pixel coordinate and a pushing direction for a pushing action to make space on the desktop. Models for this project are trained using Omniverse Isaac Sim 2022.2.1 and Isaac Orbit v0.1.0.
+In this project, we train a pushing policy for a Franka Emika Panda arm to facilitate 2D dense object placement.
+The network accepts a 2D Truncated Signed Distance Function (TSDF) and an occupancy grid of the desktop and outputs a pixel coordinate and a pushing direction for a pushing action to make space on the desktop. Models for this project are trained using Omniverse Isaac Sim 2022.2.1 and Isaac Orbit v0.1.0. [`ROS_package_pushing`](ROS_package_pushing/pushing/README.md) is the ROS package of executing the PPO pushing and placing method with a robotic arm.
 
 
 <img src="picture/introduction.png" width='80%'>
@@ -87,7 +87,7 @@ To generate clutter table scenes or visualize the proposed placing method, pleas
 
 ## Robot pushing and placing
 
-This repository contains the [`ROS package`](ROS_package_pushing/pushing/README.md) of executing the PPO pushing and placing method with a Franka Emika Panda and a wrist-mounted Intel Realsense D435.
+This repository contains the [`ROS package`](ROS_package_pushing/pushing/README.md) of executing the PPO pushing and placing method with a Franka Emika Panda arm and a wrist-mounted Intel Realsense D435.
 
 To run the scripts in the ROS package, please configure the workspace following the [instructions](https://github.com/ethz-asl/moma_docs/wiki/Panda-Software-Quickstart#step-1-simulation). Then please check the [`document`](ROS_package_pushing/pushing/README.md) to run the code.
 
